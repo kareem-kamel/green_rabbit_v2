@@ -9,7 +9,7 @@ To ensure the project runs smoothly and remains consistent across all team membe
 | Component                   | Version |
 | --------------------------- | ------- |
 | Java (JDK)                  | 17      |
-| [Gradle](#Android Setup Instructions)          | 8.12    |
+| [Gradle] (#Step_A)          | 8.12    |
 | Android Gradle Plugin (AGP) | 8.7.0   |
 | Kotlin                      | 2.0.21  |
 
