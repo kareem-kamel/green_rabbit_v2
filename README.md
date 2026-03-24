@@ -86,7 +86,7 @@ Run the following commands in your terminal:
 cd android
 ./gradlew clean
 ```
-
+---
 
 ### ⚠️ Rules
 
