@@ -14,6 +14,31 @@ To ensure the project runs smoothly and remains consistent across all team membe
 | Kotlin                      | 2.0.21  |
 
 ---
+## 🟢 Flutter Setup (Using FVM)
+
+### 1. Install FVM
+
+```bash
+dart pub global activate fvm
+```
+
+---
+
+### 2. Use Project Flutter Version
+
+```bash
+fvm install
+```
+
+---
+
+### 3. Install Dependencies
+
+```bash
+fvm flutter pub get
+```
+
+---
 
 ### ⚙️ Android Setup Instructions
 
@@ -62,33 +87,6 @@ cd android
 ./gradlew clean
 ```
 
----
-
-## 🟢 Flutter Setup (Using FVM)
-
-### 1. Install FVM
-
-```bash
-dart pub global activate fvm
-```
-
----
-
-### 2. Use Project Flutter Version
-
-```bash
-fvm install
-```
-
----
-
-### 3. Install Dependencies
-
-```bash
-fvm flutter pub get
-```
-
----
 
 ### ⚠️ Rules
 
