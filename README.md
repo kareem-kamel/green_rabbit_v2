@@ -77,7 +77,7 @@ dart pub global activate fvm
 ### 2. Use Project Flutter Version
 
 ```bash
-fvm use 3.35.1
+fvm install
 ```
 
 ---
