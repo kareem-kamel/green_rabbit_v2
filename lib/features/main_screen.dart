@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart'; // 1. Added Bloc import
 import '../core/theme/app_colors.dart';
 import 'news/news_screen.dart';
-import 'news/chatbot_screen.dart'; // Ensure this import is here
+import 'chatbot/chatbot_screen.dart';
+import 'chatbot/cubit/chat_cubit.dart'; // 2. Added Cubit import
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -30,20 +32,24 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: AppColors.scaffoldBg,
       body: _screens[_selectedIndex],
 
-      // 1. ADD THE PURPLE AI BUTTON
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          // 3. WRAPPED WITH BLOCPROVIDER
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const ChatBotScreen()),
+            MaterialPageRoute(
+              builder: (context) => BlocProvider(
+                create: (context) => ChatCubit(),
+                child: const ChatBotScreen(), // 'const' is fine here if ChatBotScreen has a const constructor
+              ),
+            ),
           );
         },
-        backgroundColor: const Color(0xFF8B5CF6), // Your purple color
+        backgroundColor: const Color(0xFF8B5CF6),
         shape: const CircleBorder(),
         child: const Icon(Icons.auto_awesome, color: Colors.white),
       ),
 
-      // 2. CENTER THE BUTTON
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
       bottomNavigationBar: Container(
@@ -63,8 +69,7 @@ class _MainScreenState extends State<MainScreen> {
                 _buildNavItem(Icons.bar_chart_outlined, "Market", 0),
                 _buildNavItem(Icons.bookmark_border, "Watchlist", 1),
                 
-                // 3. THE GAP FOR THE BUTTON
-                const SizedBox(width: 48), 
+                const SizedBox(width: 48), // Gap for the FAB
                 
                 _buildNavItem(Icons.newspaper_outlined, "News", 2),
                 _buildNavItem(Icons.calendar_today_outlined, "Calendar", 3),
