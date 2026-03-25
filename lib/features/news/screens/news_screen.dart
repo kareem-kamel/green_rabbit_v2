@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colors.dart';
+import '../../../core/theme/app_colors.dart';
 import 'news_detail_screen.dart';
-import '../chatbot/chatbot_screen.dart';
-import '../alerts/create_alert_sheet.dart';
+import '../../chatbot/chatbot_screen.dart';
+import '../../alerts/create_alert_sheet.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});

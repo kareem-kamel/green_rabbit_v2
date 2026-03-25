@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart'; // 1. Added Bloc import
-import '../core/theme/app_colors.dart';
-import 'news/news_screen.dart';
-import 'chatbot/chatbot_screen.dart';
-import 'chatbot/cubit/chat_cubit.dart'; // 2. Added Cubit import
+import '../../../core/theme/app_colors.dart';
+import '../screens/news_screen.dart';
+import '../../chatbot/chatbot_screen.dart';
+import '../../chatbot/cubit/chat_cubit.dart'; // 2. Added Cubit import
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
