@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import './cubit/alert_cubit.dart';
-import './cubit/alert_state.dart';
+import '../cubit/alert_cubit.dart';
+import '../cubit/alert_state.dart';
 
 class CreateAlertSheet extends StatelessWidget {
   final String assetName;
