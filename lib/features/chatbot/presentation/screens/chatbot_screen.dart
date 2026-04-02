@@ -101,16 +101,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.smart_toy, color: Colors.white),
-          onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-              content: Text('AI Assistant opened'),
-              duration: Duration(milliseconds: 700),
-            ));
-          },
-        ),
-        IconButton(
-          icon: const Icon(Icons.edit_note, color: Colors.white),
+          icon: Image.asset(
+            'assets/icons/editchat.png',
+            width: 22,
+            height: 22,
+            fit: BoxFit.contain,
+          ),
           onPressed: () => cubit.startNewChat(),
         ),
         IconButton(
@@ -126,7 +122,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   // ─────────────────────────────────────────────
   Widget _buildSidebar(BuildContext context, ChatState state) {
     return Drawer(
-      backgroundColor: const Color(0xFF131517),
+      backgroundColor: AppColors.scaffoldBg,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -236,8 +232,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
+        color: AppColors.panelBg,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withOpacity(0.06)),
       ),
       child: Row(
         children: [
@@ -262,7 +259,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
+        color: AppColors.panelBg,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.06)),
       ),
@@ -282,8 +279,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           ),
           const SizedBox(height: 14),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 10,
+            runSpacing: 10,
+            alignment: WrapAlignment.center,
             children: suggestions.map((s) => GestureDetector(
               onTap: () => _textController.text = s,
               child: Container(
@@ -291,7 +289,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 decoration: BoxDecoration(
                   border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.5)),
                   borderRadius: BorderRadius.circular(8),
-                  color: Colors.white.withOpacity(0.03),
+                  color: Colors.white.withOpacity(0.02),
                 ),
                 child: Text(s, style: const TextStyle(color: Colors.white, fontSize: 12)),
               ),
