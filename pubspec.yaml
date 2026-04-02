@@ -68,6 +68,14 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  assets:
+    - assets/icons/rabbiticonAI.png
+    - assets/icons/aitradingassistant.png
+    - assets/icons/
+    - assets/icons/ainewssummary.png
+    - assets/icons/aifreetrail.png
+    - assets/icons/sparkles-sharp.png
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

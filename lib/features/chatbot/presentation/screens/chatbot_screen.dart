@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../core/theme/app_colors.dart';
-import 'cubit/chat_cubit.dart';
-import 'cubit/chat_state.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../cubit/chat_cubit.dart';
+import '../cubit/chat_state.dart';
 
 class ChatBotScreen extends StatefulWidget {
-  const ChatBotScreen({super.key});
+  final bool startEmpty;
+  const ChatBotScreen({super.key, this.startEmpty = false});
 
   @override
   State<ChatBotScreen> createState() => _ChatBotScreenState();
@@ -48,6 +49,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         },
         builder: (context, state) {
           final cubit = context.read<ChatCubit>();
+
+          if (widget.startEmpty && state.messages.isNotEmpty) {
+            // Ensure empty suggestion state on entry when requested
+            // Call once at first build
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) cubit.startNewChat();
+            });
+          }
 
           return Scaffold(
             key: _scaffoldKey,
@@ -206,19 +215,16 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   }
 
   Widget _buildRabbitLogo({double size = 110}) {
-    return Container(
+    return SizedBox(
       height: size,
       width: size,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [Color(0xFF6B4EE6), Color(0xFF3B2A8C)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+      child: ClipOval(
+        child: Image.asset(
+          'assets/icons/rabbiticonAI.png',
+          fit: BoxFit.cover,
+          width: size,
+          height: size,
         ),
-      ),
-      child: const Center(
-        child: Icon(Icons.auto_awesome, size: 48, color: Colors.white),
       ),
     );
   }
@@ -233,7 +239,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.auto_awesome, color: Color(0xFF8B5CF6), size: 16),
+          const _SparkIcon(size: 16),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -262,7 +268,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         children: [
           const Row(
             children: [
-              Icon(Icons.auto_awesome, color: Color(0xFF8B5CF6), size: 14),
+              _SparkIcon(size: 14),
               SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -551,6 +557,36 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       cubit.sendMessage(text);
       _textController.clear();
     }
+  }
+}
+
+class _RabbitAIIcon extends StatelessWidget {
+  final double size;
+  const _RabbitAIIcon({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/icons/rabbiticonAI.png',
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+    );
+  }
+}
+
+class _SparkIcon extends StatelessWidget {
+  final double size;
+  const _SparkIcon({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/icons/sparkles-sharp.png',
+      width: size,
+      height: size,
+      fit: BoxFit.contain,
+    );
   }
 }
 

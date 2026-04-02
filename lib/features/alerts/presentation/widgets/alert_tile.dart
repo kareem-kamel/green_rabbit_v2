@@ -54,7 +54,7 @@ class AlertTile extends StatelessWidget {
           Switch(
             value: isActive,
             onChanged: onToggle,
-            activeColor: AppColors.primaryPurple,
+            activeThumbColor: AppColors.primaryPurple,
             activeTrackColor: AppColors.primaryPurple.withOpacity(0.3),
             inactiveThumbColor: AppColors.textGrey,
             inactiveTrackColor: Colors.white10,

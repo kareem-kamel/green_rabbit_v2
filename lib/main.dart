@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'features/news/data/repositories/news_repository.dart';
 import 'features/news/presentation/cubit/news_cubit.dart';
-import 'features/news/screens/news_screen.dart'; 
-import '../features/news/widgets/main_screen.dart';
+import 'features/news/presentation/widgets/main_screen.dart';
 
 void main() {
   final newsRepository = NewsRepository();

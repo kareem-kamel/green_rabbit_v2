@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart'; // 1. Added Bloc import
-import '../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../screens/news_screen.dart';
-import '../../chatbot/chatbot_screen.dart';
-import '../../chatbot/cubit/chat_cubit.dart'; // 2. Added Cubit import
+import '../../../chatbot/presentation/screens/chatbot_screen.dart';
+import '../../../../core/widgets/bottom_nav_bar.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -20,6 +19,8 @@ class _MainScreenState extends State<MainScreen> {
     const Center(child: Text("Watchlist Screen", style: TextStyle(color: Colors.white))),
     const NewsScreen(),
     const Center(child: Text("Calendar Screen", style: TextStyle(color: Colors.white))),
+    // Dedicated Chat tab (selected via the center Rabbit button)
+    const ChatBotScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -32,78 +33,47 @@ class _MainScreenState extends State<MainScreen> {
       backgroundColor: AppColors.scaffoldBg,
       body: _screens[_selectedIndex],
 
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // 3. WRAPPED WITH BLOCPROVIDER
+      floatingActionButton: GestureDetector(
+        onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => BlocProvider(
-                create: (context) => ChatCubit(),
-                child: const ChatBotScreen(), // 'const' is fine here if ChatBotScreen has a const constructor
-              ),
+              builder: (context) => const ChatBotScreen(startEmpty: true),
             ),
           );
         },
-        backgroundColor: const Color(0xFF8B5CF6),
-        shape: const CircleBorder(),
-        child: const Icon(Icons.auto_awesome, color: Colors.white),
+        child: Transform.translate(
+          offset: const Offset(0, -1), // push slightly downward
+          child: SizedBox(
+            width: 72,
+            height: 72,
+            child: Center(
+              child: Image.asset(
+                'assets/icons/rabbiticonAI.png',
+                width: 68,
+                height: 68,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ),
       ),
 
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
-      bottomNavigationBar: Container(
-        decoration: const BoxDecoration(
-          color: AppColors.navBarBg,
-          border: Border(
-            top: BorderSide(color: Colors.white10, width: 0.5),
-          ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(Icons.bar_chart_outlined, "Market", 0),
-                _buildNavItem(Icons.bookmark_border, "Watchlist", 1),
-                
-                const SizedBox(width: 48), // Gap for the FAB
-                
-                _buildNavItem(Icons.newspaper_outlined, "News", 2),
-                _buildNavItem(Icons.calendar_today_outlined, "Calendar", 3),
-              ],
-            ),
-          ),
-        ),
+      bottomNavigationBar: BottomNavBar(
+        selectedIndex: _selectedIndex,
+        onItemTapped: _onItemTapped,
+        items: buildBottomNavAssets(const [
+          ('assets/icons/market.png', 'Market'),
+          ('assets/icons/watchlist.png', 'Watchlist'),
+          ('assets/icons/news.png', 'News'),
+          ('assets/icons/Calendar.png', 'Calendar'),
+        ]),
+        fabGapWidth: 64,
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int index) {
-    bool isActive = _selectedIndex == index;
-    return GestureDetector(
-      onTap: () => _onItemTapped(index),
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: isActive ? Colors.white : AppColors.textGrey,
-            size: 24,
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: isActive ? Colors.white : AppColors.textGrey,
-              fontSize: 10,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Removed local _buildNavItem in favor of reusable BottomNavBar
 }

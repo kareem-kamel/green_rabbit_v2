@@ -7,8 +7,9 @@ class AlertCubit extends Cubit<AlertState> {
   void updateTab(String tab) => emit(state.copyWith(selectedTab: tab));
 
   void updateCondition(String condition) {
-    if (state.selectedTab == "Price") emit(state.copyWith(priceCondition: condition));
-    else if (state.selectedTab == "Charge %") emit(state.copyWith(gainCondition: condition));
+    if (state.selectedTab == "Price") {
+      emit(state.copyWith(priceCondition: condition));
+    } else if (state.selectedTab == "Charge %") emit(state.copyWith(gainCondition: condition));
     else emit(state.copyWith(volumeCondition: condition));
   }
 

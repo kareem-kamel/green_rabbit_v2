@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_colors.dart';
 import 'news_detail_screen.dart';
-import '../../chatbot/chatbot_screen.dart';
-import '../../alerts/create_alert_sheet.dart';
+import '../../../chatbot/presentation/screens/chatbot_screen.dart';
+import '../../../alerts/presentation/widgets/create_alert_sheet.dart';
+import '../../../../core/widgets/ai_trading_assistant_card.dart';
+import '../../../../core/widgets/ask_ai_badge.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -59,30 +61,36 @@ class _NewsScreenState extends State<NewsScreen> {
             const SizedBox(height: 10),
 
             // AI Trading Assistant card
-            _buildAICard(context),
-            const SizedBox(height: 24),
+            AITradingAssistantCard(
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatBotScreen())),
+            ),
+            const SizedBox(height: 8),
+            _buildSeparator(),
+            const SizedBox(height: 8),
 
             // Category chips
             _buildCategoryRow(),
             const SizedBox(height: 24),
 
             // Section header
-            _buildSectionHeader("Top News", hasFilter: true),
+            _buildSectionHeader("Latest News", hasFilter: true),
             const SizedBox(height: 12),
 
             // Featured article
             _buildFeaturedArticle(),
-            const SizedBox(height: 32),
+            const SizedBox(height: 8),
+            _buildSeparator(),
+            const SizedBox(height: 8),
 
-            // Opinion cards
-            _buildSectionHeader("Opinions", hasViewAll: true),
-            const SizedBox(height: 12),
+            // Opinion cards (header removed per request)
             _buildOpinionCard(context, 'https://i.pravatar.cc/150?u=op1', "Alex Rivera", "Why the Fed's next move matters for tech stocks."),
             _buildOpinionCard(context, 'https://i.pravatar.cc/150?u=op2', "Elena Belova", "Crypto regulation: The winter is finally thawing."),
-            const SizedBox(height: 24),
+            const SizedBox(height: 8),
+            _buildSeparator(),
+            const SizedBox(height: 8),
 
-            // Small articles
-            _buildSectionHeader("More News", hasViewAll: true),
+            // Analysis & Opinions header replaces "More News"
+            _buildSectionHeader("Analysis & Opinions", hasViewAll: true),
             const SizedBox(height: 12),
             _buildSmallArticle(context, isBullish: true),
             _buildSmallArticle(context, 
@@ -91,7 +99,13 @@ class _NewsScreenState extends State<NewsScreen> {
             _buildSmallArticle(context, 
                 isBullish: true,
                 title: "Oil prices stabilize after OPEC+ unexpected meeting."),
-            const SizedBox(height: 32),
+            const SizedBox(height: 8),
+            _buildSeparator(),
+            const SizedBox(height: 8),
+
+            // Ad banner at the end
+            _buildAdBanner(),
+            const SizedBox(height: 24),
           ],
         ),
       ),
@@ -113,6 +127,47 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
+  Widget _buildAdBanner() {
+    return Container(
+      height: 100,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        image: const DecorationImage(
+          image: NetworkImage('https://picsum.photos/seed/ad_banner/600/200'),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.black.withOpacity(0.4),
+        ),
+        child: Row(
+          children: [
+            const Expanded(
+              child: Text(
+                "NEW SPRING\nCOLLECTION",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {},
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.black),
+              child: const Text("SHOP NOW",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
   Widget _buildCategoryChip(String label) {
     bool isActive = selectedCategory == label;
     return GestureDetector(
@@ -160,52 +215,7 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
-  Widget _buildAICard(BuildContext context) {
-    return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatBotScreen())),
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: AppColors.primaryGradient,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primaryPurple.withOpacity(0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            )
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.auto_awesome, color: Colors.white, size: 28),
-            ),
-            const SizedBox(width: 16),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("AI Trading Assistant",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
-                  SizedBox(height: 4),
-                  Text(
-                      "Decode complex indicators and news with instant AI summaries.",
-                      style: TextStyle(fontSize: 12, color: Colors.white70)),
-                ],
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 16),
-          ],
-        ),
-      ),
-    );
-  }
+  // Removed old _buildAICard in favor of AITradingAssistantCard
 
   Widget _buildFeaturedArticle() {
     return GestureDetector(
@@ -244,22 +254,7 @@ class _NewsScreenState extends State<NewsScreen> {
     return Positioned(
       top: top,
       left: left,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.7),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white24),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.auto_awesome, color: AppColors.primaryPurple, size: 14),
-            SizedBox(width: 6),
-            Text("Ask AI", style: TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ),
+      child: const AskAIBadge(),
     );
   }
 
@@ -294,6 +289,13 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
+  Widget _buildSeparator() {
+    return Container(
+      height: 1,
+      width: double.infinity,
+      color: AppColors.borderGrey.withOpacity(0.08),
+    );
+  }
   Widget _buildSmallArticle(BuildContext context, {required bool isBullish, String title = "Winter storm impacts energy sector..."}) {
     return InkWell(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NewsDetailScreen())),

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/ai_news_summary_card.dart';
 
 // ─────────────────────────────────────────────
 //  MODEL
@@ -65,9 +67,9 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D1117), // GitHub Dark style
+      backgroundColor: AppColors.scaffoldBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFF0D1117),
+        backgroundColor: AppColors.scaffoldBg,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
@@ -134,16 +136,21 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 12),
 
-                  _buildAISummaryBox(),
-                  const SizedBox(height: 24),
+                  // AI summary card under the chips (CIEN, SBUX, ...)
+                  AiNewsSummaryCard(onTap: () {}),
+                  const SizedBox(height: 8),
+                  _buildSeparator(),
+                  const SizedBox(height: 8),
 
                   _buildArticleBody(),
                   const SizedBox(height: 16),
 
                   _buildSeeMoreButton(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 8),
+                  _buildSeparator(),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
@@ -153,25 +160,31 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: _buildAdBanner(),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 8),
+            _buildSeparator(),
+            const SizedBox(height: 8),
 
-            // ── Analyst opinions
-            _buildSectionHeader("Analyst Opinions"),
-            _buildAnalysisItem("Goldman Sachs", "Neutral rating maintained despite storm concerns."),
-            _buildAnalysisItem("Morgan Stanley", "Energy infrastructure remains resilient."),
-            const SizedBox(height: 32),
+            // ── Comments section (moved before related sections)
+            _buildSectionHeader("Comments"),
+            _buildCommentInput(),
+            const SizedBox(height: 8),
+            ..._comments.map((c) => _buildCommentCard(c)),
+            const SizedBox(height: 8),
+            _buildSeparator(),
+            const SizedBox(height: 8),
 
             // ── Related news
             _buildSectionHeader("Related News", hasViewAll: true),
             _buildRelatedItem("Natural gas prices surge as cold front approaches", "3 hours ago"),
             _buildRelatedItem("How to prepare your portfolio for climate volatility", "5 hours ago"),
-            const SizedBox(height: 32),
-
-            // ── Comments section
-            _buildSectionHeader("Comments"),
-            _buildCommentInput(),
             const SizedBox(height: 8),
-            ..._comments.map((c) => _buildCommentCard(c)).toList(),
+            _buildSeparator(),
+            const SizedBox(height: 8),
+
+            // ── Related analysis (renamed from Analyst Opinions)
+            _buildSectionHeader("Related Analysis"),
+            _buildAnalysisItem("Goldman Sachs", "Neutral rating maintained despite storm concerns."),
+            _buildAnalysisItem("Morgan Stanley", "Energy infrastructure remains resilient."),
             const SizedBox(height: 48),
           ],
         ),
@@ -442,7 +455,11 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.auto_awesome, color: Colors.indigoAccent, size: 28),
+          Image.asset(
+            'assets/icons/rabbiticonAI.png',
+            width: 28,
+            height: 28,
+          ),
           const SizedBox(width: 16),
           const Expanded(
             child: Column(
@@ -456,6 +473,14 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
           const Icon(Icons.arrow_forward_ios, color: Colors.white30, size: 16),
         ],
       ),
+    );
+  }
+
+  Widget _buildSeparator() {
+    return Container(
+      height: 1,
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      color: AppColors.borderGrey.withOpacity(0.08),
     );
   }
 }
