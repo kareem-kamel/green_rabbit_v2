@@ -16,6 +16,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  bool _clearedOnOpen = false;
 
   @override
   void dispose() {
@@ -50,11 +51,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         builder: (context, state) {
           final cubit = context.read<ChatCubit>();
 
-          if (widget.startEmpty && state.messages.isNotEmpty) {
-            // Ensure empty suggestion state on entry when requested
-            // Call once at first build
+          if (widget.startEmpty && !_clearedOnOpen) {
+            // Ensure empty suggestion state only once on entry
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) cubit.startNewChat();
+              if (!mounted) return;
+              _clearedOnOpen = true;
+              cubit.startNewChat();
             });
           }
 
@@ -560,20 +562,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   }
 }
 
-class _RabbitAIIcon extends StatelessWidget {
-  final double size;
-  const _RabbitAIIcon({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/icons/rabbiticonAI.png',
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
-    );
-  }
-}
+// _RabbitAIIcon kept previously is no longer used after switching to sparkles.
 
 class _SparkIcon extends StatelessWidget {
   final double size;
