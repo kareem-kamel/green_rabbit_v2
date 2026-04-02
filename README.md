@@ -9,34 +9,9 @@ To ensure the project runs smoothly and remains consistent across all team membe
 | Component                   | Version |
 | --------------------------- | ------- |
 | Java (JDK)                  | 17      |
-| [Gradle](##step-a-update-gradle-wrapper)          | 8.12    |
+| Gradle                      | 8.12    |
 | Android Gradle Plugin (AGP) | 8.7.0   |
 | Kotlin                      | 2.0.21  |
-
----
-## 🟢 Flutter Setup (Using FVM)
-
-### 1. Install FVM
-
-```bash
-dart pub global activate fvm
-```
-
----
-
-### 2. Use Project Flutter Version
-
-```bash
-fvm install
-```
-
----
-
-### 3. Install Dependencies
-
-```bash
-fvm flutter pub get
-```
 
 ---
 
@@ -86,6 +61,33 @@ Run the following commands in your terminal:
 cd android
 ./gradlew clean
 ```
+
+---
+
+## 🟢 Flutter Setup (Using FVM)
+
+### 1. Install FVM
+
+```bash
+dart pub global activate fvm
+```
+
+---
+
+### 2. Use Project Flutter Version
+
+```bash
+fvm use 3.35.1
+```
+
+---
+
+### 3. Install Dependencies
+
+```bash
+fvm flutter pub get
+```
+
 ---
 
 ### ⚠️ Rules
