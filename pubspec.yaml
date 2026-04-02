@@ -76,6 +76,7 @@ flutter:
     - assets/icons/aifreetrail.png
     - assets/icons/sparkles-sharp.png
     - assets/icons/editchat.png
+    - assets/icons/allchat.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

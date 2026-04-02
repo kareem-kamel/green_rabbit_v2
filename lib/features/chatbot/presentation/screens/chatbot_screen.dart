@@ -90,27 +90,33 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     return AppBar(
       backgroundColor: AppColors.scaffoldBg,
       elevation: 0,
+      toolbarHeight: 72,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+        icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 40),
         onPressed: () => Navigator.pop(context),
       ),
       title: const Text(
         "Chatbot AI",
         style: TextStyle(
-            color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+            color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600),
       ),
       actions: [
         IconButton(
           icon: Image.asset(
             'assets/icons/editchat.png',
-            width: 22,
-            height: 22,
+            width: 44,
+            height: 44,
             fit: BoxFit.contain,
           ),
           onPressed: () => cubit.startNewChat(),
         ),
         IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white),
+          icon: Image.asset(
+            'assets/icons/allchat.png',
+            width: 44,
+            height: 44,
+            fit: BoxFit.contain,
+          ),
           onPressed: () => _scaffoldKey.currentState?.openDrawer(),
         ),
       ],
