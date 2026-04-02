@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // --- خلفيات الشاشات (Backgrounds) ---
-  static const Color scaffoldBg = Color(0xFF1C2128);   // الخلفية الأساسية
-  static const Color cardBg = Color(0xFF1E1D3D);       // خلفية الكروت (AI Trading Assistant)
+  static const Color scaffoldBg = Color(0xFF0E1117);   // الخلفية الأساسية
+  static const Color cardBg = Color(0xFF1C2128);
+  static const Color border = Color(0xFF4072FF);     // خلفية الكروت (AI Trading Assistant)
   static const Color navBarBg = Color(0xFF0F131A);     // خلفية شريط التنقل السفلي
   static const Color searchBarBg = Color(0xFF0E1117);  // خلفية شريط البحث (الجديد)
 

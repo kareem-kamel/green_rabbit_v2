@@ -34,6 +34,10 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  flutter_svg: ^2.2.4
+  flutter_native_splash: ^2.4.7
+  flutter_launcher_icons: ^0.14.4
+  flutter_bloc: ^9.1.1
 
 dev_dependencies:
   flutter_test:
@@ -51,6 +55,9 @@ dev_dependencies:
 
 # The following section is specific to Flutter packages.
 flutter:
+  assets:
+    - assets/icons/
+    - assets/images/
   fonts:
     - family: Urbanist
       fonts:
@@ -58,7 +65,7 @@ flutter:
         - asset: assets/fonts/Urbanist-Medium.ttf
           weight: 500
         - asset: assets/fonts/Urbanist-Bold.ttf
-        - asset: assets/fonts/Urbanist -SemiBold.ttf
+        - asset: assets/fonts/Urbanist-SemiBold.ttf
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
@@ -95,3 +102,9 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  adaptive_icon_background: "#0E1117"
+  adaptive_icon_foreground: "assets/icons/app_icon.png"
