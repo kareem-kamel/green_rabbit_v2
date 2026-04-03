@@ -1,34 +1,51 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../data/repository/auth_repository.dart';
 import 'auth_state.dart';
 
 class AuthCubit extends Cubit<AuthState> {
-  AuthCubit() : super(AuthInitial());
+  final AuthRepository repository;
 
-  // Check current auth status on app start
-  Future<void> checkAuth() async {
+  AuthCubit({required this.repository}) : super(AuthInitial());
+  Future<void> register({
+    required String email,
+    required String password,
+    required String confirmPassword,
+  }) async {
     emit(AuthLoading());
     try {
-      // TODO: Implement actual check using repository
       await Future.delayed(const Duration(seconds: 2));
-      emit(AuthLoggedOut());
+      // final user = await repository.register(
+      //   email: email, 
+      //   password: password, 
+      //   confirmPassword: confirmPassword,
+      // );
+      emit(AuthSuccess());
     } catch (e) {
-      emit(AuthError(e.toString()));
+      emit(AuthFailure(errorMessage: e.toString().replaceAll('Exception: ', '')));
     }
   }
 
-  Future<void> login(String email, String password) async {
+  Future<void> login({
+    required String email,
+    required String password,
+    required bool rememberMe,
+  }) async {
+    // 1. Tell UI to show loading spinner
     emit(AuthLoading());
+
     try {
-      // TODO: Implement login
-      // emit(AuthLoggedIn(user));
+      // 2. Try to log in via repository
+      final user = await repository.login(
+        email: email, 
+        password: password, 
+        rememberMe: rememberMe,
+      );
+      
+      // 3. Tell UI it was a success!
+      emit(AuthSuccess());
     } catch (e) {
-      emit(AuthError(e.toString()));
+      // 4. Tell UI it failed, and pass the error message (removing the "Exception:" text)
+      emit(AuthFailure(errorMessage: e.toString().replaceAll('Exception: ', '')));
     }
-  }
-
-  Future<void> logout() async {
-    emit(AuthLoading());
-    // TODO: Implement logout
-    emit(AuthLoggedOut());
   }
 }

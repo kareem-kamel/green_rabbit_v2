@@ -25,8 +25,8 @@ class InstrumentDetailPage extends ConsumerStatefulWidget {
 
 class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _showMovingAverages = false;
-  bool _isAreaChart = true; // Still used for portrait if needed, but the main state is _chartMode
+  final bool _showMovingAverages = false;
+  final bool _isAreaChart = true; // Still used for portrait if needed, but the main state is _chartMode
   ProChartMode _chartMode = ProChartMode.area;
   String _selectedTimeframe = '15';
   DateTimeRange? _selectedDateRange;

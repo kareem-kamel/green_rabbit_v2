@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../models/market_instrument.dart';
 import '../models/market_instrument_detail.dart';

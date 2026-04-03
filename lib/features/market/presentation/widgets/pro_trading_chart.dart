@@ -26,7 +26,7 @@ class ProTradingChart extends StatefulWidget {
 
 class _ProTradingChartState extends State<ProTradingChart> {
   double _scrollOffset = 0.0;
-  double _zoomLevel = 1.0;
+  final double _zoomLevel = 1.0;
   
   @override
   Widget build(BuildContext context) {
@@ -345,7 +345,9 @@ class _ChartPainter extends CustomPainter {
     for (int i = start; i <= end; i++) {
       if (i < period - 1) continue;
       double sum = 0;
-      for (int j = 0; j < period; j++) sum += candles[i - j].close ?? 0;
+      for (int j = 0; j < period; j++) {
+        sum += candles[i - j].close ?? 0;
+      }
       final x = (i * stepX) - scrollOffset + stepX / 2;
       final y = getY(sum / period);
       if (first) { path.moveTo(x, y); first = false; } else { path.lineTo(x, y); }

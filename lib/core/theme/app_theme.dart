@@ -1,34 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flex_color_scheme/flex_color_scheme.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 
 class AppTheme {
   // Prevent instantiation
   AppTheme._();
 
-  // Spacing & Radius Tokens
+  // Spacing & Radius Tokens (شغل شربيني اللي بيظبط المسافات)
   static const double defaultRadius = 12.0;
   static const double cardRadius = 16.0;
   static const double inputRadius = 14.0;
-  static const double buttonRadius = 12.0;
-  static const double paddingS = 8.0;
   static const double paddingM = 16.0;
-  static const double paddingL = 24.0;
 
   // Dark Theme
   static ThemeData get darkTheme {
     return FlexThemeData.dark(
-      colors: const FlexSchemeColor(
-        primary: AppColors.primary,
-        primaryContainer: Color(0xFF4838D1),
-        secondary: AppColors.secondary,
-        secondaryContainer: Color(0xFF3B3B98),
-        tertiary: AppColors.accent,
-        tertiaryContainer: Color(0xFF1F1F1F),
-        appBarColor: AppColors.background,
-        error: AppColors.error,
-      ),
+      // بنستخدم ألوان الـ main اللي أنت عرفتها
+      scaffoldBackground: AppColors.scaffoldBg,
       surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
       blendLevel: 13,
       subThemesData: const FlexSubThemesData(
@@ -36,64 +24,58 @@ class AppTheme {
         useTextTheme: true,
         useM2StyleDividerInM3: true,
         defaultRadius: defaultRadius,
-        elevatedButtonSchemeColor: SchemeColor.onPrimary,
-        elevatedButtonSecondarySchemeColor: SchemeColor.primary,
-        outlinedButtonOutlineSchemeColor: SchemeColor.primary,
-        toggleButtonsSchemeColor: SchemeColor.primary,
-        segmentedButtonSchemeColor: SchemeColor.primary,
-        switchSchemeColor: SchemeColor.primary,
-        checkboxSchemeColor: SchemeColor.primary,
-        radioSchemeColor: SchemeColor.primary,
-
         inputDecoratorRadius: inputRadius,
-        inputDecoratorUnfocusedHasBorder: false,
-        fabUseShape: true,
-        fabRadius: 16.0,
-        chipRadius: 10.0,
         cardRadius: cardRadius,
-        popupMenuRadius: 12.0,
-        dialogRadius: 20.0,
-        timePickerElementRadius: 12.0,
-        snackBarRadius: 10.0,
         bottomSheetRadius: 24.0,
       ),
       visualDensity: FlexColorScheme.comfortablePlatformDensity,
       useMaterial3: true,
-      swapLegacyOnMaterial3: true,
-      fontFamily: GoogleFonts.inter().fontFamily,
-      scaffoldBackground: AppColors.background,
+      // 1. الخط الأساسي من الـ main
+      fontFamily: 'Urbanist', 
     ).copyWith(
+      // 2. دمج الـ TextTheme اللي أنت صممته في الـ main
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textGrey,
+        ),
+        displayMedium: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+        ),
+        bodySmall: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+          color: Colors.white,
+        ),
+        bodyMedium: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: AppColors.textGrey,
+        ),
+        titleMedium: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          color: AppColors.primaryPurple,
+        ),
+      ),
+      // 3. الحفاظ على الـ Bottom Nav بتاع شربيني عشان الـ UI ميبوظش
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         selectedItemColor: Colors.white,
-        unselectedItemColor: AppColors.textMuted,
-        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600),
-      ),
-      textTheme: GoogleFonts.interTextTheme().apply(
-        bodyColor: AppColors.textPrimary,
-        displayColor: AppColors.textPrimary,
+        unselectedItemColor: Colors.grey,
+        selectedLabelStyle: TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Urbanist'),
       ),
     );
   }
 
-  // Potential Light Theme
+  // Light Theme (Optional)
   static ThemeData get lightTheme {
-    return FlexThemeData.light(
-      scheme: FlexScheme.deepBlue,
-      surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
-      blendLevel: 7,
-      subThemesData: const FlexSubThemesData(
-        blendOnLevel: 10,
-        useTextTheme: true,
-        useM2StyleDividerInM3: true,
-        defaultRadius: defaultRadius,
-        inputDecoratorRadius: inputRadius,
-        fabRadius: 16.0,
-        cardRadius: cardRadius,
-      ),
-      visualDensity: FlexColorScheme.comfortablePlatformDensity,
+    return ThemeData(
       useMaterial3: true,
-      swapLegacyOnMaterial3: true,
-      fontFamily: GoogleFonts.inter().fontFamily,
+      fontFamily: 'Urbanist',
+      brightness: Brightness.light,
     );
   }
 }

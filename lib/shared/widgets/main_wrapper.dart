@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:green_rabbit/core/theme/app_theme.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import '../../features/market/presentation/pages/market_page.dart';
 import '../../features/watchlist/presentation/pages/watchlist_page.dart';

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:green_rabbit/core/theme/app_theme.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 
 class AppSectionHeader extends StatelessWidget {

@@ -9,7 +9,6 @@ import '../../../../shared/widgets/sparkline_painter.dart';
 import 'instrument_detail_page.dart';
 import '../providers/market_providers.dart';
 import '../../data/models/market_instrument.dart';
-import 'search_page.dart';
 import '../../../watchlist/presentation/providers/watchlist_providers.dart';
 
 class MarketPage extends ConsumerStatefulWidget {

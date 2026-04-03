@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../main.dart';
+import 'package:get_it/get_it.dart';
 import '../../../market/data/models/market_instrument.dart';
 import '../../data/repositories/watchlist_repository_impl.dart';
+
+final sl = GetIt.instance;
 
 class WatchlistState {
   final List<MarketInstrument> items;
@@ -48,13 +50,16 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
   Future<void> removeInstrument(String id) async {
     try {
       await _repository.removeFromWatchlist(id);
-      state = state.copyWith(items: state.items.where((i) => i.id != id).toList());
+      state = state.copyWith(
+        items: state.items.where((i) => i.id != id).toList(),
+      );
     } catch (e) {
       // Handle error
     }
   }
 }
 
-final watchlistProvider = StateNotifierProvider<WatchlistNotifier, WatchlistState>((ref) {
-  return WatchlistNotifier(sl<WatchlistRepository>());
-});
+final watchlistProvider =
+    StateNotifierProvider<WatchlistNotifier, WatchlistState>((ref) {
+      return WatchlistNotifier(sl<WatchlistRepository>());
+    });

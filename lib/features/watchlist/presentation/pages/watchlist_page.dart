@@ -26,7 +26,7 @@ class WatchlistPage extends ConsumerWidget {
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingL),
+            padding: EdgeInsets.symmetric(horizontal: AppTheme.paddingM),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
