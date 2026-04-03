@@ -285,11 +285,182 @@ class MockInterceptor extends Interceptor {
       }
     }
 
+    // --- Subscription Plans ---
+    if (path == '/subscriptions/plans' && options.method == 'GET') {
+      return handler.resolve(
+        Response(
+          requestOptions: options,
+          data: {
+            'success': true,
+            'data': _mockSubscriptionPlans,
+          },
+          statusCode: 200,
+        ),
+      );
+    }
+
+    // --- Current Subscription ---
+    if (path == '/subscriptions/current' && options.method == 'GET') {
+      return handler.resolve(
+        Response(
+          requestOptions: options,
+          data: {
+            'success': true,
+            'data': _currentSubscription,
+          },
+          statusCode: 200,
+        ),
+      );
+    }
+
+    // --- Checkout Session ---
+    if (path == '/subscriptions/checkout' && options.method == 'POST') {
+      final planId = options.data['planId'];
+      final plan = _mockSubscriptionPlans.firstWhere((p) => p['id'] == planId, orElse: () => _mockSubscriptionPlans.first);
+
+      return handler.resolve(
+        Response(
+          requestOptions: options,
+          data: {
+            'success': true,
+            'data': {
+              'checkoutId': 'chk_mf_${DateTime.now().millisecondsSinceEpoch}',
+              'paymentUrl': 'https://demo.myfatoorah.com/En/KWT/PayInvoice/Result?paymentId=100202312345678',
+              'expiresAt': DateTime.now().add(const Duration(hours: 1)).toIso8601String(),
+              'plan': {
+                'id': plan['id'],
+                'name': plan['name'],
+                'price': plan['price'],
+                'currency': plan['currency'],
+              },
+              'totalAmount': plan['price']
+            }
+          },
+          statusCode: 200,
+        ),
+      );
+    }
+
+    // --- Subscription Cancel ---
+    if (path == '/subscriptions/cancel' && options.method == 'POST') {
+      _currentSubscription['status'] = 'canceled';
+      _currentSubscription['cancelAtPeriodEnd'] = true;
+      
+      return handler.resolve(
+        Response(
+          requestOptions: options,
+          data: {
+            'success': true,
+            'data': {
+              'subscriptionId': _currentSubscription['id'],
+              'status': 'canceled',
+              'cancelAtPeriodEnd': true,
+              'currentPeriodEnd': _currentSubscription['currentPeriodEnd'],
+              'message': 'Your subscription has been canceled. You will retain access until the end of the period.'
+            }
+          },
+          statusCode: 200,
+        ),
+      );
+    }
+
+    // --- Webhook (Public) ---
+    if (path == '/subscriptions/webhook' && options.method == 'POST') {
+      return handler.resolve(
+        Response(
+          requestOptions: options,
+          data: {
+            'success': true,
+            'data': {
+              'received': true,
+              'processedAt': DateTime.now().toIso8601String(),
+            }
+          },
+          statusCode: 200,
+        ),
+      );
+    }
+
     // For other paths, proceed as normal (or return error if needed)
     return handler.next(options);
   }
 
   // --- Mock Data Helpers ---
+
+  static final Map<String, dynamic> _currentSubscription = {
+    'id': 'sub_abc123',
+    'planId': 'plan_premium_monthly',
+    'planName': 'Premium Monthly',
+    'status': 'active',
+    'currentPeriodStart': '2024-01-01T00:00:00Z',
+    'currentPeriodEnd': '2024-02-01T00:00:00Z',
+    'cancelAtPeriodEnd': false,
+    'features': [
+        'unlimited_ai_chat',
+        'advanced_analytics',
+        'no_ads',
+        'priority_support'
+    ],
+    'paymentMethod': {
+        'type': 'card',
+        'last4': '4242',
+        'brand': 'visa'
+    }
+  };
+
+  static final List<Map<String, dynamic>> _mockSubscriptionPlans = [
+    {
+      'id': 'plan_free',
+      'name': 'Free',
+      'description': 'Basic access with limited features',
+      'tier': 'free',
+      'billingPeriod': 'monthly',
+      'price': 0.0,
+      'currency': 'KWD',
+      'features': [
+        {'id': 'limited_ai', 'name': 'Limited AI Chat', 'included': true},
+        {'id': 'ads', 'name': 'Ad-Supported', 'included': true},
+      ],
+      'active': true,
+    },
+    {
+      'id': 'plan_premium_monthly',
+      'name': 'Premium Monthly',
+      'description': 'Full access to all premium features with monthly billing',
+      'tier': 'premium',
+      'billingPeriod': 'monthly',
+      'price': 9.99,
+      'currency': 'KWD',
+      'originalPrice': 12.99,
+      'discount': {
+        'percentage': 23,
+        'validUntil': '2024-02-01T00:00:00Z'
+      },
+      'features': [
+        {'id': 'unlimited_ai_chat', 'name': 'Unlimited AI Chat', 'included': true},
+        {'id': 'no_ads', 'name': 'No Ads', 'included': true},
+      ],
+      'trialDays': 7,
+      'popular': true,
+      'active': true
+    },
+    {
+      'id': 'plan_premium_yearly',
+      'name': 'Premium Yearly',
+      'description': 'Save more with yearly billing',
+      'tier': 'premium',
+      'billingPeriod': 'yearly',
+      'price': 99.99,
+      'currency': 'KWD',
+      'originalPrice': 119.88,
+      'features': [
+        {'id': 'unlimited_ai_chat', 'name': 'Unlimited AI Chat', 'included': true},
+        {'id': 'no_ads', 'name': 'No Ads', 'included': true},
+      ],
+      'trialDays': 7,
+      'active': true
+    }
+  ];
 
   static final _mockBTC = {
     'id': 'crypto:BTC-USD',

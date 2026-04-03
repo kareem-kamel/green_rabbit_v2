@@ -5,9 +5,14 @@ import 'package:green_rabbit/core/theme/app_theme.dart';
 import 'package:green_rabbit/features/auth/data/api/auth_api.dart';
 import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:green_rabbit/features/subscriptions/presentation/cubit/subscription_cubit.dart';
 import 'package:green_rabbit/features/onboarding/presentation/screens/onboarding_screen.dart';
+import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
+import 'core/di/injection_container.dart' as di;
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await di.init();
   runApp(const ProviderScope(
       child: GreenRabbitApp(),
     ),);
@@ -18,17 +23,20 @@ class GreenRabbitApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => AuthCubit(
-        repository: AuthRepository(
-          api: AuthApi(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<AuthCubit>(
+          create: (context) => di.sl<AuthCubit>(),
         ),
-      ),
+        BlocProvider<SubscriptionCubit>(
+          create: (context) => di.sl<SubscriptionCubit>()..init(),
+        ),
+      ],
       child: MaterialApp(
         title: 'Green Rabbit News',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
-        home: const OnboardingScreen(),
+        home: const MainWrapper(),
       ),
     );
   }

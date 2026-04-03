@@ -1,9 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:get_it/get_it.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../../market/data/models/market_instrument.dart';
 import '../../data/repositories/watchlist_repository_impl.dart';
-
-final sl = GetIt.instance;
 
 class WatchlistState {
   final List<MarketInstrument> items;

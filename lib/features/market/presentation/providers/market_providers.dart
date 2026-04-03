@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:green_rabbit/features/watchlist/presentation/providers/watchlist_providers.dart';
+import '../../../../core/di/injection_container.dart';
 import '../../data/models/market_instrument.dart';
 import '../../data/models/market_instrument_detail.dart';
 import '../../data/repositories/market_repository_impl.dart';

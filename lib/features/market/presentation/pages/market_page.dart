@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:green_rabbit/core/theme/app_theme.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
+import 'package:green_rabbit/features/profile/presentation/screens/profile_screen.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_search_field.dart';
 import '../../../../shared/widgets/app_section_header.dart';
@@ -104,38 +105,46 @@ class _MarketPageState extends ConsumerState<MarketPage> {
   }
 
   Widget _buildHeader(BuildContext context, WidgetRef ref) {
-    return Row(
-      children: [
-        const CircleAvatar(
-          radius: 20,
-          backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=mahmoud'),
-        ),
-        const SizedBox(width: 12),
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Welcome,',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-            ),
-            Text(
-              'Mahmoud',
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: AppSearchField(
-            readOnly: false,
-            controller: _searchController,
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ProfileScreen()),
+        );
+      },
+      child: Row(
+        children: [
+          const CircleAvatar(
+            radius: 20,
+            backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=mahmoud'),
           ),
-        ),
-        const SizedBox(width: 12),
-        _headerIcon(Icons.notifications_none, hasBadge: true),
-        const SizedBox(width: 12),
-        _headerIcon(Icons.menu),
-      ],
+          const SizedBox(width: 12),
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Welcome,',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              ),
+              Text(
+                'Mahmoud',
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: AppSearchField(
+              readOnly: false,
+              controller: _searchController,
+            ),
+          ),
+          const SizedBox(width: 12),
+          _headerIcon(Icons.notifications_none, hasBadge: true),
+          const SizedBox(width: 12),
+          _headerIcon(Icons.menu),
+        ],
+      ),
     );
   }
 

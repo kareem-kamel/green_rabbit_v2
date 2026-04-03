@@ -91,6 +91,20 @@ class AppColors {
   // Popup / Overlay Colors
   static const Color popupBackground = Color(0xFF0F111A);
 
+  // Subscription Colors
+  static const Color tabBackground = Color(0xFF1C1F26);
+  static const LinearGradient goldGradient = LinearGradient(
+    colors: [Color(0xFFFFB800), Color(0xFFFF8A00)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient proGradient = LinearGradient(
+    colors: [Color(0xFF4C3BC9), Color(0xFF1B1E2B)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   // Action / Share Gradients
   static const LinearGradient shareGradient = LinearGradient(
     colors: [primary, Color(0xFF4A3BC9)],
