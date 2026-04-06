@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.9.0
+  sdk: ^3.8.0
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -30,25 +30,52 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  flutter_native_splash: ^2.4.7
+  flutter_launcher_icons: ^0.14.4
   flutter_bloc: ^9.1.1
+
+  # State Management (Latest Stable 2.x)
+  flutter_riverpod: ^2.6.1
+  riverpod_annotation: ^2.6.1
   equatable: ^2.0.8
-  http: ^1.6.0
+
+  # Networking & Security
+  dio: ^5.9.2            # Newest Stable
+  retrofit: ^4.4.1       # Newest Stable
+  json_annotation: ^4.9.0
+  flutter_secure_storage: ^10.0.0
+
+  # Utilities & Design
+  flex_color_scheme: ^8.3.1
+  google_fonts: ^8.0.2
+  shared_preferences: ^2.5.4
+  intl: ^0.20.2
+  get_it: ^9.2.1
+  logger: ^2.7.0
+  interactive_chart: ^0.3.6
+  flutter_svg: ^2.2.4
+  url_launcher: ^6.3.1
+  share_plus: ^10.1.4
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^5.0.0
+
+  # Generators (Compatible with the above)
+  riverpod_generator: ^2.6.3
+  build_runner: ^2.4.14
+  freezed: ^2.5.7
+  json_serializable: ^6.9.3
+  retrofit_generator: ^9.1.7
+
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
-
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -69,19 +96,19 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/
+    - assets/fonts/
+    - assets/icons/
     - assets/icons/rabbiticonAI.png
     - assets/icons/aitradingassistant.png
-    - assets/icons/
     - assets/icons/ainewssummary.png
     - assets/icons/aifreetrail.png
     - assets/icons/sparkles-sharp.png
     - assets/icons/editchat.png
     - assets/icons/allchat.png
+    - assets/images/
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -108,3 +135,9 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  adaptive_icon_background: "#0E1117"
+  adaptive_icon_foreground: "assets/icons/app_icon.png"

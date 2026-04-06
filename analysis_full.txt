@@ -1,0 +1,56 @@
+Analyzing green_rabbit_frontend...                              
+
+   info - 'useTextTheme' is deprecated and shouldn't be used. This property has been replaced by the more aptly named useMaterial3Typography property and no longer has any function in V8 and will be removed in v9.0.0 - lib\core\theme\app_theme.dart:37:9 - deprecated_member_use
+   info - 'useTextTheme' is deprecated and shouldn't be used. This property has been replaced by the more aptly named useMaterial3Typography property and no longer has any function in V8 and will be removed in v9.0.0 - lib\core\theme\app_theme.dart:77:9 - deprecated_member_use
+warning - Unused import: 'package:flutter_bloc/flutter_bloc.dart' - lib\features\auth\presentation\pages\login_page.dart:2:8 - unused_import
+warning - Unused import: '../cubit/auth_cubit.dart' - lib\features\auth\presentation\pages\login_page.dart:3:8 - unused_import
+warning - Unused import: '../../../../core/constants/app_constants.dart' - lib\features\auth\presentation\pages\splash_page.dart:8:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\auth\presentation\pages\splash_page.dart:78:56 - deprecated_member_use
+warning - Unused import: 'package:dio/dio.dart' - lib\features\market\data\sources\market_remote_data_source.dart:1:8 - unused_import
+warning - Unused import: '../../data/models/market_instrument.dart' - lib\features\market\presentation\pages\instrument_detail_page.dart:5:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\instrument_detail_page.dart:120:35 - deprecated_member_use
+  error - The getter 'successColor' isn't defined for the type 'AppTheme' - lib\features\market\presentation\pages\instrument_detail_page.dart:143:57 - undefined_getter
+  error - The getter 'errorColor' isn't defined for the type 'AppTheme' - lib\features\market\presentation\pages\instrument_detail_page.dart:143:81 - undefined_getter
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\instrument_detail_page.dart:188:54 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\instrument_detail_page.dart:193:65 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\instrument_detail_page.dart:258:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\instrument_detail_page.dart:298:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\instrument_detail_page.dart:323:52 - deprecated_member_use
+warning - Duplicate import - lib\features\market\presentation\pages\market_page.dart:8:8 - duplicate_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\market_page.dart:90:52 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\market_page.dart:136:52 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\market_page.dart:164:37 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\market_page.dart:171:48 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\market_page.dart:178:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\market_page.dart:195:56 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\market_page.dart:224:66 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\market_page.dart:275:50 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\market_page.dart:283:37 - deprecated_member_use
+   info - Statements in an if should be enclosed in a block - lib\features\market\presentation\pages\market_page.dart:382:19 - curly_braces_in_flow_control_structures
+   info - Statements in an if should be enclosed in a block - lib\features\market\presentation\pages\market_page.dart:383:12 - curly_braces_in_flow_control_structures
+warning - Unused import: '../providers/market_providers.dart' - lib\features\market\presentation\pages\search_page.dart:5:8 - unused_import
+warning - Unused import: '../../data/models/market_instrument.dart' - lib\features\market\presentation\pages\search_page.dart:6:8 - unused_import
+   info - The private field _recentSearches could be 'final' - lib\features\market\presentation\pages\search_page.dart:18:16 - prefer_final_fields
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\search_page.dart:198:37 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\market\presentation\pages\search_page.dart:246:37 - deprecated_member_use
+  error - The named parameter 'bgColor' isn't defined - lib\features\market\presentation\widgets\trading_chart.dart:20:9 - undefined_named_parameter
+  error - The named parameter 'gridColor' isn't defined - lib\features\market\presentation\widgets\trading_chart.dart:21:9 - undefined_named_parameter
+  error - The named parameter 'labelStyle' isn't defined - lib\features\market\presentation\widgets\trading_chart.dart:22:9 - undefined_named_parameter
+  error - The named parameter 'activeColor' isn't defined - lib\features\market\presentation\widgets\trading_chart.dart:23:9 - undefined_named_parameter
+  error - The getter 'successColor' isn't defined for the type 'AppTheme' - lib\features\market\presentation\widgets\trading_chart.dart:23:31 - undefined_getter
+  error - The named parameter 'inactiveColor' isn't defined - lib\features\market\presentation\widgets\trading_chart.dart:24:9 - undefined_named_parameter
+  error - The getter 'errorColor' isn't defined for the type 'AppTheme' - lib\features\market\presentation\widgets\trading_chart.dart:24:33 - undefined_getter
+  error - The named parameter 'curveColor' isn't defined - lib\features\market\presentation\widgets\trading_chart.dart:25:9 - undefined_named_parameter
+  error - The getter 'successColor' isn't defined for the type 'AppTheme' - lib\features\market\presentation\widgets\trading_chart.dart:26:34 - undefined_getter
+  error - The getter 'errorColor' isn't defined for the type 'AppTheme' - lib\features\market\presentation\widgets\trading_chart.dart:27:34 - undefined_getter
+  error - The named parameter 'trendLineColor' isn't defined - lib\features\market\presentation\widgets\trading_chart.dart:29:9 - undefined_named_parameter
+  error - The named parameter 'showVolume' isn't defined - lib\features\market\presentation\widgets\trading_chart.dart:30:9 - undefined_named_parameter
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\watchlist\presentation\pages\watchlist_page.dart:66:48 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\watchlist\presentation\pages\watchlist_page.dart:77:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\watchlist\presentation\pages\watchlist_page.dart:79:59 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\watchlist\presentation\pages\watchlist_page.dart:86:46 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\watchlist\presentation\pages\watchlist_page.dart:102:56 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\watchlist\presentation\pages\watchlist_page.dart:139:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\watchlist\presentation\pages\watchlist_page.dart:171:35 - deprecated_member_use
+
+52 issues found. (ran in 6.8s)
