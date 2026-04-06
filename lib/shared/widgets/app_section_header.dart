@@ -22,7 +22,7 @@ class AppSectionHeader extends StatelessWidget {
           title,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            color: AppColors.textPrimary,
+            color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black,
           ),
         ),
         if (actionLabel != null)

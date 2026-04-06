@@ -25,9 +25,9 @@ class AppSearchField extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: AppColors.searchBarBackground,
+          color: Theme.of(context).brightness == Brightness.dark ? AppColors.searchBarBackground : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(AppTheme.defaultRadius),
-          border: Border.all(color: AppColors.borderSubtle),
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Row(
           children: [
@@ -37,16 +37,16 @@ class AppSearchField extends StatelessWidget {
               child: readOnly
                   ? Text(
                       hintText,
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                      style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textMuted : Colors.black38, fontSize: 13),
                     )
                   : TextField(
                       readOnly: readOnly,
                       controller: controller,
                       onChanged: onChanged,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                      style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 13),
                       decoration: InputDecoration(
                         hintText: hintText,
-                        hintStyle: const TextStyle(color: AppColors.textMuted),
+                        hintStyle: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textMuted : Colors.black38),
                         border: InputBorder.none,
                         isDense: true,
                         contentPadding: EdgeInsets.zero,

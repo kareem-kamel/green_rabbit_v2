@@ -18,12 +18,12 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white, size: 24),
+          icon: Icon(Icons.close, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 24),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -37,7 +37,7 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
               width: 54,
               height: 54,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -47,14 +47,14 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Choose Your Plan',
-              style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Last updated: January 2026',
-              style: TextStyle(color: Colors.white54, fontSize: 14),
+              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black45, fontSize: 14),
             ),
             const SizedBox(height: 32),
 
@@ -71,9 +71,9 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildFooterItem('Cancel anytime'),
-                _buildFooterItem('Secure payment'),
-                _buildFooterItem('Instant access'),
+                _buildFooterItem(context, 'Cancel anytime'),
+                _buildFooterItem(context, 'Secure payment'),
+                _buildFooterItem(context, 'Instant access'),
               ],
             ),
             const SizedBox(height: 40),
@@ -89,8 +89,9 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
         height: 54,
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: AppColors.tabBackground,
+          color: Theme.of(context).brightness == Brightness.dark ? AppColors.tabBackground : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Stack(
           children: [
@@ -108,7 +109,9 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
                       child: Text(
                         'Monthly',
                         style: TextStyle(
-                          color: !isYearly ? Colors.white : Colors.white54,
+                          color: !isYearly 
+                              ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black) 
+                              : (Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black45),
                           fontWeight: !isYearly ? FontWeight.bold : FontWeight.normal,
                           fontSize: 16,
                         ),
@@ -128,7 +131,9 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
                       child: Text(
                         'Yearly',
                         style: TextStyle(
-                          color: isYearly ? Colors.white : Colors.white54,
+                          color: isYearly 
+                              ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black) 
+                              : (Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black45),
                           fontWeight: isYearly ? FontWeight.bold : FontWeight.normal,
                           fontSize: 16,
                         ),
@@ -174,7 +179,8 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1D23),
+        color: !widget.isClassic ? null : Theme.of(context).cardColor,
+        gradient: !widget.isClassic ? AppColors.proGradient : null,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.premiumGold, width: 1.5),
       ),
@@ -192,7 +198,11 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
                   ],
                   Text(
                     title,
-                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: !widget.isClassic ? Colors.white : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -222,17 +232,23 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
               const SizedBox(width: 4),
               Text(
                 isYearly ? '/ Yearly' : '/ monthly',
-                style: const TextStyle(color: Colors.white54, fontSize: 16),
+                style: TextStyle(
+                  color: !widget.isClassic ? Colors.white70 : (Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black45),
+                  fontSize: 16,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            widget.isClassic 
-              ? (isYearly ? 'Only \$0.73/month · Save \$2.89/year' : 'Enjoy ad-free experience monthly')
-              : (isYearly ? 'Only \$8.33/month · Save \$55.89/year' : 'Access all premium features monthly'),
-            style: const TextStyle(color: Colors.white38, fontSize: 14),
-          ),
+            Text(
+              widget.isClassic 
+                ? (isYearly ? 'Only \$0.73/month · Save \$2.89/year' : 'Enjoy ad-free experience monthly')
+                : (isYearly ? 'Only \$8.33/month · Save \$55.89/year' : 'Access all premium features monthly'),
+              style: TextStyle(
+                color: !widget.isClassic ? Colors.white54 : (Theme.of(context).brightness == Brightness.dark ? Colors.white38 : Colors.black38),
+                fontSize: 14,
+              ),
+            ),
           const SizedBox(height: 24),
           
           ...features.map((f) => _buildFeature(f)),
@@ -273,7 +289,10 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(color: Colors.white, fontSize: 15),
+              style: TextStyle(
+                color: !widget.isClassic ? Colors.white : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+                fontSize: 15,
+              ),
             ),
           ),
         ],
@@ -281,10 +300,10 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
     );
   }
 
-  Widget _buildFooterItem(String text) {
+  Widget _buildFooterItem(BuildContext context, String text) {
     return Text(
       text,
-      style: const TextStyle(color: Colors.white54, fontSize: 13),
+      style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black45, fontSize: 13),
     );
   }
 }

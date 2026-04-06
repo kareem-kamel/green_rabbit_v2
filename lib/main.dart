@@ -6,6 +6,10 @@ import 'package:green_rabbit/features/auth/data/api/auth_api.dart';
 import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:green_rabbit/features/subscriptions/presentation/cubit/subscription_cubit.dart';
+import 'package:green_rabbit/features/profile/presentation/cubit/profile_cubit.dart';
+import 'package:green_rabbit/features/profile/presentation/cubit/settings_cubit.dart';
+
+
 import 'package:green_rabbit/features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
 import 'core/di/injection_container.dart' as di;
@@ -31,13 +35,28 @@ class GreenRabbitApp extends StatelessWidget {
         BlocProvider<SubscriptionCubit>(
           create: (context) => di.sl<SubscriptionCubit>()..init(),
         ),
+        BlocProvider<ProfileCubit>(
+          create: (context) => ProfileCubit(),
+        ),
+        BlocProvider<SettingsCubit>(
+          create: (context) => SettingsCubit(),
+        ),
       ],
-      child: MaterialApp(
-        title: 'Green Rabbit News',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
-        home: const MainWrapper(),
+
+
+      child: BlocBuilder<SettingsCubit, SettingsState>(
+        builder: (context, state) {
+          return MaterialApp(
+            title: 'Green Rabbit News',
+            debugShowCheckedModeBanner: false,
+            themeMode: state.lightModeEnabled ? ThemeMode.light : ThemeMode.dark,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            home: const OnboardingScreen(),
+          );
+        },
       ),
     );
+
   }
 }

@@ -11,6 +11,7 @@ import 'instrument_detail_page.dart';
 import '../providers/market_providers.dart';
 import '../../data/models/market_instrument.dart';
 import '../../../watchlist/presentation/providers/watchlist_providers.dart';
+import '../../../notifications/presentation/pages/notifications_page.dart';
 
 class MarketPage extends ConsumerStatefulWidget {
   const MarketPage({super.key});
@@ -48,7 +49,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
     final instrumentsAsync = liveData.asData != null ? liveData : marketData;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -92,9 +93,9 @@ class _MarketPageState extends ConsumerState<MarketPage> {
         children: [
           const Icon(Icons.error_outline, color: AppColors.error, size: 48),
           const SizedBox(height: 16),
-          const Text('Connection Error', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text('Connection Error', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          const Text('Please check your internet or API settings.', style: TextStyle(color: AppColors.textSecondary)),
+          const Text('Please check your internet or API settings.', style: TextStyle(color: Colors.grey)),
           TextButton(
             onPressed: () => ref.refresh(marketOverviewProvider('stocks')),
             child: const Text('Retry'),
@@ -119,16 +120,16 @@ class _MarketPageState extends ConsumerState<MarketPage> {
             backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=mahmoud'),
           ),
           const SizedBox(width: 12),
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 'Welcome,',
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondary : Colors.black45, fontSize: 12),
               ),
               Text(
                 'Mahmoud',
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -140,7 +141,12 @@ class _MarketPageState extends ConsumerState<MarketPage> {
             ),
           ),
           const SizedBox(width: 12),
-          _headerIcon(Icons.notifications_none, hasBadge: true),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage()));
+            },
+            child: _headerIcon(Icons.notifications_none, hasBadge: true),
+          ),
           const SizedBox(width: 12),
           _headerIcon(Icons.menu),
         ],
@@ -154,11 +160,11 @@ class _MarketPageState extends ConsumerState<MarketPage> {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: Theme.of(context).cardColor,
             shape: BoxShape.circle,
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
-          child: Icon(icon, color: AppColors.textPrimary, size: 22),
+          child: Icon(icon, color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87, size: 22),
         ),
         if (hasBadge)
           Positioned(
@@ -196,17 +202,19 @@ class _MarketPageState extends ConsumerState<MarketPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
       decoration: BoxDecoration(
-        color: isActive ? Colors.transparent : AppColors.surface,
+        color: isActive ? Colors.transparent : Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isActive ? AppColors.primary : AppColors.border,
+          color: isActive ? AppColors.primary : Theme.of(context).dividerColor,
           width: 1.5,
         ),
       ),
       child: Text(
         label,
         style: TextStyle(
-          color: isActive ? AppColors.textPrimary : AppColors.textSecondary,
+          color: isActive 
+              ? (Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : AppColors.primary) 
+              : Colors.grey,
           fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
         ),
       ),
@@ -252,7 +260,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
             width: 44,
             height: 44,
             decoration: BoxDecoration(
-              color: AppColors.textPrimary.withOpacity(0.05),
+              color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary.withOpacity(0.05) : Colors.black.withOpacity(0.05),
               borderRadius: BorderRadius.circular(12),
             ),
             child: instrument.logoUrl != null 
@@ -269,12 +277,12 @@ class _MarketPageState extends ConsumerState<MarketPage> {
               children: [
                 Text(
                   instrument.symbol,
-                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   instrument.name,
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondary : Colors.black45, fontSize: 12),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -298,7 +306,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
             children: [
               Text(
                 '\$${instrument.price.toStringAsFixed(2)}',
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               Text(
@@ -377,8 +385,10 @@ class _AIServiceCarouselState extends State<AIServiceCarousel> {
                 margin: const EdgeInsets.symmetric(horizontal: 4),
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF2E246A), Color(0xFF1B1839)],
+                  gradient: LinearGradient(
+                    colors: Theme.of(context).brightness == Brightness.dark 
+                        ? [const Color(0xFF2E246A), const Color(0xFF1B1839)]
+                        : [AppColors.primaryPurple, const Color(0xFF6366F1)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -433,7 +443,9 @@ class _AIServiceCarouselState extends State<AIServiceCarousel> {
               height: 10,
               margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
-                color: _currentIndex == index ? Colors.white : Colors.white.withOpacity(0.3),
+                color: _currentIndex == index 
+                    ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primaryPurple) 
+                    : (Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.3) : Colors.black12),
                 borderRadius: BorderRadius.circular(5),
               ),
             );

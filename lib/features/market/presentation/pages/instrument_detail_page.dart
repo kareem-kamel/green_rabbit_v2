@@ -54,12 +54,12 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         }
 
         return Scaffold(
-          backgroundColor: AppColors.backgroundSubtle,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           appBar: _buildAppBar(),
           body: detailAsync.when(
             data: (detail) => _buildContent(detail),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.textPrimary))),
+            error: (err, stack) => Center(child: Text('Error: $err', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black))),
           ),
         );
       },
@@ -75,7 +75,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       backgroundColor: Colors.transparent,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary, size: 20),
+        icon: Icon(Icons.arrow_back_ios, color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, size: 20),
         onPressed: () => Navigator.pop(context),
       ),
       actions: [
@@ -83,7 +83,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         _buildAppBarIcon(Icons.notifications_none_outlined, onPressed: () {}),
         _buildAppBarIcon(
           isFavorite ? Icons.star : Icons.star_border,
-          color: isFavorite ? Colors.amber : AppColors.textPrimary,
+          color: isFavorite ? Colors.amber : (Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87),
           onPressed: () {
             detailAsync.whenData((detail) {
               final instrument = MarketInstrument(
@@ -113,12 +113,12 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   Widget _buildAppBarIcon(IconData icon, {Color? color, required VoidCallback onPressed}) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-      decoration: const BoxDecoration(
-        color: AppColors.tabUnselected,
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
         shape: BoxShape.circle,
       ),
       child: IconButton(
-        icon: Icon(icon, color: color ?? AppColors.textPrimary, size: 20),
+        icon: Icon(icon, color: color ?? (Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87), size: 20),
         onPressed: onPressed,
         padding: EdgeInsets.zero,
         constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -128,7 +128,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
 
   Widget _buildLandscapeUI(AsyncValue<MarketInstrumentDetail> detailAsync) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundSubtle,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: detailAsync.when(
           data: (detail) => _buildLandscapeChart(detail),
@@ -175,7 +175,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
             children: [
               Text(
                 '${detail.name} (${detail.symbol})',
-                style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
               InkWell(
@@ -201,7 +201,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                     const SizedBox(width: 4),
                     Text(
                       detail.price.current.toStringAsFixed(2),
-                      style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 36, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(width: 12),
                     Text(
@@ -254,8 +254,8 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         labelPadding: const EdgeInsets.symmetric(horizontal: 4),
-        labelColor: Colors.white,
-        unselectedLabelColor: AppColors.textSecondary,
+        labelColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primaryPurple,
+        unselectedLabelColor: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondary : Colors.black45,
         tabs: [
           _buildTabItem('Overview'),
           _buildTabItem('Technical'),
@@ -277,7 +277,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         height: 36,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: AppColors.tabUnselected,
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(10),
         ),
         child: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),

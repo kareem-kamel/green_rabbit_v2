@@ -28,10 +28,12 @@ class PlanCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isPro ? null : AppColors.surface,
+        color: isPro ? null : Theme.of(context).cardColor,
         gradient: isPro ? AppColors.proGradient : null,
         borderRadius: BorderRadius.circular(20),
-        border: isPro ? Border.all(color: AppColors.premiumGold.withOpacity(0.3), width: 1.5) : null,
+        border: isPro 
+            ? Border.all(color: AppColors.premiumGold.withOpacity(0.3), width: 1.5) 
+            : Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,7 +43,9 @@ class PlanCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: isPro 
+                    ? Colors.white.withOpacity(0.1) 
+                    : (Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05)),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: icon,
@@ -50,8 +54,8 @@ class PlanCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: isPro ? Colors.white : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                   ),
@@ -71,14 +75,14 @@ class PlanCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    feature,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.85),
-                      fontSize: 16,
-                      height: 1.3,
+                    child: Text(
+                      feature,
+                      style: TextStyle(
+                        color: isPro ? Colors.white.withOpacity(0.85) : (Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.85) : Colors.black87),
+                        fontSize: 16,
+                        height: 1.3,
+                      ),
                     ),
-                  ),
                 ),
               ],
             ),

@@ -15,14 +15,14 @@ class WatchlistPage extends ConsumerWidget {
     final watchlistState = ref.watch(watchlistProvider);
 
     if (watchlistState.isLoading) {
-      return const Scaffold(
-        backgroundColor: AppColors.background,
-        body: Center(child: CircularProgressIndicator()),
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Padding(
@@ -50,27 +50,27 @@ class WatchlistPage extends ConsumerWidget {
   Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
-        const Text(
+        Text(
           'Watchlist',
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const Spacer(),
-        _headerIcon(Icons.filter_alt_outlined),
+        _headerIcon(context, Icons.filter_alt_outlined),
         const SizedBox(width: 12),
-        _headerIcon(Icons.menu),
+        _headerIcon(context, Icons.menu),
       ],
     );
   }
 
-  Widget _headerIcon(IconData icon) {
+  Widget _headerIcon(BuildContext context, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: Theme.of(context).cardColor,
         shape: BoxShape.circle,
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
-      child: Icon(icon, color: AppColors.textPrimary, size: 22),
+      child: Icon(icon, color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87, size: 22),
     );
   }
 
@@ -151,9 +151,9 @@ class WatchlistPage extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Tracked Stocks',
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         if (state.items.isEmpty)
@@ -177,6 +177,7 @@ class WatchlistPage extends ConsumerWidget {
                 child: const Icon(Icons.delete_outline, color: AppColors.error),
               ),
               child: _stockItem(
+                context,
                 instrument.name,
                 instrument.symbol,
                 instrument.price.toStringAsFixed(2),
@@ -207,8 +208,8 @@ class WatchlistPage extends ConsumerWidget {
           Container(
             width: 140,
             height: 140,
-            decoration: const BoxDecoration(
-              color: AppColors.surface,
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
               shape: BoxShape.circle,
             ),
             child: Center(
@@ -221,9 +222,9 @@ class WatchlistPage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 32),
-          const Text(
+          Text(
             'Build your watchlist',
-            style: TextStyle(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           const Padding(
@@ -273,7 +274,7 @@ class WatchlistPage extends ConsumerWidget {
     );
   }
 
-  Widget _stockItem(String name, String ticker, String price, String change, bool isUp, {String? logoUrl, VoidCallback? onTap}) {
+  Widget _stockItem(BuildContext context, String name, String ticker, String price, String change, bool isUp, {String? logoUrl, VoidCallback? onTap}) {
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(16),
@@ -301,7 +302,7 @@ class WatchlistPage extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(name, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -316,7 +317,7 @@ class WatchlistPage extends ConsumerWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(price, style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(price, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(
                 change,
@@ -346,9 +347,9 @@ class WatchlistPage extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Watchlist News',
-              style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
             ),
             TextButton(
               onPressed: () {},
@@ -358,6 +359,7 @@ class WatchlistPage extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         _newsItem(
+          context,
           'NVIDIA',
           'The United States is bracing for a winter storm that will impact the energy sector.',
           'Reuters . 3 hours ago',
@@ -367,7 +369,7 @@ class WatchlistPage extends ConsumerWidget {
     );
   }
 
-  Widget _newsItem(String source, String title, String meta, String imageUrl) {
+  Widget _newsItem(BuildContext context, String source, String title, String meta, String imageUrl) {
     return AppCard(
       padding: const EdgeInsets.all(12),
       child: Column(
@@ -387,7 +389,7 @@ class WatchlistPage extends ConsumerWidget {
                     const SizedBox(height: 6),
                     Text(
                       title,
-                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600, height: 1.4),
+                      style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 14, fontWeight: FontWeight.w600, height: 1.4),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),

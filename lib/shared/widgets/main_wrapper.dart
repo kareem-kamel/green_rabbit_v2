@@ -31,19 +31,21 @@ class MainWrapper extends ConsumerWidget {
           ref.read(navigationIndexProvider.notifier).state = index;
         },
         type: BottomNavigationBarType.fixed,
-        backgroundColor: AppColors.surface,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: AppColors.textMuted,
+        backgroundColor: Theme.of(context).cardColor,
+        selectedItemColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primaryPurple,
+        unselectedItemColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey : Colors.black45,
         showSelectedLabels: true,
         showUnselectedLabels: true,
         selectedFontSize: 12,
         unselectedFontSize: 12, // Match font size for consistency
-        selectedLabelStyle: const TextStyle(
+        selectedLabelStyle: TextStyle(
           fontWeight: FontWeight.w600,
+          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primaryPurple,
         ),
         unselectedLabelStyle: const TextStyle(
           fontWeight: FontWeight.w400,
         ),
+
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart_outlined),

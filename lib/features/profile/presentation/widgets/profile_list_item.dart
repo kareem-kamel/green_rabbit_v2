@@ -26,15 +26,16 @@ class ProfileListItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: Theme.of(context).brightness == Brightness.dark ? AppColors.surface : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.surfaceLight.withOpacity(0.5),
+                color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceLight.withOpacity(0.5) : Colors.white70,
                 shape: BoxShape.circle,
               ),
               child: assetPath != null
@@ -46,7 +47,7 @@ class ProfileListItem extends StatelessWidget {
                     )
                   : Icon(
                       icon!,
-                      color: iconColor ?? Colors.white70,
+                      color: iconColor ?? (Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87),
                       size: 20,
                     ),
             ),
@@ -54,21 +55,23 @@ class ProfileListItem extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
                 ),
               ),
             ),
+
             if (trailing != null)
               trailing!
             else
-              const Icon(
+              Icon(
                 Icons.chevron_right,
-                color: Colors.white24,
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white24 : Colors.black26,
                 size: 20,
               ),
+
           ],
         ),
       ),

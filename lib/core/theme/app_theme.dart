@@ -70,12 +70,31 @@ class AppTheme {
     );
   }
 
-  // Light Theme (Optional)
+  // Light Theme
   static ThemeData get lightTheme {
-    return ThemeData(
+    return FlexThemeData.light(
+      surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
+      blendLevel: 7,
+      subThemesData: const FlexSubThemesData(
+        blendOnLevel: 10,
+        useTextTheme: true,
+        useM2StyleDividerInM3: true,
+        defaultRadius: defaultRadius,
+        inputDecoratorRadius: inputRadius,
+        cardRadius: cardRadius,
+        bottomSheetRadius: 24.0,
+      ),
+      visualDensity: FlexColorScheme.comfortablePlatformDensity,
       useMaterial3: true,
       fontFamily: 'Urbanist',
-      brightness: Brightness.light,
+    ).copyWith(
+      textTheme: const TextTheme(
+        bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
+        displayMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+        bodySmall: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: Colors.black),
+        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.black54),
+        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primaryPurple),
+      ),
     );
   }
-}
+}

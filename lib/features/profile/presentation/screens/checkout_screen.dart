@@ -26,17 +26,17 @@ class CheckoutScreen extends StatelessWidget {
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.scaffoldBg,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+          icon: Icon(Icons.arrow_back_ios, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           'Checkout',
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: false,
       ),
@@ -46,27 +46,27 @@ class CheckoutScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 10),
-            const Text(
+            Text(
               'Complete your purchase to unlock Pro features',
-              style: TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87, fontSize: 16),
             ),
             const SizedBox(height: 24),
 
             // Summary Card
-            _buildSummaryCard(),
+            _buildSummaryCard(context),
             const SizedBox(height: 32),
 
             // Quick Pay
-            const Text(
+            Text(
               'Quick pay',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildQuickPayButton('assets/apple_pay.png')),
+                Expanded(child: _buildQuickPayButton(context, 'assets/apple_pay.png')),
                 const SizedBox(width: 16),
-                Expanded(child: _buildQuickPayButton('assets/google_pay.png')),
+                Expanded(child: _buildQuickPayButton(context, 'assets/google_pay.png')),
               ],
             ),
             const SizedBox(height: 32),
@@ -74,12 +74,12 @@ class CheckoutScreen extends StatelessWidget {
             // Divider
             Row(
               children: [
-                Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
+                Expanded(child: Divider(color: Theme.of(context).dividerColor)),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
                     'Or pay with',
-                    style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
+                    style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.6) : Colors.black45, fontSize: 14),
                   ),
                 ),
                 Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
@@ -88,15 +88,15 @@ class CheckoutScreen extends StatelessWidget {
             const SizedBox(height: 32),
 
             // Form
-            _buildTextField('Card holer name', 'First abd second name'),
+            _buildTextField(context, 'Card holer name', 'First abd second name'),
             const SizedBox(height: 24),
-            _buildTextField('Card number', 'xxxx-xxxx-xxxx-xxxx'),
+            _buildTextField(context, 'Card number', 'xxxx-xxxx-xxxx-xxxx'),
             const SizedBox(height: 24),
             Row(
               children: [
-                Expanded(child: _buildTextField('Exp. Date', 'mm/yy')),
+                Expanded(child: _buildTextField(context, 'Exp. Date', 'mm/yy')),
                 const SizedBox(width: 16),
-                Expanded(child: _buildTextField('CVV', 'xxx')),
+                Expanded(child: _buildTextField(context, 'CVV', 'xxx')),
               ],
             ),
             const SizedBox(height: 40),
@@ -109,7 +109,7 @@ class CheckoutScreen extends StatelessWidget {
             Center(
               child: Text(
                 'Your payment information is encrypted and secure',
-                style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
+                style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.4) : Colors.black38, fontSize: 13),
               ),
             ),
             const SizedBox(height: 48),
@@ -120,34 +120,35 @@ class CheckoutScreen extends StatelessWidget {
   );
 }
 
-  Widget _buildSummaryCard() {
+  Widget _buildSummaryCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1D23),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Summary',
-            style: TextStyle(color: Colors.white, fontSize: 15),
+            style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 15),
           ),
           const SizedBox(height: 20),
-          _buildSummaryRow(isYearly ? 'Pro yearly plan' : 'Pro monthly plan', '\$${amount.toStringAsFixed(2)}'),
+          _buildSummaryRow(context, isYearly ? 'Pro yearly plan' : 'Pro monthly plan', '\$${amount.toStringAsFixed(2)}'),
           const SizedBox(height: 12),
-          _buildSummaryRow('Discount', '20%', isGreen: true),
+          _buildSummaryRow(context, 'Discount', '20%', isGreen: true),
           const SizedBox(height: 16),
-          Divider(color: Colors.white.withOpacity(0.1)),
+          Divider(color: Theme.of(context).dividerColor),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Total',
-                style: TextStyle(color: Colors.white, fontSize: 18),
-              ),
+            Text(
+              'Total',
+              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 18),
+            ),
               Text(
                 '\$${amount.toStringAsFixed(2)}',
                 style: const TextStyle(color: AppColors.premiumGold, fontSize: 24, fontWeight: FontWeight.bold),
@@ -159,15 +160,15 @@ class CheckoutScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryRow(String label, String value, {bool isGreen = false}) {
+  Widget _buildSummaryRow(BuildContext context, String label, String value, {bool isGreen = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 14)),
+        Text(label, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white60 : Colors.black54, fontSize: 14)),
         Text(
           value,
           style: TextStyle(
-            color: isGreen ? Colors.greenAccent : Colors.white,
+            color: isGreen ? Colors.greenAccent : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
             fontSize: 14,
             fontWeight: isGreen ? FontWeight.bold : FontWeight.normal,
           ),
@@ -176,58 +177,58 @@ class CheckoutScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickPayButton(String assetPath) {
+  Widget _buildQuickPayButton(BuildContext context, String assetPath) {
     return Container(
       height: 56,
       decoration: BoxDecoration(
-        color: Colors.black,
+        color: Theme.of(context).brightness == Brightness.dark ? Colors.black : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       alignment: Alignment.center,
       child: assetPath.contains('apple') 
-          ? const Row(
+          ? Row(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.apple, color: Colors.white, size: 28),
-                Text('Pay', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                Icon(Icons.apple, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 28),
+                Text('Pay', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
               ],
             )
           : Row(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(
+                Icon(
                   Icons.g_mobiledata,
-                  color: Colors.white,
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
                   size: 40,
                 ),
                 const SizedBox(width: 8),
-                const Text('Pay', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                Text('Pay', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
               ],
             ),
     );
   }
 
-  Widget _buildTextField(String label, String placeholder) {
+  Widget _buildTextField(BuildContext context, String label, String placeholder) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white, fontSize: 16)),
+        Text(label, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 16)),
         const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
+            border: Border.all(color: Theme.of(context).dividerColor),
           ),
           child: TextField(
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
             decoration: InputDecoration(
               hintText: placeholder,
-              hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+              hintStyle: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.2) : Colors.black26),
               border: InputBorder.none,
             ),
           ),

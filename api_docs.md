@@ -302,5 +302,104 @@ Retrieves all watchlists belonging to the authenticated user.
 ## 13. Remove Instrument from Watchlist
 **DELETE** `/watchlists/{id}/instruments/{instrumentId}`
 
-## 14. Reorder Watchlist Instruments
-**PUT** `/watchlists/{id}/reorder`
+## 15. Get All Alerts
+**GET** `/alerts`
+
+Retrieves all price alerts for the authenticated user with optional status filtering and pagination.
+
+### Query Params
+- `status`: `all`, `active`, `triggered` (Default: `all`)
+- `page`: integer (Default: 1)
+- `limit`: integer (Default: 10, Max: 50)
+
+### Response Example
+```json
+{
+    "success": true,
+    "data": {
+        "alerts": [
+            {
+                "id": "a1b2c3d4-e5f6-7890-abcd-ef0123456789",
+                "instrument": {
+                    "id": "AAPL",
+                    "symbol": "AAPL",
+                    "name": "Apple Inc.",
+                    "type": "stock",
+                    "exchange": "NASDAQ",
+                    "logoUrl": "https://cdn.greenrabbit.app/logos/aapl.png",
+                    "currentPrice": 196.45
+                },
+                "targetPrice": 200,
+                "type": "price_above",
+                "typeDisplay": "Price goes above $200.00",
+                "status": "active",
+                "createdAt": "2024-07-15T10:30:00Z",
+                "updatedAt": "2024-07-15T10:30:00Z",
+                "triggeredAt": null,
+                "triggeredPrice": null
+            }
+        ],
+        "summary": { "total": 5, "active": 3, "triggered": 2 },
+        "meta": { "page": 1, "limit": 10, "total": 5, "totalPages": 1, "hasNext": false, "hasPrevious": false }
+    }
+}
+```
+
+## 16. Create Alert
+**POST** `/alerts`
+
+### Body Params
+- `instrumentId`: string (Required)
+- `targetPrice`: number (Required)
+- `type`: `price_above`, `price_below` (Required)
+
+## 17. Delete Alert
+**DELETE** `/alerts/{id}`
+
+## 18. List Notifications
+**GET** `/notifications`
+
+### Query Params
+- `page`: integer (Default: 1)
+- `limit`: integer (Default: 20, Max: 100)
+- `type`: `all`, `price_alert`, `news`, `system`, `ai_insight` (Default: `all`)
+- `isRead`: boolean
+
+### Response Example
+```json
+{
+    "success": true,
+    "data": {
+        "notifications": [
+            {
+                "id": "a1b2c3d4-e5f6-7890-abcd-ef0123456789",
+                "type": "price_alert",
+                "title": "AAPL Price Alert",
+                "body": "AAPL reached $250.50 — above your $200.00 target",
+                "data": {
+                    "alertId": "b2c3d4e5-f6a7-8901-bcde-f01234567890",
+                    "instrumentId": "inst_001",
+                    "instrumentSymbol": "AAPL",
+                    "type": "price_alert",
+                    "deepLink": "/instruments/inst_001"
+                },
+                "isRead": false,
+                "createdAt": "2024-07-20T14:30:00Z"
+            }
+        ]
+    },
+    "meta": { "page": 1, "limit": 20, "total": 5, "totalPages": 1, "hasNext": false, "hasPrevious": false }
+}
+```
+
+## 19. Mark Notification as Read
+**PUT** `/notifications/{id}/read`
+
+## 20. Mark All Notifications as Read
+**PUT** `/notifications/read-all`
+
+## 21. Delete Notification
+**DELETE** `/notifications/{id}`
+
+## 22. Get Unread Notification Count
+**GET** `/notifications/unread-count`

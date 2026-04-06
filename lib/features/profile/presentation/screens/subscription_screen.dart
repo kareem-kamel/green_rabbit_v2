@@ -38,22 +38,22 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         }
 
         return Scaffold(
-          backgroundColor: AppColors.scaffoldBg,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
             centerTitle: true,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+              icon: Icon(Icons.arrow_back_ios, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 20),
               onPressed: () => Navigator.pop(context),
             ),
-            title: const Text(
+            title: Text(
               'Payment & Billing',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
             ),
             actions: [
               IconButton(
-                icon: const Icon(Icons.search, color: Colors.white70, size: 24),
+                icon: Icon(Icons.search, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54, size: 24),
                 onPressed: () {},
               ),
               const SizedBox(width: 8),
@@ -82,7 +82,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       height: 52,
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        color: AppColors.tabBackground,
+        color: Theme.of(context).brightness == Brightness.dark ? AppColors.tabBackground : Colors.grey.shade200,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -119,7 +119,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         child: Text(
           label,
           style: TextStyle(
-            color: isActive ? Colors.black : Colors.white60,
+            color: isActive 
+                ? Colors.black 
+                : (Theme.of(context).brightness == Brightness.dark ? Colors.white60 : Colors.black54),
             fontSize: 16,
             fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
           ),
@@ -208,9 +210,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white.withOpacity(0.05)),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -238,16 +240,16 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 ),
                 const SizedBox(height: 20),
                 Text(sub.planId.contains('classic') ? 'Classic Free Trial' : '7-Day Free Trail', 
-                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                    style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 24, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 Text('You now have access to selected features',
-                    style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14)),
+                    style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.6) : Colors.black54, fontSize: 14)),
                 const SizedBox(height: 24),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
                   child: LinearProgressIndicator(
                     value: sub.progress,
-                    backgroundColor: Colors.white.withOpacity(0.1),
+                    backgroundColor: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.05),
                     valueColor: const AlwaysStoppedAnimation<Color>(AppColors.premiumGold),
                     minHeight: 8,
                   ),
@@ -257,8 +259,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text('${sub.daysUsed} / ${sub.totalDays} day used',
-                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13)),
-                    const Text('\$0.00', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                        style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.5) : Colors.black45, fontSize: 13)),
+                    Text('\$0.00', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 const SizedBox(height: 24),
@@ -288,10 +290,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           width: double.infinity,
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1D23),
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: isClassic ? Colors.white.withOpacity(0.1) : AppColors.premiumGold.withOpacity(0.5), 
+              color: isClassic 
+                  ? (Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.black12) 
+                  : AppColors.premiumGold.withOpacity(0.5), 
               width: 1
             ),
           ),
@@ -322,12 +326,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               const SizedBox(height: 24),
               Text(
                 isClassic ? 'Yearly Classic plan' : 'Yearly pro plan', 
-                style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)
+                style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 22, fontWeight: FontWeight.bold)
               ),
               const SizedBox(height: 6),
               Text(
                 isClassic ? 'No ads. Access to selected AI tools' : 'All premium features included',
-                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14)
+                style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.5) : Colors.black54, fontSize: 14)
               ),
               const SizedBox(height: 32),
               
@@ -335,14 +339,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.03),
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.03) : Colors.black.withOpacity(0.03),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
                   children: [
-                    _buildBillingRow('Next billing date', 'Mar 28, 2026'),
+                    _buildBillingRow(context, 'Next billing date', 'Mar 28, 2026'),
                     const SizedBox(height: 12),
-                    _buildBillingRow('Payment method', '************4242'),
+                    _buildBillingRow(context, 'Payment method', '************4242'),
                   ],
                 ),
               ),
@@ -368,9 +372,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        decoration: const BoxDecoration(
-          color: Color(0xFF131519),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF131519) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -380,7 +384,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               width: 60,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -400,14 +404,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             
             Text(
               'Cancel ${sub.isClassic ? 'Classic' : 'Pro'} Membership',
-              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             
             Text(
               'You will lose your ${sub.isClassic ? 'Classic' : 'Pro'} badge and AI-powered insights on ${sub.currentPeriodEnd != null ? "${sub.currentPeriodEnd!.month}/${sub.currentPeriodEnd!.day}/${sub.currentPeriodEnd!.year}" : "the end of your period"}. Are you sure you want to downgrade to the Free plan?',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 16, height: 1.5),
+              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.6) : Colors.black54, fontSize: 16, height: 1.5),
             ),
             const SizedBox(height: 32),
             
@@ -448,20 +452,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     );
   }
 
-  Widget _buildBillingRow(String label, String value) {
+  Widget _buildBillingRow(BuildContext context, String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14)),
-        Text(value, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+        Text(label, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.4) : Colors.black45, fontSize: 14)),
+        Text(value, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87, fontSize: 14)),
       ],
     );
   }
 
   Widget _buildHistoryList(List<TransactionModel> history) {
     if (history.isEmpty) {
-      return const Center(
-        child: Text('Billing history will appear here.', style: TextStyle(color: Colors.white38)),
+      return Center(
+        child: Text('Billing history will appear here.', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white38 : Colors.black38)),
       );
     }
 
@@ -492,8 +496,9 @@ class _TransactionItemState extends State<TransactionItem> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A1D23),
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         children: [
@@ -526,12 +531,12 @@ class _TransactionItemState extends State<TransactionItem> {
                       children: [
                         Text(
                           t.planName,
-                          style: const TextStyle(color: Colors.white, fontSize: 16),
+                          style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 16),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           '${_getMonth(t.date.month)} ${t.date.day}, ${t.date.year}',
-                          style: const TextStyle(color: Colors.white38, fontSize: 13),
+                          style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white38 : Colors.black38, fontSize: 13),
                         ),
                       ],
                     ),
@@ -553,11 +558,11 @@ class _TransactionItemState extends State<TransactionItem> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildDetailItem('Transaction date', '${_getMonth(t.date.month)} ${t.date.day}, ${t.date.year}'),
+                        child: _buildDetailItem(context, 'Transaction date', '${_getMonth(t.date.month)} ${t.date.day}, ${t.date.year}'),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: _buildDetailItem('States', t.status, isStatus: true),
+                        child: _buildDetailItem(context, 'States', t.status, isStatus: true),
                       ),
                     ],
                   ),
@@ -565,11 +570,11 @@ class _TransactionItemState extends State<TransactionItem> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildDetailItem('Payment method', t.paymentMethod),
+                        child: _buildDetailItem(context, 'Payment method', t.paymentMethod),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
-                        child: _buildDetailItem('Transaction ID', t.transactionId),
+                        child: _buildDetailItem(context, 'Transaction ID', t.transactionId),
                       ),
                     ],
                   ),
@@ -581,24 +586,24 @@ class _TransactionItemState extends State<TransactionItem> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.02),
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.02) : Colors.black.withOpacity(0.02),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Summary', style: TextStyle(color: Colors.white, fontSize: 15)),
+                        Text('Summary', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 15)),
                         const SizedBox(height: 20),
-                        _buildSummaryRow('Subscription fees', '\$${t.amount.toStringAsFixed(2)}'),
+                        _buildSummaryRow(context, 'Subscription fees', '\$${t.amount.toStringAsFixed(2)}'),
                         const SizedBox(height: 12),
-                        _buildSummaryRow('Discount', '20%', isGreen: true),
+                        _buildSummaryRow(context, 'Discount', '20%', isGreen: true),
                         const SizedBox(height: 16),
-                        const Divider(color: Colors.white10),
+                        Divider(color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.black12),
                         const SizedBox(height: 16),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text('Total', style: TextStyle(color: Colors.white, fontSize: 16)),
+                            Text('Total', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 16)),
                             Text(
                               '\$${t.amount.toStringAsFixed(2)}',
                               style: const TextStyle(color: AppColors.premiumGold, fontSize: 22, fontWeight: FontWeight.bold),
@@ -623,10 +628,10 @@ class _TransactionItemState extends State<TransactionItem> {
                   ),
                   const SizedBox(height: 24),
                   
-                  const Text(
+                  Text(
                     'For any questions about this transaction,\nplease contact our support team',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white30, fontSize: 13, height: 1.5),
+                    style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white30 : Colors.black38, fontSize: 13, height: 1.5),
                   ),
                 ],
               ),
@@ -637,11 +642,11 @@ class _TransactionItemState extends State<TransactionItem> {
     );
   }
 
-  Widget _buildDetailItem(String label, String value, {bool isStatus = false}) {
+  Widget _buildDetailItem(BuildContext context, String label, String value, {bool isStatus = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 13)),
+        Text(label, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white38 : Colors.black38, fontSize: 13)),
         const SizedBox(height: 6),
         Row(
           children: [
@@ -649,22 +654,22 @@ class _TransactionItemState extends State<TransactionItem> {
               Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.greenAccent, shape: BoxShape.circle)),
               const SizedBox(width: 8),
             ],
-            Expanded(child: Text(value, style: const TextStyle(color: Colors.white70, fontSize: 14), overflow: TextOverflow.ellipsis)),
+            Expanded(child: Text(value, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87, fontSize: 14), overflow: TextOverflow.ellipsis)),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildSummaryRow(String label, String value, {bool isGreen = false}) {
+  Widget _buildSummaryRow(BuildContext context, String label, String value, {bool isGreen = false}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 14)),
+        Text(label, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white38 : Colors.black38, fontSize: 14)),
         Text(
           value,
           style: TextStyle(
-            color: isGreen ? Colors.greenAccent : Colors.white,
+            color: isGreen ? Colors.greenAccent : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
             fontSize: 14,
           ),
         ),

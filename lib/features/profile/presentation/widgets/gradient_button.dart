@@ -35,11 +35,11 @@ class GradientButton extends StatelessWidget {
           child: Container(
             margin: const EdgeInsets.all(1.5), // Border thickness
             decoration: BoxDecoration(
-              color: AppColors.scaffoldBg,
+              color: Theme.of(context).scaffoldBackgroundColor,
               borderRadius: BorderRadius.circular(11),
             ),
             alignment: Alignment.center,
-            child: _buildContent(textColor ?? Colors.white),
+            child: _buildContent(textColor ?? (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black)),
           ),
         ),
       );
