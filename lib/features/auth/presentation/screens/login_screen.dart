@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:green_rabbit/core/widgets/primary_button.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/register_screen.dart';
 import 'package:green_rabbit/features/auth/presentation/widget/auth_text_field.dart';
+import 'package:green_rabbit/features/auth/presentation/widget/social_auth.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 
@@ -42,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
           } else if (state is AuthSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Welcome !'),//${state.user.email}
+                content: Text('Welcome !'), //${state.user.email}
                 backgroundColor: Colors.green,
               ),
             );
@@ -83,7 +85,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       label: 'Email',
                       hintText: 'Content@gmail.com',
                       controller: _emailController,
-                      textInputAction: TextInputAction.done, onFieldSubmitted: (_) {  },
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) {},
                     ),
                     const SizedBox(height: 20),
                     AuthTextField(
@@ -91,7 +94,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       hintText: '********',
                       isPassword: true,
                       controller: _passwordController,
-                      textInputAction: TextInputAction.done, onFieldSubmitted: (_) {  },
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) {},
                     ),
                     const SizedBox(height: 16),
 
@@ -187,38 +191,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Google Button
-                        Container(
-                          height: 50,
-                          width: 50,
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF1E1E1E,
-                            ), // Dark background for icon
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.g_mobiledata,
-                            color: Colors.white,
-                            size: 36,
-                          ),
+                        SocialButton(
+                          icon: FontAwesomeIcons.google,
+                          
+                          onTap: () {
+                            // TODO: Google sign in
+                          }, size: 20,
                         ),
                         const SizedBox(width: 24),
-                        // Apple Button
-                        Container(
-                          height: 50,
-                          width: 50,
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF1E1E1E,
-                            ), // Dark background for icon
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.apple,
-                            color: Colors.white,
-                            size: 28,
-                          ),
+                        SocialButton(
+                          icon: FontAwesomeIcons.apple,
+                          
+                          onTap: () {
+                            // TODO: Apple sign in
+                          }, size: 20,
                         ),
                       ],
                     ),

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:green_rabbit/core/widgets/primary_button.dart';
+import 'package:green_rabbit/features/auth/presentation/widget/social_auth.dart';
 import '../widget/auth_text_field.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
@@ -103,7 +105,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           } else if (state is AuthSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Account created for !'),//${state.user.email}
+                content: Text('Account created for !'), //${state.user.email}
                 backgroundColor: Colors.green,
               ),
             );
@@ -121,12 +123,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
               padding: EdgeInsets.only(
                 top: topPadding,
                 bottom: keyboardHeight > 0
-                    ? keyboardHeight           // keyboard is open
-                    : bottomPadding,           // keyboard is closed (safe area)
+                    ? keyboardHeight // keyboard is open
+                    : bottomPadding, // keyboard is closed (safe area)
               ),
               child: SingleChildScrollView(
                 controller: _scrollController,
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Form(
                   key: _formKey,
@@ -147,9 +150,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 8),
                       Text(
                         'Powerful market insights are just a few steps away.',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.copyWith(
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Colors.white70,
                           height: 1.5,
                         ),
@@ -169,8 +170,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           if (value == null || value.isEmpty) {
                             return 'Please enter your email';
                           }
-                          final emailRegex =
-                              RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                          final emailRegex = RegExp(
+                            r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                          );
                           if (!emailRegex.hasMatch(value)) {
                             return 'Please enter a valid email address';
                           }
@@ -240,8 +242,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             context.read<AuthCubit>().register(
                               email: _emailController.text.trim(),
                               password: _passwordController.text.trim(),
-                              confirmPassword:
-                                  _confirmPasswordController.text.trim(),
+                              confirmPassword: _confirmPasswordController.text
+                                  .trim(),
                             );
                           }
                         },
@@ -275,20 +277,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _SocialButton(
-                            icon: Icons.g_mobiledata,
-                            iconSize: 36,
+                          SocialButton(
+                            svgPath:
+                                'assets/icons/google_icon.svg', // Use the new SVG property
+
                             onTap: () {
                               // TODO: Google sign in
                             },
+                            size: 24,
                           ),
                           const SizedBox(width: 24),
-                          _SocialButton(
-                            icon: Icons.apple,
-                            iconSize: 28,
+                          SocialButton(
+                            icon: FontAwesomeIcons.apple,
                             onTap: () {
                               // TODO: Apple sign in
                             },
+                            size: 28,
                           ),
                         ],
                       ),
@@ -330,30 +334,3 @@ class _RegisterScreenState extends State<RegisterScreen> {
 // ─────────────────────────────────────────────
 // REUSABLE SOCIAL BUTTON
 // ─────────────────────────────────────────────
-class _SocialButton extends StatelessWidget {
-  final IconData icon;
-  final double iconSize;
-  final VoidCallback onTap;
-
-  const _SocialButton({
-    required this.icon,
-    required this.iconSize,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 50,
-        width: 50,
-        decoration: const BoxDecoration(
-          color: Color(0xFF1E1E1E),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, color: Colors.white, size: iconSize),
-      ),
-    );
-  }
-}

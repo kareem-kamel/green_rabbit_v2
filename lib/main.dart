@@ -4,9 +4,7 @@ import 'package:green_rabbit/core/theme/app_theme.dart';
 import 'package:green_rabbit/features/auth/data/api/auth_api.dart';
 import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/auth_cubit.dart';
-import 'package:green_rabbit/features/auth/presentation/screens/preferences_screen.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/register_screen.dart';
-import 'package:green_rabbit/features/onboarding/presentation/screens/onboarding_screen.dart';
 
 void main() {
   runApp(const GreenRabbitApp());
