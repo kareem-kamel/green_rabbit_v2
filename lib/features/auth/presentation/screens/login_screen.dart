@@ -4,6 +4,7 @@ import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:green_rabbit/core/widgets/primary_button.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/register_screen.dart';
 import 'package:green_rabbit/features/auth/presentation/widget/auth_text_field.dart';
+import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 
@@ -41,12 +42,15 @@ class _LoginScreenState extends State<LoginScreen> {
             );
           } else if (state is AuthSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Welcome !'),//${state.user.email}
+              const SnackBar(
+                content: Text('Welcome !'),
                 backgroundColor: Colors.green,
               ),
             );
-            // Navigate to Home here later
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const MainWrapper()),
+            );
           }
         },
         builder: (context, state) {
@@ -203,7 +207,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             size: 36,
                           ),
                         ),
-                        const SizedBox(width: 24),
+                        // const SizedBox(width: 24),
                         // Apple Button
                         Container(
                           height: 50,

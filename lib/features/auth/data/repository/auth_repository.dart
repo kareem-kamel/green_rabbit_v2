@@ -43,4 +43,9 @@ class AuthRepository {
       rethrow; 
     }
   }
+
+  Future<void> logout() async {
+    // Perform any cleanup (e.g. clearing tokens) here if needed.
+    return;
+  }
 }

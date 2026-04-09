@@ -48,4 +48,9 @@ class AuthCubit extends Cubit<AuthState> {
       emit(AuthFailure(errorMessage: e.toString().replaceAll('Exception: ', '')));
     }
   }
+
+  void logout() {
+    repository.logout();
+    emit(AuthInitial());
+  }
 }
