@@ -44,7 +44,7 @@ class PrimaryButton extends StatelessWidget {
                       AppColors.primaryPurple.withOpacity(0.4),
                     ],
                   )
-                : AppColors.primaryGradient,
+                : AppColors.primaryGradient1,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Container(

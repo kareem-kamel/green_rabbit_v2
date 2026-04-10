@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
 import 'edit_profile_screen.dart';
 
 class CountrySelectionScreen extends StatefulWidget {

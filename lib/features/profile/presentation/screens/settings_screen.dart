@@ -368,7 +368,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             );
@@ -385,7 +385,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: Colors.white,
+        activeThumbColor: Colors.white,
         activeTrackColor: const Color(0xFF4C3BC9), // specific indigo/blue from theme
         inactiveThumbColor: Colors.white70,
         inactiveTrackColor: Colors.white.withOpacity(0.1),

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:green_rabbit/core/widgets/primary_button.dart';
+import 'package:green_rabbit/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/register_screen.dart';
 import 'package:green_rabbit/features/auth/presentation/widget/auth_text_field.dart';
 import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
@@ -135,7 +136,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         TextButton(
                           onPressed: () {
-                            // TODO: Navigate to Forgot Password Screen
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ForgotPasswordScreen(),
+                              ),
+                            );
                           },
                           style: TextButton.styleFrom(
                             padding: EdgeInsets.zero,
