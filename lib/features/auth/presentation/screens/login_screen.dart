@@ -5,6 +5,7 @@ import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:green_rabbit/core/widgets/primary_button.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/register_screen.dart';
 import 'package:green_rabbit/features/auth/presentation/widget/auth_text_field.dart';
+import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
 import 'package:green_rabbit/features/auth/presentation/widget/social_auth.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
@@ -48,7 +49,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 backgroundColor: Colors.green,
               ),
             );
-            // Navigate to Home here later
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const MainWrapper()),
+            );
           }
         },
         builder: (context, state) {
