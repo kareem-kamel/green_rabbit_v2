@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 
 import 'currency_selection_screen.dart';
-import 'about_screen.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_of_service_screen.dart';
 import '../widgets/rating_bottom_sheet.dart';

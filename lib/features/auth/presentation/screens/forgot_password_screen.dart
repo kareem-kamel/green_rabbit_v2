@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:green_rabbit/core/theme/app_colors.dart'; // Adjust if needed
+// Adjust if needed
 import 'package:green_rabbit/core/widgets/primary_button.dart'; // Your shared button
 import 'package:green_rabbit/features/auth/presentation/cubit/forgot_password_cubit.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/forgot_password_state.dart';

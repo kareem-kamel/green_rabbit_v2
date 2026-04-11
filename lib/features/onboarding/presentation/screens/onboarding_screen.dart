@@ -4,9 +4,9 @@ import 'package:green_rabbit/features/auth/data/api/auth_api.dart';
 import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/login_screen.dart';
-import 'package:green_rabbit/features/market/presentation/pages/market_page.dart';
 import 'package:green_rabbit/features/onboarding/presentation/screens/onboarding2.dart';
 import 'package:green_rabbit/features/onboarding/presentation/screens/onboarding1.dart';
+import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -52,7 +52,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _joinAsGuest() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const MarketPage()),
+      MaterialPageRoute(builder: (context) => const MainWrapper()),
     );
   }
 

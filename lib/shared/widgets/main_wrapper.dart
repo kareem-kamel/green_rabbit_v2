@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
+import 'package:green_rabbit/features/chatbot/presentation/screens/chatbot_screen.dart';
+import 'package:green_rabbit/features/news/presentation/screens/news_screen.dart';
 import '../../features/market/presentation/pages/market_page.dart';
 import '../../features/watchlist/presentation/pages/watchlist_page.dart';
 
@@ -17,8 +19,8 @@ class MainWrapper extends ConsumerWidget {
     final pages = [
       const MarketPage(),
       const WatchlistPage(),
-      const Center(child: Text('AI Assistant')), // Placeholder for FAB action
-      const Center(child: Text('News')),
+      const ChatBotScreen(), // Placeholder for FAB action
+      const NewsScreen(),
       const Center(child: Text('Calendar')),
     ];
 
@@ -32,19 +34,23 @@ class MainWrapper extends ConsumerWidget {
         },
         type: BottomNavigationBarType.fixed,
         backgroundColor: Theme.of(context).cardColor,
-        selectedItemColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primaryPurple,
-        unselectedItemColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey : Colors.black45,
+        selectedItemColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.white
+            : AppColors.primaryPurple,
+        unselectedItemColor: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey
+            : Colors.black45,
         showSelectedLabels: true,
         showUnselectedLabels: true,
         selectedFontSize: 12,
         unselectedFontSize: 12, // Match font size for consistency
         selectedLabelStyle: TextStyle(
           fontWeight: FontWeight.w600,
-          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primaryPurple,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white
+              : AppColors.primaryPurple,
         ),
-        unselectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.w400,
-        ),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w400),
 
         items: const [
           BottomNavigationBarItem(
@@ -55,10 +61,7 @@ class MainWrapper extends ConsumerWidget {
             icon: Icon(Icons.bookmark_outline),
             label: 'Watchlist',
           ),
-          BottomNavigationBarItem(
-            icon: SizedBox.shrink(),
-            label: '',
-          ),
+          BottomNavigationBarItem(icon: SizedBox.shrink(), label: ''),
           BottomNavigationBarItem(
             icon: Icon(Icons.description_outlined),
             label: 'News',
@@ -70,7 +73,14 @@ class MainWrapper extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ChatBotScreen(startEmpty: true),
+            ),
+          );
+        },
         backgroundColor: Colors.transparent,
         elevation: 0,
         child: Container(
@@ -80,10 +90,7 @@ class MainWrapper extends ConsumerWidget {
             shape: BoxShape.circle,
             gradient: AppColors.primaryGradient,
           ),
-          child: Image.asset(
-            'assets/ai.png',
-            fit: BoxFit.contain,
-          ),
+          child: Image.asset('assets/ai.png', fit: BoxFit.contain),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
