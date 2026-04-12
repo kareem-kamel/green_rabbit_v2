@@ -43,7 +43,7 @@ class _NewsScreenState extends State<NewsScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
+            icon: Image.asset('assets/search.png', width: 24, height: 24),
             onPressed: () {},
           ),
           IconButton(
@@ -121,7 +121,7 @@ class _NewsScreenState extends State<NewsScreen> {
   // ─────────────────────────────────────────────
 
   Widget _buildCategoryRow() {
-    final categories = ["Featured", "Most Popular", "Cryptocurrency", "Forex", "Stocks"];
+    final categories = ["Featured"];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
@@ -179,20 +179,22 @@ class _NewsScreenState extends State<NewsScreen> {
       onTap: () => setState(() => selectedCategory = label),
       child: Container(
         margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primaryPurple : AppColors.cardBg.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(25),
+          color: isActive ? Colors.transparent : AppColors.cardBg.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isActive ? AppColors.primaryPurple : Colors.white10,
+            color: isActive ? AppColors.unlockBlue : Colors.white10,
+            width: isActive ? 1.5 : 1,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
             color: isActive ? Colors.white : AppColors.textGrey,
-            fontSize: 14,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            fontSize: 16,
+            fontFamily: 'Urbanist',
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
       ),
@@ -209,7 +211,7 @@ class _NewsScreenState extends State<NewsScreen> {
                 fontWeight: FontWeight.bold,
                 color: Colors.white)),
         if (hasFilter)
-          const Icon(Icons.filter_list, color: AppColors.secondaryBlue),
+          Image.asset('assets/filter.png', width: 24, height: 24),
         if (hasViewAll)
           GestureDetector(
             onTap: () {},
@@ -238,6 +240,17 @@ class _NewsScreenState extends State<NewsScreen> {
                 ),
               ),
               _buildAskAIBadge(12, 12),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Row(
+                  children: [
+                    _buildCircleIcon('assets/star.png'),
+                    const SizedBox(width: 8),
+                    _buildCircleIcon('assets/share.png'),
+                  ],
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -258,6 +271,22 @@ class _NewsScreenState extends State<NewsScreen> {
       top: top,
       left: left,
       child: const AskAIBadge(),
+    );
+  }
+
+  Widget _buildCircleIcon(String assetPath) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.3),
+        shape: BoxShape.circle,
+      ),
+      child: Image.asset(
+        assetPath,
+        width: 20,
+        height: 20,
+        color: Colors.white,
+      ),
     );
   }
 
