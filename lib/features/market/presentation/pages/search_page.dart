@@ -4,7 +4,10 @@ import 'package:green_rabbit/core/theme/app_theme.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/app_search_field.dart';
+import '../providers/market_providers.dart';
+import '../../data/models/market_instrument.dart';
 import 'instrument_detail_page.dart';
+import '../../../watchlist/presentation/providers/watchlist_providers.dart';
 
 class SearchPage extends ConsumerStatefulWidget {
   const SearchPage({super.key});
@@ -16,7 +19,7 @@ class SearchPage extends ConsumerStatefulWidget {
 class _SearchPageState extends ConsumerState<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
   bool _isActive = false;
-  final List<String> _recentSearches = ['History title', 'History title', 'History title'];
+  final List<String> _recentSearches = ['Apple', 'Microsoft', 'Google'];
 
   @override
   void dispose() {
@@ -26,6 +29,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   @override
   Widget build(BuildContext context) {
+    final marketAsync = ref.watch(marketOverviewProvider('stocks'));
+
     return Scaffold(
       backgroundColor: AppColors.backgroundSubtle,
       body: SafeArea(
@@ -33,7 +38,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           children: [
             _buildSearchBar(),
             Expanded(
-              child: _buildContent(),
+              child: marketAsync.when(
+                data: (instruments) => _buildContent(instruments),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (err, stack) => Center(child: Text('Error: $err')),
+              ),
             ),
           ],
         ),
@@ -43,7 +52,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.all(AppTheme.paddingM + 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
           IconButton(
@@ -52,6 +61,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           ),
           Expanded(
             child: AppSearchField(
+              controller: _searchController,
               onChanged: (val) {
                 setState(() {
                   _isActive = val.isNotEmpty;
@@ -65,20 +75,25 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     );
   }
 
-  Widget _buildContent() {
-    if (!_isActive && _searchController.text.isEmpty) {
-      return _buildDefaultState();
+  Widget _buildContent(List<MarketInstrument> instruments) {
+    final query = _searchController.text.toLowerCase();
+    final filtered = instruments.where((i) => 
+      i.symbol.toLowerCase().contains(query) ||
+      i.name.toLowerCase().contains(query)
+    ).toList();
+
+    if (!_isActive && query.isEmpty) {
+      return _buildDefaultState(instruments.take(5).toList());
     }
     
-    // Simulate search logic for now
-    if (_searchController.text == 'XYZ') {
+    if (filtered.isEmpty) {
       return _buildNoResultsState();
     }
 
-    return _buildActiveState();
+    return _buildActiveState(filtered);
   }
 
-  Widget _buildDefaultState() {
+  Widget _buildDefaultState(List<MarketInstrument> popular) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM + 4),
       child: Column(
@@ -105,57 +120,24 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
           ),
           const SizedBox(height: 16),
-          _popularStockItem('Intel', 'INTC | 23/01', '45.07', '-9.25(-17.03%)', false),
+          Expanded(
+            child: ListView.separated(
+              itemCount: popular.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              itemBuilder: (context, index) => _instrumentSearchItem(popular[index]),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildActiveState() {
-    return Column(
-      children: [
-        _buildFilterChips(),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM + 4),
-            itemCount: 3,
-            itemBuilder: (context, index) {
-              return _popularStockItem('Intel', 'INTC | 23/01', '45.07', '-9.25(-17.03%)', false, id: 'intel-id');
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFilterChips() {
-    final types = ['All', 'Stocks', 'Funds', 'Forex'];
-    return SizedBox(
-      height: 50,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM + 4),
-        itemCount: types.length,
-        itemBuilder: (context, index) {
-          final isSelected = index == 0;
-          return Container(
-            margin: const EdgeInsets.only(right: 10, bottom: 10),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            decoration: BoxDecoration(
-              color: isSelected ? AppColors.searchBarBackground : Colors.transparent,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: isSelected ? AppColors.primary : AppColors.border),
-            ),
-            child: Text(
-              types[index],
-              style: TextStyle(
-                color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
-                fontSize: 14,
-              ),
-            ),
-          );
-        },
-      ),
+  Widget _buildActiveState(List<MarketInstrument> filtered) {
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM + 4, vertical: 10),
+      itemCount: filtered.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (context, index) => _instrumentSearchItem(filtered[index]),
     );
   }
 
@@ -193,49 +175,119 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     );
   }
 
-  Widget _popularStockItem(String name, String details, String price, String change, bool isUp, {String? id}) {
-    return AppCard(
-      onTap: () {
-        if (id != null) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => InstrumentDetailPage(instrumentId: id),
-            ),
-          );
-        }
-      },
-      backgroundColor: AppColors.searchBarBackground,
-      padding: const EdgeInsets.all(16),
+  Widget _instrumentSearchItem(MarketInstrument instrument) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: isDark ? Colors.white10 : Colors.black12),
+        ),
+      ),
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.textPrimary.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(10),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => InstrumentDetailPage(instrumentId: instrument.id),
+                  ),
+                );
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    instrument.name,
+                    style: TextStyle(
+                      color: isDark ? AppColors.textPrimary : Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${instrument.symbol} | ${instrument.exchange ?? 'Market'}',
+                    style: TextStyle(
+                      color: isDark ? Colors.grey[500] : Colors.grey[600],
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: const Icon(Icons.diamond_outlined, color: AppColors.textSecondary),
           ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(name, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
-              Text(details, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-            ],
-          ),
-          const Spacer(),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(price, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
-              Text(change, style: TextStyle(color: isUp ? AppColors.success : AppColors.error, fontSize: 12)),
-            ],
+          IconButton(
+            onPressed: () {
+              ref.read(watchlistProvider.notifier).addInstrument(instrument);
+              _showSuccessSnackBar(context, instrument);
+            },
+            icon: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: isDark ? Colors.white24 : Colors.black26),
+              ),
+              child: const Icon(Icons.add, color: Colors.white70, size: 12),
+            ),
           ),
         ],
       ),
     );
+  }
+
+  void _showSuccessSnackBar(BuildContext context, MarketInstrument instrument) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        behavior: SnackBarBehavior.floating,
+        content: Container(
+          padding: const EdgeInsets.fromLTRB(0, 12, 12, 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF131722),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 4,
+                height: 40,
+                decoration: const BoxDecoration(
+                  color: AppColors.success,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(8),
+                    bottomLeft: Radius.circular(8),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  '${instrument.name} ${instrument.symbol} successfully added to watchlist',
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'View all',
+                style: TextStyle(
+                  color: Color(0xFF4072FF),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _popularStockItem(String name, String details, String price, String change, bool isUp, {String? id}) {
+    // Keep for backward compatibility or remove if not used
+    return const SizedBox.shrink();
   }
 }

@@ -12,6 +12,7 @@ import '../providers/market_providers.dart';
 import '../../data/models/market_instrument.dart';
 import '../../../watchlist/presentation/providers/watchlist_providers.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
+import 'package:green_rabbit/features/market/presentation/pages/search_page.dart';
 
 class MarketPage extends ConsumerStatefulWidget {
   const MarketPage({super.key});
@@ -51,36 +52,52 @@ class _MarketPageState extends ConsumerState<MarketPage> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM + 4),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 10),
-                _buildHeader(context, ref),
-                const SizedBox(height: 24),
-                const AIServiceCarousel(),
-                const SizedBox(height: 24),
-                const AppSectionHeader(title: 'Market'),
-                const SizedBox(height: 16),
-                _buildTabs(context),
-                const SizedBox(height: 20),
-                instrumentsAsync.when(
-                  data: (instruments) {
-                    final filtered = instruments.where((i) => 
-                      i.symbol.toLowerCase().contains(marketSearchQuery.toLowerCase()) ||
-                      i.name.toLowerCase().contains(marketSearchQuery.toLowerCase())
-                    ).toList();
-                    return _buildInstrumentList(context, ref, filtered);
-                  },
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (err, stack) => _buildErrorState(ref),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final double horizontalPadding = constraints.maxWidth > 900 
+                ? (constraints.maxWidth - 800) / 2 
+                : AppTheme.paddingM + 4;
+
+            return SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 800),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
+                        _buildHeader(context, ref),
+                        const SizedBox(height: 24),
+                        const AIServiceCarousel(),
+                        const SizedBox(height: 24),
+                        const AppSectionHeader(title: 'Market'),
+                        const SizedBox(height: 16),
+                        _buildTabs(context),
+                        const SizedBox(height: 20),
+                        instrumentsAsync.when(
+                          data: (instruments) {
+                            final filtered = instruments.where((i) => 
+                              i.symbol.toLowerCase().contains(marketSearchQuery.toLowerCase()) ||
+                              i.name.toLowerCase().contains(marketSearchQuery.toLowerCase())
+                            ).toList();
+                            return _buildInstrumentList(context, ref, filtered);
+                          },
+                          loading: () => const Center(child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40),
+                            child: CircularProgressIndicator(),
+                          )),
+                          error: (err, stack) => _buildErrorState(ref),
+                        ),
+                        const SizedBox(height: 100), 
+                      ],
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 100), // Added safe margin above bottom nav
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -133,28 +150,32 @@ class _MarketPageState extends ConsumerState<MarketPage> {
               ),
             ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: AppSearchField(
-              readOnly: false,
-              controller: _searchController,
+          const Spacer(),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage()));
+            },
+            child: _headerIcon(
+              assetPath: 'assets/notification_icon.png',
+              hasBadge: true,
+              fallbackIcon: Icons.notifications_none,
             ),
           ),
           const SizedBox(width: 12),
           GestureDetector(
             onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage()));
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchPage()));
             },
-            child: _headerIcon(Icons.notifications_none, hasBadge: true),
+            child: _headerIcon(icon: Icons.search),
           ),
           const SizedBox(width: 12),
-          _headerIcon(Icons.menu),
+          _headerIcon(icon: Icons.menu),
         ],
       ),
     );
   }
 
-  Widget _headerIcon(IconData icon, {bool hasBadge = false}) {
+  Widget _headerIcon({IconData? icon, String? assetPath, bool hasBadge = false, IconData? fallbackIcon}) {
     return Stack(
       children: [
         Container(
@@ -164,7 +185,19 @@ class _MarketPageState extends ConsumerState<MarketPage> {
             shape: BoxShape.circle,
             border: Border.all(color: Theme.of(context).dividerColor),
           ),
-          child: Icon(icon, color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87, size: 22),
+          child: assetPath != null 
+            ? Image.asset(
+                assetPath,
+                width: 22,
+                height: 22,
+                color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87,
+                errorBuilder: (context, error, stackTrace) => Icon(
+                  fallbackIcon ?? Icons.error,
+                  color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87,
+                  size: 22,
+                ),
+              )
+            : Icon(icon, color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87, size: 22),
         ),
         if (hasBadge)
           Positioned(
@@ -190,9 +223,9 @@ class _MarketPageState extends ConsumerState<MarketPage> {
         children: [
           _tabItem('Popular', isActive: true),
           const SizedBox(width: 12),
-          _tabItem('Indices'),
-          const SizedBox(width: 12),
-          _tabItem('Indices Futures'),
+          // _tabItem('Indices'),
+          // const SizedBox(width: 12),
+          // _tabItem('Indices Futures'),
         ],
       ),
     );
@@ -243,9 +276,12 @@ class _MarketPageState extends ConsumerState<MarketPage> {
     required WidgetRef ref,
     required MarketInstrument instrument,
   }) {
-    final isUp = instrument.change > 0;
+    final isUp = instrument.change >= 0;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return AppCard(
-      padding: const EdgeInsets.all(AppTheme.paddingM),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       onTap: () {
         Navigator.push(
           context,
@@ -256,78 +292,83 @@ class _MarketPageState extends ConsumerState<MarketPage> {
       },
       child: Row(
         children: [
+          // Logo Section
           Container(
-            width: 44,
-            height: 44,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary.withOpacity(0.05) : Colors.black.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
+              color: isDark ? const Color(0xFF131722) : Colors.grey[100],
+              borderRadius: BorderRadius.circular(8),
             ),
+            padding: const EdgeInsets.all(8),
             child: instrument.logoUrl != null 
               ? Image.network(
                   instrument.logoUrl!,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.diamond_outlined, color: AppColors.textSecondary),
+                  errorBuilder: (_, __, ___) => Icon(Icons.diamond_outlined, color: isDark ? Colors.white.withOpacity(0.7) : Colors.black45),
                 )
-              : const Icon(Icons.diamond_outlined, color: AppColors.textSecondary),
+              : Icon(Icons.diamond_outlined, color: isDark ? Colors.white.withOpacity(0.7) : Colors.black45),
           ),
           const SizedBox(width: 16),
+          // Name and Symbol Section
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  instrument.symbol,
-                  style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(
                   instrument.name,
-                  style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondary : Colors.black45, fontSize: 12),
+                  style: TextStyle(
+                    color: isDark ? AppColors.textPrimary : Colors.black,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: 0.5,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.access_time,
+                      size: 14,
+                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${instrument.symbol} | 23/01',
+                      style: TextStyle(
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
-          if (instrument.sparkline != null && instrument.sparkline!.isNotEmpty)
-            SizedBox(
-              width: 60,
-              height: 30,
-              child: CustomPaint(
-                painter: SparklinePainter(
-                  instrument.sparkline!,
-                  isUp ? AppColors.success : AppColors.error,
-                ),
-              ),
-            ),
-          const SizedBox(width: 16),
+          // Price and Change Section
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '\$${instrument.price.toStringAsFixed(2)}',
-                style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                instrument.price.toStringAsFixed(2),
+                style: TextStyle(
+                  color: isDark ? AppColors.textPrimary : Colors.black,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
-                '${isUp ? '+' : ''}${instrument.changePercent.toStringAsFixed(2)}%',
+                '${isUp ? '+' : ''}${instrument.change.toStringAsFixed(2)} (${instrument.changePercent.toStringAsFixed(2)}%)',
                 style: TextStyle(
                   color: isUp ? AppColors.success : AppColors.error,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
             ],
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline, color: AppColors.primary, size: 20),
-            onPressed: () {
-              ref.read(watchlistProvider.notifier).addInstrument(instrument);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${instrument.symbol} added to Watchlist')),
-              );
-            },
           ),
         ],
       ),
@@ -371,10 +412,10 @@ class _AIServiceCarouselState extends State<AIServiceCarousel> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    return Stack(
       children: [
         SizedBox(
-          height: 140,
+          height: 160,
           child: PageView.builder(
             controller: _pageController,
             onPageChanged: (index) => setState(() => _currentIndex = index),
@@ -383,7 +424,7 @@ class _AIServiceCarouselState extends State<AIServiceCarousel> {
               final item = _items[index];
               return Container(
                 margin: const EdgeInsets.symmetric(horizontal: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                padding: const EdgeInsets.fromLTRB(24, 16, 24, 28), // Increased bottom padding for dots
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: Theme.of(context).brightness == Brightness.dark 
@@ -418,11 +459,15 @@ class _AIServiceCarouselState extends State<AIServiceCarousel> {
                           Text(
                             item['title'],
                             style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 8),
                           Text(
                             item['desc'],
                             style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13, height: 1.4),
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
@@ -433,23 +478,26 @@ class _AIServiceCarouselState extends State<AIServiceCarousel> {
             },
           ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_items.length, (index) {
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              width: _currentIndex == index ? 24 : 10,
-              height: 10,
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              decoration: BoxDecoration(
-                color: _currentIndex == index 
-                    ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primaryPurple) 
-                    : (Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.3) : Colors.black12),
-                borderRadius: BorderRadius.circular(5),
-              ),
-            );
-          }),
+        Positioned(
+          bottom: 12,
+          left: 0,
+          right: 0,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(_items.length, (index) {
+              final bool isActive = _currentIndex == index;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: isActive ? 20 : 8,
+                height: 8,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  color: isActive ? Colors.white : Colors.white.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              );
+            }),
+          ),
         ),
       ],
     );
