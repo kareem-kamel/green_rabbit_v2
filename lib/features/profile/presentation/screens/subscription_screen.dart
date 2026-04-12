@@ -59,17 +59,41 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               const SizedBox(width: 8),
             ],
           ),
-          body: Column(
-            children: [
-              const SizedBox(height: 20),
-              _buildTabSelector(currentSub != null),
-              const SizedBox(height: 30),
-              Expanded(
-                child: _activeTab == 0
-                    ? _buildPlansList(context, state, currentSub)
-                    : _buildHistoryList(history),
-              ),
-            ],
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final double horizontalPadding = constraints.maxWidth > 900 
+                  ? (constraints.maxWidth - 800) / 2 
+                  : 0.0;
+
+              return Column(
+                children: [
+                  const SizedBox(height: 20),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: horizontalPadding > 0 ? horizontalPadding : 20),
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 800),
+                        child: _buildTabSelector(currentSub != null),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 800),
+                          child: _activeTab == 0
+                              ? _buildPlansList(context, state, currentSub)
+                              : _buildHistoryList(history),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         );
       },
