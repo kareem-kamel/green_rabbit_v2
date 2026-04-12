@@ -1,4 +1,3 @@
-import 'dart:math';
 import '../models/chat_message_model.dart';
 import '../services/ai_service.dart';
 
@@ -7,14 +6,39 @@ class ChatbotRepository {
 
   ChatbotRepository(this._aiService);
 
-  Future<ChatMessage> fetchAIResponse(String userPrompt) async {
-    final aiText = await _aiService.getAIResponse(userPrompt);
+  // Summarize content
+  Future<AISummary> summarizeContent(String targetId, String type) {
+    return _aiService.summarizeContent(targetId, type);
+  }
 
-    return ChatMessage(
-      id: Random().nextInt(10000).toString(),
-      text: aiText,
-      isUser: false,
-      timestamp: DateTime.now(),
-    );
+  // Get AI usage statistics
+  Future<AIUsageStats> getUsageStats() {
+    return _aiService.getUsageStats();
+  }
+
+  // Conversations
+  Future<List<Conversation>> getConversations() {
+    return _aiService.listConversations();
+  }
+
+  Future<Conversation> createConversation(String title) {
+    return _aiService.createConversation(title);
+  }
+
+  Future<bool> deleteConversation(String id) {
+    return _aiService.deleteConversation(id);
+  }
+
+  // Messages
+  Future<List<ChatMessage>> getMessages(String conversationId) {
+    return _aiService.getConversationMessages(conversationId);
+  }
+
+  Future<ChatMessage> sendMessage(String conversationId, String content) {
+    return _aiService.sendMessage(conversationId, content);
+  }
+
+  Stream<String> sendMessageStream(String conversationId, String content) {
+    return _aiService.sendMessageStream(conversationId, content);
   }
 }

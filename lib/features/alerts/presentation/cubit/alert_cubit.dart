@@ -1,8 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../data/repository/alert_repository.dart';
+import '../../data/models/alert_model.dart';
 import 'alert_state.dart';
 
 class AlertCubit extends Cubit<AlertState> {
-  AlertCubit() : super(const AlertState());
+  final AlertRepository repository;
+
+  AlertCubit({required this.repository}) : super(const AlertState());
 
   void updateTab(String tab) => emit(state.copyWith(selectedTab: tab));
 
@@ -16,4 +20,10 @@ class AlertCubit extends Cubit<AlertState> {
   void toggleEmail(bool value) => emit(state.copyWith(emailNotification: value));
   void toggleRecurring(bool value) => emit(state.copyWith(recurringAlert: value));
   void toggleReminder(bool value) => emit(state.copyWith(tradingReminder: value));
+
+  Future<void> createAlert(String assetName, double price) async {
+    // Basic implementation for now - this would use the real model
+    // final alert = AlertModel(...);
+    // await repository.createAlert(alert);
+  }
 }

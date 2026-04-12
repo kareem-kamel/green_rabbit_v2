@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/ai_news_summary_card.dart';
+import '../../data/models/news_model.dart';
+import '../../data/repositories/news_repository.dart';
+import '../cubit/related_news_cubit.dart';
+import '../../../../core/di/injection_container.dart' as di;
 
 // ─────────────────────────────────────────────
 //  MODEL
@@ -17,7 +22,8 @@ class CommentModel {
 //  SCREEN
 // ─────────────────────────────────────────────
 class NewsDetailScreen extends StatefulWidget {
-  const NewsDetailScreen({super.key});
+  final NewsArticle article;
+  const NewsDetailScreen({super.key, required this.article});
 
   @override
   State<NewsDetailScreen> createState() => _NewsDetailScreenState();
@@ -25,6 +31,7 @@ class NewsDetailScreen extends StatefulWidget {
 
 class _NewsDetailScreenState extends State<NewsDetailScreen> {
   final TextEditingController _commentController = TextEditingController();
+  late bool _isFavorited;
   bool _isExpanded = false;
 
   final List<CommentModel> _comments = [
@@ -56,6 +63,33 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _isFavorited = widget.article.isBookmarked;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<RelatedNewsCubit>().fetchRelatedNews(widget.article.id);
+    });
+  }
+
+  void _toggleFavorite() async {
+    final success = await di.sl<NewsRepository>().toggleFavorite(
+      widget.article.id,
+      !_isFavorited,
+    );
+    if (success) {
+      setState(() {
+        _isFavorited = !_isFavorited;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_isFavorited ? 'Added to favorites' : 'Removed from favorites'),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  @override
   void dispose() {
     _commentController.dispose();
     super.dispose();
@@ -66,23 +100,30 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   // ─────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.scaffoldBg,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+          icon: Icon(Icons.arrow_back_ios,
+              color: isDark ? Colors.white : Colors.black, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.share_outlined, color: Colors.white),
+            icon: Icon(Icons.share_outlined,
+                color: isDark ? Colors.white : Colors.black),
             onPressed: () {},
           ),
           IconButton(
-            icon: const Icon(Icons.bookmark_border, color: Colors.white),
-            onPressed: () {},
+            icon: Icon(
+                _isFavorited ? Icons.bookmark : Icons.bookmark_border,
+                color: _isFavorited ? AppColors.primaryPurple : (isDark ? Colors.white : Colors.black)),
+            onPressed: _toggleFavorite,
           ),
         ],
       ),
@@ -96,46 +137,70 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "The United States is bracing for a winter storm that will impact the energy sector",
+                  Text(
+                    widget.article.title,
                     style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                         height: 1.3,
-                        color: Colors.white),
+                        color: isDark ? Colors.white : Colors.black),
                   ),
                   const SizedBox(height: 12),
-                  const Row(
+                  Row(
                     children: [
-                      Text("Reuters", style: TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, fontSize: 13)),
-                      Text(" | January 25, 2026, 10:40", style: TextStyle(color: Colors.grey, fontSize: 13)),
+                      Flexible(
+                        child: Text(widget.article.sourceName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: Colors.blueAccent,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13)),
+                      ),
+                      Text(" | ${widget.article.timeAgo}",
+                          style:
+                              const TextStyle(color: Colors.grey, fontSize: 13)),
                     ],
                   ),
                   const SizedBox(height: 20),
 
                   ClipRRect(
                     borderRadius: BorderRadius.circular(16),
-                    child: Image.network(
-                      'https://picsum.photos/seed/energy/800/450',
-                      height: 220,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
+                    child: widget.article.largeImage.isNotEmpty
+                        ? Image.network(
+                            widget.article.largeImage,
+                            height: 220,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                              height: 220,
+                              color: isDark ? AppColors.cardBg : Colors.grey[300],
+                              child: Icon(Icons.image_not_supported,
+                                  color: isDark ? Colors.white : Colors.black54),
+                            ),
+                          )
+                        : Container(
+                            height: 220,
+                            color: isDark ? AppColors.cardBg : Colors.grey[300]),
                   ),
                   const SizedBox(height: 16),
 
                   // Stock chips
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildStockChip("CIEN", "-0.39%", Colors.redAccent),
-                        _buildStockChip("SBUX", "+1.24%", Colors.greenAccent),
-                        _buildStockChip("ULTA", "-0.15%", Colors.redAccent),
-                        _buildStockChip("TSLA", "+2.10%", Colors.greenAccent),
-                      ],
+                  if (widget.article.relatedSymbols.isNotEmpty)
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: widget.article.relatedSymbols.map((symbol) {
+                          return _buildStockChip(
+                              symbol.symbol,
+                              "${symbol.changePercent >= 0 ? '+' : ''}${symbol.changePercent}%",
+                              symbol.changePercent >= 0
+                                  ? Colors.greenAccent
+                                  : Colors.redAccent);
+                        }).toList(),
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 12),
 
                   // AI summary card under the chips (CIEN, SBUX, ...)
@@ -175,16 +240,47 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
 
             // ── Related news
             _buildSectionHeader("Related News", hasViewAll: true),
-            _buildRelatedItem("Natural gas prices surge as cold front approaches", "3 hours ago"),
-            _buildRelatedItem("How to prepare your portfolio for climate volatility", "5 hours ago"),
+            BlocBuilder<RelatedNewsCubit, RelatedNewsState>(
+              builder: (context, state) {
+                if (state is RelatedNewsLoading) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                } else if (state is RelatedNewsError) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(state.message, style: const TextStyle(color: Colors.grey)),
+                  );
+                } else if (state is RelatedNewsLoaded) {
+                  if (state.articles.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: Text("No related news found", style: TextStyle(color: Colors.grey)),
+                    );
+                  }
+                  return Column(
+                    children: state.articles.map((article) => _buildRelatedItem(article)).toList(),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
             const SizedBox(height: 8),
             _buildSeparator(),
             const SizedBox(height: 8),
 
-            // ── Related analysis (renamed from Analyst Opinions)
+            // ── Related analysis
             _buildSectionHeader("Related Analysis"),
-            _buildAnalysisItem("Goldman Sachs", "Neutral rating maintained despite storm concerns."),
-            _buildAnalysisItem("Morgan Stanley", "Energy infrastructure remains resilient."),
+            if (widget.article.relatedAnalysis.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Text("No analysis available for this article.",
+                    style: TextStyle(color: Colors.grey, fontSize: 13)),
+              )
+            else
+              ...widget.article.relatedAnalysis.map((analysis) =>
+                  _buildAnalysisItem(analysis.firm, analysis.text)),
             const SizedBox(height: 48),
           ],
         ),
@@ -196,21 +292,19 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   //  ARTICLE BODY
   // ─────────────────────────────────────────────
   Widget _buildArticleBody() {
-    const fullText =
-        "A powerful winter storm system is expected to sweep across large parts of the United States this week, with forecasters warning of significant disruptions to energy infrastructure. Utility companies are already ramping up emergency response teams, while natural gas futures jumped amid concerns about supply chain disruptions.\n\n"
-        "The storm is expected to bring heavy snow, ice, and dangerously cold temperatures to the central and eastern regions, affecting millions of households and businesses that rely on natural gas and electricity for heating. "
-        "Energy analysts warn that a prolonged cold snap could stress the electrical grid, echoing the 2021 Texas power crisis.";
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    final bodyText = widget.article.snippet.isNotEmpty 
+        ? widget.article.snippet 
+        : "No detailed content available for this article.";
 
-    const shortText =
-        "A powerful winter storm system is expected to sweep across large parts of the United States this week, with forecasters warning of significant disruptions to energy infrastructure...";
-
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 300),
-      child: Text(
-        _isExpanded ? fullText : shortText,
-        style: const TextStyle(
-            color: Colors.white70, fontSize: 16, height: 1.6),
-      ),
+    return Text(
+      bodyText,
+      style: TextStyle(
+          fontSize: 16,
+          height: 1.6,
+          color: isDark ? Colors.white70 : Colors.black87),
     );
   }
 
@@ -218,16 +312,19 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   //  WIDGET BUILDERS
   // ─────────────────────────────────────────────
   Widget _buildSectionHeader(String title, {bool hasViewAll = false}) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(title,
-              style: const TextStyle(
+              style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white)),
+                  color: isDark ? Colors.white : Colors.black)),
           if (hasViewAll)
             const Text("View all",
                 style: TextStyle(color: Colors.blueAccent, fontSize: 14)),
@@ -292,13 +389,16 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   }
 
   Widget _buildCommentInput() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C2128),
+        color: isDark ? const Color(0xFF1C2128) : Colors.grey[100],
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.grey[300]!),
       ),
       child: Row(
         children: [
@@ -311,10 +411,10 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
             child: TextField(
               controller: _commentController,
               onSubmitted: (_) => _postComment(),
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-              decoration: const InputDecoration(
+              style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 14),
+              decoration: InputDecoration(
                 hintText: "Add a comment...",
-                hintStyle: TextStyle(color: Colors.grey),
+                hintStyle: TextStyle(color: isDark ? Colors.grey : Colors.black54),
                 border: InputBorder.none,
               ),
             ),
@@ -329,12 +429,16 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   }
 
   Widget _buildCommentCard(CommentModel comment) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C2128),
+        color: isDark ? const Color(0xFF1C2128) : Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
+        border: isDark ? null : Border.all(color: Colors.grey[200]!),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,27 +447,38 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
             children: [
               CircleAvatar(
                 radius: 14,
-                backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=${comment.name}'),
+                backgroundColor: isDark ? AppColors.cardBg : Colors.grey[200],
+                child: Text(comment.name[0], style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 10)),
               ),
               const SizedBox(width: 10),
               Text(comment.name,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white)),
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: isDark ? Colors.white : Colors.black)),
               const Spacer(),
               Text(comment.time, style: const TextStyle(color: Colors.grey, fontSize: 12)),
             ],
           ),
           const SizedBox(height: 10),
-          Text(comment.text, style: const TextStyle(fontSize: 14, color: Colors.white70, height: 1.4)),
+          Text(comment.text,
+              style: TextStyle(
+                  fontSize: 14,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                  height: 1.4)),
           const SizedBox(height: 12),
-          const Row(
+          Row(
             children: [
-              Icon(Icons.reply_outlined, size: 16, color: Colors.grey),
-              SizedBox(width: 4),
-              Text("Reply", style: TextStyle(color: Colors.grey, fontSize: 12)),
-              SizedBox(width: 20),
-              Icon(Icons.thumb_up_outlined, size: 16, color: Colors.grey),
-              SizedBox(width: 4),
-              Text("12", style: TextStyle(color: Colors.grey, fontSize: 12)),
+              const Icon(Icons.reply_outlined, size: 16, color: Colors.grey),
+              const SizedBox(width: 4),
+              const Text("Reply", style: TextStyle(color: Colors.grey, fontSize: 12)),
+              const SizedBox(width: 20),
+              const Icon(Icons.thumb_up_outlined, size: 16, color: Colors.grey),
+              const SizedBox(width: 4),
+              Text("12",
+                  style: TextStyle(
+                      color: isDark ? Colors.grey : Colors.grey[600],
+                      fontSize: 12)),
             ],
           ),
         ],
@@ -372,13 +487,16 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   }
 
   Widget _buildAnalysisItem(String firm, String text) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C2128),
+        color: isDark ? const Color(0xFF1C2128) : Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.grey[300]!),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -389,9 +507,15 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(firm, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                Text(firm,
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black)),
                 const SizedBox(height: 4),
-                Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                Text(text,
+                    style: TextStyle(
+                        color: isDark ? Colors.white70 : Colors.black87,
+                        fontSize: 13)),
               ],
             ),
           ),
@@ -400,24 +524,51 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
     );
   }
 
-  Widget _buildRelatedItem(String title, String time) {
+  Widget _buildRelatedItem(NewsArticle article) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.network('https://picsum.photos/seed/$title/100', width: 80, height: 80, fit: BoxFit.cover),
+            child: article.thumbImage.isNotEmpty
+                ? Image.network(
+                    article.thumbImage,
+                    width: 80,
+                    height: 80,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      width: 80,
+                      height: 80,
+                      color: isDark ? AppColors.cardBg : Colors.grey[300],
+                      child: Icon(Icons.image_not_supported,
+                          color: isDark ? Colors.white : Colors.black54),
+                    ),
+                  )
+                : Container(
+                    width: 80,
+                    height: 80,
+                    color: isDark ? AppColors.cardBg : Colors.grey[300],
+                  ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15)),
+                Text(article.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black,
+                        fontSize: 15)),
                 const SizedBox(height: 8),
-                Text("Reuters • $time", style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                Text("${article.sourceName} • ${article.timeAgo}",
+                    style: const TextStyle(color: Colors.grey, fontSize: 12)),
               ],
             ),
           ),
@@ -427,19 +578,28 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   }
 
   Widget _buildStockChip(String label, String percent, Color color) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
       margin: const EdgeInsets.only(right: 10),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C2128),
+        color: isDark ? const Color(0xFF1C2128) : Colors.grey[100],
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.grey[300]!),
       ),
       child: Row(
         children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white)),
+          Text(label,
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: isDark ? Colors.white : Colors.black)),
           const SizedBox(width: 8),
-          Text(percent, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
+          Text(percent,
+              style: TextStyle(
+                  color: color, fontSize: 12, fontWeight: FontWeight.bold)),
         ],
       ),
     );

@@ -1,8 +1,10 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class AppConstants {
   AppConstants._();
 
   static const String appName = 'Green Rabbit';
-  static const String apiBaseUrl = 'https://api.greenrabbit.app/v1'; // Production/Hosted URL
+  static String get apiBaseUrl => dotenv.get('BASE_URL');
   
   // Storage Keys
   static const String keyAccessToken = 'access_token';

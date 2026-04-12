@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 import '../cubit/chat_cubit.dart';
 import '../cubit/chat_state.dart';
 
@@ -39,47 +40,43 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // --- THE FIX: Wrap the screen in a BlocProvider ---
-    return BlocProvider(
-      create: (context) => ChatCubit(),
-      child: BlocConsumer<ChatCubit, ChatState>(
-        listener: (context, state) {
-          if (state.messages.isNotEmpty) {
-            _scrollToBottom();
-          }
-        },
-        builder: (context, state) {
-          final cubit = context.read<ChatCubit>();
+    return BlocConsumer<ChatCubit, ChatState>(
+      listener: (context, state) {
+        if (state.messages.isNotEmpty) {
+          _scrollToBottom();
+        }
+      },
+      builder: (context, state) {
+        final cubit = context.read<ChatCubit>();
 
-          if (widget.startEmpty && !_clearedOnOpen) {
-            // Ensure empty suggestion state only once on entry
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted) return;
-              _clearedOnOpen = true;
-              cubit.startNewChat();
-            });
-          }
+        if (widget.startEmpty && !_clearedOnOpen) {
+          // Ensure empty suggestion state only once on entry
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _clearedOnOpen = true;
+            cubit.startNewChat();
+          });
+        }
 
-          return Scaffold(
-            key: _scaffoldKey,
-            backgroundColor: AppColors.scaffoldBg,
-            drawer: _buildSidebar(context, state),
-            appBar: _buildAppBar(context, cubit),
-            body: Column(
-              children: [
-                Expanded(
-                  child: state.isVoiceMode
-                      ? _buildVoiceInterface(context, cubit)
-                      : (state.messages.isNotEmpty
-                          ? _buildChatHistory(state)
-                          : _buildEmptyState(cubit)),
-                ),
-                _buildInputArea(context, cubit, state),
-              ],
-            ),
-          );
-        },
-      ),
+        return Scaffold(
+          key: _scaffoldKey,
+          backgroundColor: AppColors.scaffoldBg,
+          drawer: _buildSidebar(context, state),
+          appBar: _buildAppBar(context, cubit),
+          body: Column(
+            children: [
+              Expanded(
+                child: state.isVoiceMode
+                    ? _buildVoiceInterface(context, cubit)
+                    : (state.messages.isNotEmpty
+                        ? _buildChatHistory(state)
+                        : _buildEmptyState(cubit)),
+              ),
+              _buildInputArea(context, cubit, state),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -340,7 +337,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               bottomRight: Radius.circular(4),
             ),
           ),
-          child: Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 14)),
+          child: Text(msg.content, style: const TextStyle(color: Colors.white, fontSize: 14)),
         ),
       );
     }
@@ -362,7 +359,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 bottomRight: Radius.circular(16),
               ),
             ),
-            child: Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5)),
+            child: Text(msg.content, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5)),
           ),
           if (msg.hasChart) ...[
             const SizedBox(height: 8),

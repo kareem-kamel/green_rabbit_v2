@@ -21,7 +21,7 @@ class ApiClient {
   }
 
   void _setupInterceptors() {
-    _dio.options.baseUrl = AppConstants.apiBaseUrl;
+    _dio.options.baseUrl = '${AppConstants.apiBaseUrl}/api';
     _dio.options.connectTimeout = const Duration(seconds: 30);
     _dio.options.receiveTimeout = const Duration(seconds: 30);
     _dio.options.headers['Content-Type'] = 'application/json';

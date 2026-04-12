@@ -1,21 +1,5 @@
 import 'package:equatable/equatable.dart';
-
-class ChatMessage {
-  final String text;
-  final bool isUser;
-  final DateTime? timestamp;
-  final bool hasChart; // Add this property
-
-  const ChatMessage({
-    required this.text,
-    required this.isUser,
-    this.timestamp,
-    this.hasChart = false,
-  });
-
-  @override
-  String toString() => 'ChatMessage(text: $text, isUser: $isUser)';
-}
+import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 
 class ChatHistory {
   final String title;
