@@ -80,7 +80,31 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       ),
       actions: [
         _buildAppBarIcon(Icons.search, onPressed: () {}),
-        _buildAppBarIcon(Icons.notifications_none_outlined, onPressed: () {}),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            shape: BoxShape.circle,
+          ),
+          child: InkWell(
+            onTap: () {},
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Image.asset(
+                'assets/notification_icon.png',
+                width: 20,
+                height: 20,
+                color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87,
+                errorBuilder: (_, __, ___) => Icon(
+                  Icons.notifications_none_outlined,
+                  color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87,
+                  size: 20,
+                ),
+              ),
+            ),
+          ),
+        ),
         _buildAppBarIcon(
           isFavorite ? Icons.star : Icons.star_border,
           color: isFavorite ? Colors.amber : (Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87),
@@ -101,6 +125,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                 ref.read(watchlistProvider.notifier).removeInstrument(detail.id);
               } else {
                 ref.read(watchlistProvider.notifier).addInstrument(instrument);
+                _showSuccessSnackBar(context, instrument);
               }
             });
           },
@@ -1991,6 +2016,53 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
               Icon(Icons.keyboard_arrow_down, color: isActive ? AppColors.unlockBlue : AppColors.textSecondary, size: 16),
             ],
           ],
+        ),
+      ),
+    );
+  }
+  void _showSuccessSnackBar(BuildContext context, MarketInstrument instrument) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        behavior: SnackBarBehavior.floating,
+        content: Container(
+          padding: const EdgeInsets.fromLTRB(0, 12, 12, 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF131722),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 4,
+                height: 40,
+                decoration: const BoxDecoration(
+                  color: AppColors.success,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(8),
+                    bottomLeft: Radius.circular(8),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  '${instrument.name} ${instrument.symbol} successfully added to watchlist',
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'View all',
+                style: TextStyle(
+                  color: Color(0xFF4072FF),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
