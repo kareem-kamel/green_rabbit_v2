@@ -3,8 +3,8 @@ import '../../../../core/theme/app_colors.dart';
 import 'news_detail_screen.dart';
 import '../../../chatbot/presentation/screens/chatbot_screen.dart';
 import '../../../alerts/presentation/widgets/create_alert_sheet.dart';
-import '../../../../core/widgets/ai_trading_assistant_card.dart';
 import '../../../../core/widgets/ask_ai_badge.dart';
+import '../../../../core/widgets/ai_service_carousel.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -60,9 +60,13 @@ class _NewsScreenState extends State<NewsScreen> {
           children: [
             const SizedBox(height: 10),
 
-            // AI Trading Assistant card
-            AITradingAssistantCard(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatBotScreen())),
+            // AI Service Carousel (matches Market page)
+            AIServiceCarousel(
+              onItemTap: (index) {
+                if (index == 0) {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatBotScreen()));
+                }
+              },
             ),
             const SizedBox(height: 8),
             _buildSeparator(),
@@ -82,14 +86,14 @@ class _NewsScreenState extends State<NewsScreen> {
             _buildSeparator(),
             const SizedBox(height: 8),
 
-            // Opinion cards (header removed per request)
+            // Opinion cards
             _buildOpinionCard(context, 'https://i.pravatar.cc/150?u=op1', "Alex Rivera", "Why the Fed's next move matters for tech stocks."),
             _buildOpinionCard(context, 'https://i.pravatar.cc/150?u=op2', "Elena Belova", "Crypto regulation: The winter is finally thawing."),
             const SizedBox(height: 8),
             _buildSeparator(),
             const SizedBox(height: 8),
 
-            // Analysis & Opinions header replaces "More News"
+            // Analysis & Opinions header
             _buildSectionHeader("Analysis & Opinions", hasViewAll: true),
             const SizedBox(height: 12),
             _buildSmallArticle(context, isBullish: true),
@@ -168,6 +172,7 @@ class _NewsScreenState extends State<NewsScreen> {
       ),
     );
   }
+
   Widget _buildCategoryChip(String label) {
     bool isActive = selectedCategory == label;
     return GestureDetector(
@@ -214,8 +219,6 @@ class _NewsScreenState extends State<NewsScreen> {
       ],
     );
   }
-
-  // Removed old _buildAICard in favor of AITradingAssistantCard
 
   Widget _buildFeaturedArticle() {
     return GestureDetector(
@@ -296,6 +299,7 @@ class _NewsScreenState extends State<NewsScreen> {
       color: AppColors.borderGrey.withOpacity(0.08),
     );
   }
+
   Widget _buildSmallArticle(BuildContext context, {required bool isBullish, String title = "Winter storm impacts energy sector..."}) {
     return InkWell(
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NewsDetailScreen())),

@@ -286,7 +286,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     );
   }
 
-  Widget _popularStockItem(String name, String details, String price, String change, bool isUp, {String? id}) {
+  Widget _popularStockItem(String name, String details, String price, String change, bool isUp) {
     // Keep for backward compatibility or remove if not used
     return const SizedBox.shrink();
   }

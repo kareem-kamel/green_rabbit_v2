@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../screens/news_screen.dart';
 import '../../../chatbot/presentation/screens/chatbot_screen.dart';
-import '../../../../core/widgets/bottom_nav_bar.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
