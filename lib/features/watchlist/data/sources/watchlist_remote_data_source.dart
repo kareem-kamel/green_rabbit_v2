@@ -16,7 +16,7 @@ class WatchlistRemoteDataSourceImpl implements WatchlistRemoteDataSource {
   @override
   Future<List<MarketInstrument>> getWatchlists() async {
     try {
-      final response = await _apiClient.dio.get('/watchlists');
+      final response = await _apiClient.dio.get('watchlists');
       if (response.statusCode == 200) {
         // Based on docs: Retrieves all watchlists for the user.
         // We extract instruments from the first (default) watchlist provided in the list
@@ -39,13 +39,13 @@ class WatchlistRemoteDataSourceImpl implements WatchlistRemoteDataSource {
   @override
   Future<void> addInstrumentToWatchlist(String watchlistId, String instrumentId) async {
     await _apiClient.dio.post(
-      '/watchlists/$watchlistId/instruments',
+      'watchlists/$watchlistId/instruments',
       data: {'instrumentId': instrumentId},
     );
   }
 
   @override
   Future<void> removeInstrumentFromWatchlist(String watchlistId, String instrumentId) async {
-    await _apiClient.dio.delete('/watchlists/$watchlistId/instruments/$instrumentId');
+    await _apiClient.dio.delete('watchlists/$watchlistId/instruments/$instrumentId');
   }
 }

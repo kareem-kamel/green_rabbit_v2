@@ -190,7 +190,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   Widget _buildHeader(MarketInstrumentDetail detail) {
-    final isUp = detail.price.change >= 0;
+    final isUp = (detail.price.change ?? 0) >= 0;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM),
       child: Column(
@@ -213,7 +213,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppColors.cardBackground,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
@@ -225,12 +225,12 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                     Icon(isUp ? Icons.arrow_drop_up : Icons.arrow_drop_down, color: isUp ? AppColors.success : AppColors.error, size: 32),
                     const SizedBox(width: 4),
                     Text(
-                      detail.price.current.toStringAsFixed(2),
-                      style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 36, fontWeight: FontWeight.bold),
+                      detail.price.current?.toStringAsFixed(2) ?? '--',
+                      style: TextStyle(color: Theme.of(context).textTheme.displayMedium?.color, fontSize: 36, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      '${isUp ? '+' : ''}${detail.price.change.toStringAsFixed(2)} (${detail.price.changePercent.toStringAsFixed(2)}%)',
+                      '${isUp ? '+' : ''}${detail.price.change?.toStringAsFixed(2) ?? '--'} (${detail.price.changePercent?.toStringAsFixed(2) ?? '--'}%)',
                       style: TextStyle(color: isUp ? AppColors.success : AppColors.error, fontSize: 16, fontWeight: FontWeight.bold),
                     ),
                   ],
@@ -280,7 +280,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         indicatorSize: TabBarIndicatorSize.tab,
         labelPadding: const EdgeInsets.symmetric(horizontal: 4),
         labelColor: Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primaryPurple,
-        unselectedLabelColor: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondary : Colors.black45,
+        unselectedLabelColor: Theme.of(context).textTheme.bodyMedium?.color,
         tabs: [
           _buildTabItem('Overview'),
           _buildTabItem('Technical'),
@@ -334,13 +334,13 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: const Color(0xFF161922),
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.white.withOpacity(0.5), width: 1.5),
+              border: Border.all(color: Theme.of(context).dividerColor, width: 1.5),
             ),
             child: InkWell(
               onTap: () => _tabController.animateTo(7), // Chart tab (index 7)
-              child: const Icon(Icons.fullscreen, color: Colors.white, size: 24),
+              child: Icon(Icons.fullscreen, color: Theme.of(context).iconTheme.color, size: 24),
             ),
           ),
           const Spacer(),
@@ -411,9 +411,9 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                     child: const Icon(Icons.close, color: AppColors.textMuted, size: 20),
                   ),
                 ),
-                const Text(
+                Text(
                   'Save your Chart',
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -470,8 +470,8 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: AppColors.textPrimary, fontSize: 16)),
-          Text(value, style: const TextStyle(color: Color(0xFFE0E0E0), fontSize: 16, fontWeight: FontWeight.normal)),
+          Text(label, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16)),
+          Text(value, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 16, fontWeight: FontWeight.normal)),
         ],
       ),
     );
@@ -514,7 +514,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     return AppCard(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
-      backgroundColor: AppColors.cardBackground,
+      backgroundColor: Theme.of(context).cardColor,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -534,14 +534,14 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
               children: [
                 Text(
                   article['title'] ?? '',
-                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.normal, height: 1.3),
+                  style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16, fontWeight: FontWeight.normal, height: 1.3),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
                 Text(
                   '${article['source']['name']} . 3 hours ago',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 13),
                 ),
               ],
             ),
@@ -596,7 +596,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                 ],
                 Text(
                   article['title'] ?? '',
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14, fontWeight: FontWeight.bold),
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -605,7 +605,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                   children: [
                     Text(
                       '${article['source']['name']} . 3 hours ago',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 12),
                     ),
                     const Spacer(),
                     if (article['commentCount'] != null && article['commentCount'] > 0) ...[
@@ -638,7 +638,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFF161922),
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -768,17 +768,17 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                     width: 600,
                     padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
                     decoration: BoxDecoration(
-                      color: isHighlighted ? const Color(0xFF161922) : Colors.transparent,
+                      color: isHighlighted ? Theme.of(context).cardColor : Colors.transparent,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       children: [
-                        Expanded(flex: 2, child: Text(DateFormat('MM/dd/yy').format(date), style: const TextStyle(color: Colors.white, fontSize: 14))),
+                        Expanded(flex: 2, child: Text(DateFormat('MM/dd/yy').format(date), style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14))),
                         Expanded(flex: 2, child: Text((record['price'] as double).toStringAsFixed(3), style: TextStyle(color: (record['isUp'] as bool) ? AppColors.success : AppColors.error, fontSize: 14))),
-                        Expanded(flex: 2, child: Text((record['open'] as double).toStringAsFixed(3), style: const TextStyle(color: Colors.white, fontSize: 14))),
-                        Expanded(flex: 2, child: Text((record['high'] as double).toStringAsFixed(3), style: const TextStyle(color: Colors.white, fontSize: 14))),
-                        Expanded(flex: 2, child: Text((record['low'] as double).toStringAsFixed(3), style: const TextStyle(color: Colors.white, fontSize: 14))),
-                        Expanded(flex: 2, child: Text(record['vol'] as String, style: const TextStyle(color: Colors.white, fontSize: 14))),
+                        Expanded(flex: 2, child: Text((record['open'] as double).toStringAsFixed(3), style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14))),
+                        Expanded(flex: 2, child: Text((record['high'] as double).toStringAsFixed(3), style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14))),
+                        Expanded(flex: 2, child: Text((record['low'] as double).toStringAsFixed(3), style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14))),
+                        Expanded(flex: 2, child: Text(record['vol'] as String, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14))),
                       ],
                     ),
                   );
@@ -831,7 +831,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         return ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            const Text('Performance', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Performance', style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color ?? Theme.of(context).textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             if (perf != null) ...[
               _buildStatRow('1D Return', '${perf['return1d']}%'),
@@ -840,7 +840,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
             ] else 
               const Text('Performance data not available', style: TextStyle(color: AppColors.textMuted)),
             const SizedBox(height: 24),
-            const Text('Volatility', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Volatility', style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color ?? Theme.of(context).textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             if (vol != null) ...[
               _buildStatRow('Beta', vol['beta']?.toString() ?? '-'),
@@ -862,7 +862,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       itemCount: related.length,
       itemBuilder: (context, index) {
         final item = related[index];
-        final isUp = item.changePercent >= 0;
+        final isUp = item.changePercent! >= 0;
         return AppCard(
           padding: const EdgeInsets.all(12),
           backgroundColor: AppColors.searchBarBackground,
@@ -891,7 +891,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
               ),
               const Spacer(),
               Text(
-                '${isUp ? '+' : ''}${item.changePercent.toStringAsFixed(2)}%',
+                '${isUp ? '+' : ''}${item.changePercent?.toStringAsFixed(2)}%',
                 style: TextStyle(color: isUp ? AppColors.success : AppColors.error, fontWeight: FontWeight.bold),
               ),
             ],
@@ -1180,17 +1180,17 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                   width: 600,
                   padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
                   decoration: BoxDecoration(
-                    color: isHighlighted ? const Color(0xFF161922) : Colors.transparent,
+                    color: isHighlighted ? Theme.of(context).cardColor : Colors.transparent,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     children: [
-                      Expanded(flex: 2, child: Text(c.month, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.normal))),
-                      Expanded(flex: 2, child: Text(c.price.toStringAsFixed(3), style: const TextStyle(color: Colors.white, fontSize: 14))),
-                      Expanded(flex: 2, child: Text('${c.change > 0 ? '+' : ''}${c.change.toStringAsFixed(3)}', style: TextStyle(color: c.change >= 0 ? AppColors.success : AppColors.error, fontSize: 14))),
-                      Expanded(flex: 2, child: Text(c.volume.toString(), style: const TextStyle(color: Colors.white, fontSize: 14))),
-                      Expanded(flex: 2, child: Text(c.price.toStringAsFixed(3), style: const TextStyle(color: Colors.white, fontSize: 14))), // Mocking Open
-                      Expanded(flex: 2, child: Text((c.price * 1.01).toStringAsFixed(3), style: const TextStyle(color: Colors.white, fontSize: 14))), // Mocking High
+                      Expanded(flex: 2, child: Text(c.month, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14, fontWeight: FontWeight.normal))),
+                      Expanded(flex: 2, child: Text(c.price!.toStringAsFixed(3), style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14))),
+                      Expanded(flex: 2, child: Text('${c.change! > 0 ? '+' : ''}${c.change?.toStringAsFixed(3)}', style: TextStyle(color: c.change! >= 0 ? AppColors.success : AppColors.error, fontSize: 14))),
+                      Expanded(flex: 2, child: Text(c.volume.toString(), style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14))),
+                      Expanded(flex: 2, child: Text(c.price!.toStringAsFixed(3), style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14))), // Mocking Open
+                      Expanded(flex: 2, child: Text((c.price! * 1.01).toStringAsFixed(3), style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14))), // Mocking High
                     ],
                   ),
                 );
@@ -1223,7 +1223,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           margin: const EdgeInsets.fromLTRB(AppTheme.paddingM, 0, AppTheme.paddingM, 16),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF161922),
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -1254,7 +1254,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           margin: const EdgeInsets.fromLTRB(AppTheme.paddingM, 0, AppTheme.paddingM, 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: const Color(0xFF161922),
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
@@ -1275,7 +1275,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
               const SizedBox(height: 12),
               Text(
                 comment.text,
-                style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.4),
+                style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14, height: 1.4),
               ),
               const SizedBox(height: 16),
               Row(
@@ -1322,14 +1322,14 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                 margin: const EdgeInsets.only(right: 12),
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF161922),
+                  color: Theme.of(context).cardColor,
                   borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: AppColors.border.withOpacity(0.5)),
+                  border: Border.all(color: Theme.of(context).dividerColor),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(symbol, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(symbol, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontWeight: FontWeight.bold, fontSize: 14)),
                     const SizedBox(width: 8),
                     Text(
                       '${isUp ? '+' : ''}${change.toStringAsFixed(2)}%',

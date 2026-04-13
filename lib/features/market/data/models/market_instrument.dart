@@ -6,10 +6,10 @@ class MarketInstrument {
   final String? exchange;
   final String? sector;
   final String? currency;
-  final double price;
+  final double? price;
   final double? previousClose;
-  final double change;
-  final double changePercent;
+  final double? change;
+  final double? changePercent;
   final double? dayHigh;
   final double? dayLow;
   final int? volume;
@@ -25,10 +25,10 @@ class MarketInstrument {
     this.exchange,
     this.sector,
     this.currency,
-    required this.price,
+    this.price,
     this.previousClose,
-    required this.change,
-    required this.changePercent,
+    this.change,
+    this.changePercent,
     this.dayHigh,
     this.dayLow,
     this.volume,
@@ -46,10 +46,16 @@ class MarketInstrument {
       exchange: json['exchange'] as String?,
       sector: json['sector'] as String?,
       currency: json['currency'] as String?,
-      price: ((json['price'] ?? json['current_price']) as num).toDouble(),
+      price: (json['price'] ?? json['current_price']) != null 
+          ? ((json['price'] ?? json['current_price']) as num).toDouble() 
+          : null,
       previousClose: (json['previousClose'] as num?)?.toDouble(),
-      change: ((json['change'] ?? json['price_change']) as num).toDouble(),
-      changePercent: ((json['changePercent'] ?? json['price_change_percent']) as num).toDouble(),
+      change: (json['change'] ?? json['price_change']) != null 
+          ? ((json['change'] ?? json['price_change']) as num).toDouble() 
+          : null,
+      changePercent: (json['changePercent'] ?? json['price_change_percent']) != null 
+          ? ((json['changePercent'] ?? json['price_change_percent']) as num).toDouble() 
+          : null,
       dayHigh: (json['dayHigh'] as num?)?.toDouble(),
       dayLow: (json['dayLow'] as num?)?.toDouble(),
       volume: json['volume'] as int?,

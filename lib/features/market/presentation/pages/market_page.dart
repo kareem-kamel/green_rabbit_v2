@@ -142,11 +142,11 @@ class _MarketPageState extends ConsumerState<MarketPage> {
             children: [
               Text(
                 'Welcome,',
-                style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondary : Colors.black45, fontSize: 12),
+                style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 12),
               ),
               Text(
                 'Mahmoud',
-                style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -190,14 +190,14 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                 assetPath,
                 width: 22,
                 height: 22,
-                color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87,
+                color: Theme.of(context).iconTheme.color,
                 errorBuilder: (context, error, stackTrace) => Icon(
                   fallbackIcon ?? Icons.error,
-                  color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87,
+                  color: Theme.of(context).iconTheme.color,
                   size: 22,
                 ),
               )
-            : Icon(icon, color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87, size: 22),
+            : Icon(icon, color: Theme.of(context).iconTheme.color, size: 22),
         ),
         if (hasBadge)
           Positioned(
@@ -246,8 +246,8 @@ class _MarketPageState extends ConsumerState<MarketPage> {
         label,
         style: TextStyle(
           color: isActive 
-              ? (Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : AppColors.primary) 
-              : Colors.grey,
+              ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primary) 
+              : Theme.of(context).textTheme.bodyMedium?.color,
           fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
         ),
       ),
@@ -276,7 +276,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
     required WidgetRef ref,
     required MarketInstrument instrument,
   }) {
-    final isUp = instrument.change >= 0;
+    final isUp = (instrument.change ?? 0) >= 0;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -304,9 +304,9 @@ class _MarketPageState extends ConsumerState<MarketPage> {
             child: instrument.logoUrl != null 
               ? Image.network(
                   instrument.logoUrl!,
-                  errorBuilder: (_, __, ___) => Icon(Icons.diamond_outlined, color: isDark ? Colors.white.withOpacity(0.7) : Colors.black45),
+                  errorBuilder: (_, __, ___) => Icon(Icons.diamond_outlined, color: Theme.of(context).iconTheme.color?.withOpacity(0.5)),
                 )
-              : Icon(Icons.diamond_outlined, color: isDark ? Colors.white.withOpacity(0.7) : Colors.black45),
+              : Icon(Icons.diamond_outlined, color: Theme.of(context).iconTheme.color?.withOpacity(0.5)),
           ),
           const SizedBox(width: 16),
           // Name and Symbol Section
@@ -316,8 +316,8 @@ class _MarketPageState extends ConsumerState<MarketPage> {
               children: [
                 Text(
                   instrument.name,
-                  style: TextStyle(
-                    color: isDark ? AppColors.textPrimary : Colors.black,
+                style: TextStyle(
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
                     fontSize: 20,
                     fontWeight: FontWeight.w400,
                     letterSpacing: 0.5,
@@ -352,16 +352,16 @@ class _MarketPageState extends ConsumerState<MarketPage> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                instrument.price.toStringAsFixed(2),
+                instrument.price?.toStringAsFixed(2) ?? '--',
                 style: TextStyle(
-                  color: isDark ? AppColors.textPrimary : Colors.black,
+                  color: Theme.of(context).textTheme.bodyLarge?.color,
                   fontSize: 20,
                   fontWeight: FontWeight.w400,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                '${isUp ? '+' : ''}${instrument.change.toStringAsFixed(2)} (${instrument.changePercent.toStringAsFixed(2)}%)',
+                '${isUp ? '+' : ''}${instrument.change?.toStringAsFixed(2) ?? '--'} (${instrument.changePercent?.toStringAsFixed(2) ?? '--'}%)',
                 style: TextStyle(
                   color: isUp ? AppColors.success : AppColors.error,
                   fontSize: 13,

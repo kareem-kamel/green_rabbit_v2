@@ -47,35 +47,39 @@ class MarketInstrumentDetail {
 
   factory MarketInstrumentDetail.fromJson(Map<String, dynamic> json) {
     return MarketInstrumentDetail(
-      id: json['id'] as String,
-      symbol: json['symbol'] as String,
-      name: json['name'] as String,
-      type: json['type'] as String,
-      exchange: json['exchange'] as String?,
-      sector: json['sector'] as String?,
-      industry: json['industry'] as String?,
-      currency: json['currency'] as String?,
-      description: json['description'] as String?,
-      website: json['website'] as String?,
-      logoUrl: json['logoUrl'] as String?,
-      country: json['country'] as String?,
-      price: PriceInfo.fromJson(json['price'] as Map<String, dynamic>),
-      volume: VolumeInfo.fromJson(json['volume'] as Map<String, dynamic>),
+      id: (json['id'] ?? '').toString(),
+      symbol: (json['symbol'] ?? '').toString(),
+      name: (json['name'] ?? 'Unknown').toString(),
+      type: (json['type'] ?? 'stock').toString(),
+      exchange: json['exchange']?.toString(),
+      sector: json['sector']?.toString(),
+      industry: json['industry']?.toString(),
+      currency: json['currency']?.toString(),
+      description: json['description']?.toString(),
+      website: json['website']?.toString(),
+      logoUrl: json['logoUrl']?.toString(),
+      country: json['country']?.toString(),
+      price: json['price'] != null 
+          ? PriceInfo.fromJson(json['price'] as Map<String, dynamic>) 
+          : PriceInfo(),
+      volume: json['volume'] != null 
+          ? VolumeInfo.fromJson(json['volume'] as Map<String, dynamic>) 
+          : VolumeInfo(),
       fundamentals: json['fundamentals'] != null 
           ? FundamentalsInfo.fromJson(json['fundamentals'] as Map<String, dynamic>) 
           : null,
-      marketStatus: json['marketStatus'] as String?,
+      marketStatus: json['marketStatus']?.toString(),
       tradingHours: json['tradingHours'] as Map<String, dynamic>?,
-      relatedInstruments: (json['relatedInstruments'] as List<dynamic>?)
+      relatedInstruments: (json['relatedInstruments'] as List?)
           ?.map((e) => RelatedInstrument.fromJson(e as Map<String, dynamic>))
           .toList(),
-      technicals: (json['technicals'] as List<dynamic>?)
+      technicals: (json['technicals'] as List?)
           ?.map((e) => TechnicalIndicator.fromJson(e as Map<String, dynamic>))
           .toList(),
-      contracts: (json['contracts'] as List<dynamic>?)
+      contracts: (json['contracts'] as List?)
           ?.map((e) => ContractInfo.fromJson(e as Map<String, dynamic>))
           .toList(),
-      comments: (json['comments'] as List<dynamic>?)
+      comments: (json['comments'] as List?)
           ?.map((e) => CommentInfo.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
@@ -99,10 +103,10 @@ class TechnicalIndicator {
 
   factory TechnicalIndicator.fromJson(Map<String, dynamic> json) {
     return TechnicalIndicator(
-      label: json['label'] as String,
-      signal: json['signal'] as String,
-      description: json['description'] as String?,
-      color: json['color'] as String,
+      label: (json['label'] ?? '').toString(),
+      signal: (json['signal'] ?? '').toString(),
+      description: json['description']?.toString(),
+      color: (json['color'] ?? 'grey').toString(),
       isLocked: json['isLocked'] as bool? ?? false,
     );
   }
@@ -110,18 +114,18 @@ class TechnicalIndicator {
 
 class ContractInfo {
   final String month;
-  final double price;
-  final double change;
-  final int volume;
+  final double? price;
+  final double? change;
+  final int? volume;
 
-  ContractInfo({required this.month, required this.price, required this.change, required this.volume});
+  ContractInfo({required this.month, this.price, this.change, this.volume});
 
   factory ContractInfo.fromJson(Map<String, dynamic> json) {
     return ContractInfo(
-      month: json['month'] as String,
-      price: (json['price'] as num).toDouble(),
-      change: (json['change'] as num).toDouble(),
-      volume: json['volume'] as int,
+      month: (json['month'] ?? '').toString(),
+      price: (json['price'] as num?)?.toDouble(),
+      change: (json['change'] as num?)?.toDouble(),
+      volume: json['volume'] as int?,
     );
   }
 }
@@ -136,61 +140,61 @@ class CommentInfo {
 
   factory CommentInfo.fromJson(Map<String, dynamic> json) {
     return CommentInfo(
-      user: json['user'] as String,
-      time: json['time'] as String,
-      text: json['text'] as String,
-      avatar: json['avatar'] as String?,
+      user: (json['user'] ?? 'Anonymous').toString(),
+      time: (json['time'] ?? '').toString(),
+      text: (json['text'] ?? '').toString(),
+      avatar: json['avatar']?.toString(),
     );
   }
 }
 
 class PriceInfo {
-  final double current;
+  final double? current;
   final double? previousClose;
   final double? open;
   final double? dayHigh;
   final double? dayLow;
   final double? week52High;
   final double? week52Low;
-  final double change;
-  final double changePercent;
+  final double? change;
+  final double? changePercent;
   final String? lastUpdatedAt;
 
   PriceInfo({
-    required this.current,
+    this.current,
     this.previousClose,
     this.open,
     this.dayHigh,
     this.dayLow,
     this.week52High,
     this.week52Low,
-    required this.change,
-    required this.changePercent,
+    this.change,
+    this.changePercent,
     this.lastUpdatedAt,
   });
 
   factory PriceInfo.fromJson(Map<String, dynamic> json) {
     return PriceInfo(
-      current: (json['current'] as num).toDouble(),
+      current: (json['current'] as num?)?.toDouble(),
       previousClose: (json['previousClose'] as num?)?.toDouble(),
       open: (json['open'] as num?)?.toDouble(),
       dayHigh: (json['dayHigh'] as num?)?.toDouble(),
       dayLow: (json['dayLow'] as num?)?.toDouble(),
       week52High: (json['week52High'] as num?)?.toDouble(),
       week52Low: (json['week52Low'] as num?)?.toDouble(),
-      change: (json['change'] as num).toDouble(),
-      changePercent: (json['changePercent'] as num).toDouble(),
+      change: (json['change'] as num?)?.toDouble(),
+      changePercent: (json['changePercent'] as num?)?.toDouble(),
       lastUpdatedAt: json['lastUpdatedAt'] as String?,
     );
   }
 }
 
 class VolumeInfo {
-  final int current;
+  final int? current;
   final int? average10d;
   final int? average3m;
 
-  VolumeInfo({required this.current, this.average10d, this.average3m});
+  VolumeInfo({this.current, this.average10d, this.average3m});
 
   factory VolumeInfo.fromJson(Map<String, dynamic> json) {
     return VolumeInfo(
@@ -276,21 +280,21 @@ class RelatedInstrument {
   final String id;
   final String symbol;
   final String name;
-  final double changePercent;
+  final double? changePercent;
 
   RelatedInstrument({
     required this.id,
     required this.symbol,
     required this.name,
-    required this.changePercent,
+    this.changePercent,
   });
 
   factory RelatedInstrument.fromJson(Map<String, dynamic> json) {
     return RelatedInstrument(
-      id: json['id'] as String,
-      symbol: json['symbol'] as String,
-      name: json['name'] as String,
-      changePercent: (json['changePercent'] as num).toDouble(),
+      id: (json['id'] ?? '').toString(),
+      symbol: (json['symbol'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      changePercent: (json['changePercent'] as num?)?.toDouble(),
     );
   }
 }

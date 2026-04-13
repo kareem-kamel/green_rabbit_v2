@@ -21,14 +21,15 @@ class ApiClient {
   }
 
   void _setupInterceptors() {
-    _dio.options.baseUrl = AppConstants.baseUrl;
+    _dio.options.baseUrl = AppConstants.apiBaseUrl;
     _dio.options.connectTimeout = const Duration(seconds: 30);
     _dio.options.receiveTimeout = const Duration(seconds: 30);
     _dio.options.headers['Content-Type'] = 'application/json';
 
     // Mock Interceptor for local development
-    // TODO: REMOVE THIS LINE TO REVERT TO LIVE API
-    // _dio.interceptors.add(MockInterceptor());
+    if (AppConstants.useMockApi) {
+      _dio.interceptors.add(MockInterceptor());
+    }
 
     // Logging Interceptor
     _dio.interceptors.add(LogInterceptor(
@@ -37,19 +38,10 @@ class ApiClient {
       logPrint: (obj) => _logger.d(obj),
     ));
 
-    // Request-response Interceptor for Tokens and Errors
+    // Request-response Interceptor for Errors
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          try {
-            final token = await _storage.read(key: AppConstants.keyAccessToken);
-            if (token != null) {
-              options.headers['Authorization'] = 'Bearer $token';
-            }
-          } catch (e) {
-            _logger.e('Error reading token from storage: $e');
-          }
-          
           _logger.d('Proceeding with actual request to: ${options.uri}');
           return handler.next(options);
         },

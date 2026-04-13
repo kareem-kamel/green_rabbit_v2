@@ -1,14 +1,25 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class AppConstants {
   AppConstants._();
 
   static const String appName = 'Green Rabbit';
-  static const String baseUrl = "https://virtuous-cooperation-production-6420.up.railway.app/api";
+  
+  static String get apiBaseUrl {
+    String url = dotenv.get('API_BASE_URL', fallback: 'https://virtuous-cooperation-production-6420.up.railway.app/api');
+    return url.endsWith('/') ? url : '$url/';
+  }
+  
+  static bool get useMockApi => dotenv.get('USE_MOCK_API', fallback: 'false') == 'true';
+  static String? get apiToken => dotenv.get('API_TOKEN', fallback: '');
   
   // Storage Keys
   static const String keyAccessToken = 'access_token';
   static const String keyRefreshToken = 'refresh_token';
   static const String keyUserStatus = 'user_status';
   static const String keyThemeMode = 'theme_mode';
+  
+  // Routes
   static const String register = "/auth/register";
   static const String verifyEmail = "/auth/verify-email";
   static const String login = "/auth/login";

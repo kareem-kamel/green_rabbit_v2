@@ -18,21 +18,21 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
 
   @override
   Future<List<MarketInstrument>> getMarketOverview(String type) async {
-    final response = await _apiClient.dio.get('/market/overview/$type');
+    final response = await _apiClient.dio.get('market/overview/$type');
     final List<dynamic> list = response.data['data']['instruments'] ?? [];
     return list.map((json) => MarketInstrument.fromJson(json)).toList();
   }
 
   @override
   Future<MarketInstrumentDetail> getInstrumentDetails(String id) async {
-    final response = await _apiClient.dio.get('/market/instruments/$id');
+    final response = await _apiClient.dio.get('market/instruments/$id');
     return MarketInstrumentDetail.fromJson(response.data['data']['instrument']);
   }
 
   @override
   Future<Map<String, dynamic>> getInstrumentChart(String id, {String? period, String? interval}) async {
     final response = await _apiClient.dio.get(
-      '/market/instruments/$id/chart',
+      'market/instruments/$id/chart',
       queryParameters: {
         if (period != null) 'period': period,
         if (interval != null) 'interval': interval,
@@ -43,19 +43,19 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
 
   @override
   Future<Map<String, dynamic>> getInstrumentStats(String id) async {
-    final response = await _apiClient.dio.get('/market/instruments/$id/stats');
+    final response = await _apiClient.dio.get('market/instruments/$id/stats');
     return response.data['data'] as Map<String, dynamic>;
   }
 
   @override
   Future<List<dynamic>> getInstrumentNews(String id) async {
-    final response = await _apiClient.dio.get('/market/instruments/$id/news');
+    final response = await _apiClient.dio.get('market/instruments/$id/news');
     return response.data['data']['articles'] as List<dynamic>;
   }
 
   @override
   Future<List<MarketInstrument>> getTrendingInstruments() async {
-    final response = await _apiClient.dio.get('/market/trending');
+    final response = await _apiClient.dio.get('market/trending');
     final List<dynamic> list = response.data['data']['trending'] ?? [];
     return list.map((json) => MarketInstrument.fromJson(json['instrument'])).toList();
   }

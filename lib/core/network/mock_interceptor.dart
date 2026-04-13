@@ -13,7 +13,7 @@ class MockInterceptor extends Interceptor {
     final path = options.path;
 
     // --- Market Overview ---
-    if (path.contains('/market/overview/')) {
+    if (path.contains('market/overview/')) {
       return handler.resolve(
         Response(
           requestOptions: options,
@@ -40,7 +40,7 @@ class MockInterceptor extends Interceptor {
     }
 
     // --- Trending ---
-    if (path.contains('/market/trending')) {
+    if (path.contains('market/trending')) {
       return handler.resolve(
         Response(
           requestOptions: options,
@@ -64,7 +64,7 @@ class MockInterceptor extends Interceptor {
     }
 
     // --- Watchlists ---
-    if (path == '/watchlists' && options.method == 'GET') {
+    if ((path == 'watchlists' || path == '/watchlists') && options.method == 'GET') {
       return handler.resolve(
         Response(
           requestOptions: options,
@@ -92,7 +92,7 @@ class MockInterceptor extends Interceptor {
     }
 
     // --- Instrument Details & Sub-paths ---
-    if (path.contains('/market/instruments/')) {
+    if (path.contains('market/instruments/')) {
       final segments = path.split('/');
       // Path format: /market/instruments/{id} or /market/instruments/{id}/{subpath}
       
@@ -228,7 +228,7 @@ class MockInterceptor extends Interceptor {
     }
 
     // --- Add to Watchlist ---
-    if (path.contains('/watchlists/') && path.endsWith('/instruments') && options.method == 'POST') {
+    if (path.contains('watchlists/') && path.endsWith('/instruments') && options.method == 'POST') {
       final id = options.data['instrumentId'];
       final instrument = _getMockBase(id);
       
@@ -261,7 +261,7 @@ class MockInterceptor extends Interceptor {
     }
 
     // --- Remove from Watchlist ---
-    if (path.contains('/watchlists/') && options.method == 'DELETE') {
+    if (path.contains('watchlists/') && options.method == 'DELETE') {
       final segments = path.split('/');
       if (segments.contains('instruments')) {
         final instrumentId = segments.last;
@@ -286,7 +286,7 @@ class MockInterceptor extends Interceptor {
     }
 
     // --- Subscription Plans ---
-    if (path == '/subscriptions/plans' && options.method == 'GET') {
+    if ((path == 'subscriptions/plans' || path == '/subscriptions/plans') && options.method == 'GET') {
       return handler.resolve(
         Response(
           requestOptions: options,
@@ -300,7 +300,7 @@ class MockInterceptor extends Interceptor {
     }
 
     // --- Current Subscription ---
-    if (path == '/subscriptions/current' && options.method == 'GET') {
+    if ((path == 'subscriptions/current' || path == '/subscriptions/current') && options.method == 'GET') {
       return handler.resolve(
         Response(
           requestOptions: options,
@@ -314,7 +314,7 @@ class MockInterceptor extends Interceptor {
     }
 
     // --- Checkout Session ---
-    if (path == '/subscriptions/checkout' && options.method == 'POST') {
+    if ((path == 'subscriptions/checkout' || path == '/subscriptions/checkout') && options.method == 'POST') {
       final planId = options.data['planId'];
       final plan = _mockSubscriptionPlans.firstWhere((p) => p['id'] == planId, orElse: () => _mockSubscriptionPlans.first);
 
@@ -342,7 +342,7 @@ class MockInterceptor extends Interceptor {
     }
 
     // --- Subscription Cancel ---
-    if (path == '/subscriptions/cancel' && options.method == 'POST') {
+    if ((path == 'subscriptions/cancel' || path == '/subscriptions/cancel') && options.method == 'POST') {
       _currentSubscription['status'] = 'canceled';
       _currentSubscription['cancelAtPeriodEnd'] = true;
       
@@ -365,7 +365,7 @@ class MockInterceptor extends Interceptor {
     }
 
     // --- Webhook (Public) ---
-    if (path == '/subscriptions/webhook' && options.method == 'POST') {
+    if ((path == 'subscriptions/webhook' || path == '/subscriptions/webhook') && options.method == 'POST') {
       return handler.resolve(
         Response(
           requestOptions: options,

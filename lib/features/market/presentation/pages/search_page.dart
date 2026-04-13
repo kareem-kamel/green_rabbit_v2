@@ -30,18 +30,19 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   @override
   Widget build(BuildContext context) {
     final marketAsync = ref.watch(marketOverviewProvider('stocks'));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundSubtle,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
-            _buildSearchBar(),
+            _buildSearchBar(isDark),
             Expanded(
               child: marketAsync.when(
-                data: (instruments) => _buildContent(instruments),
+                data: (instruments) => _buildContent(instruments, isDark),
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, stack) => Center(child: Text('Error: $err')),
+                error: (err, stack) => Center(child: Text('Error: $err', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color))),
               ),
             ),
           ],
@@ -50,13 +51,13 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: AppColors.textPrimary, size: 20),
+            icon: Icon(Icons.arrow_back_ios, color: Theme.of(context).iconTheme.color, size: 20),
             onPressed: () => Navigator.pop(context),
           ),
           Expanded(
@@ -75,7 +76,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     );
   }
 
-  Widget _buildContent(List<MarketInstrument> instruments) {
+  Widget _buildContent(List<MarketInstrument> instruments, bool isDark) {
     final query = _searchController.text.toLowerCase();
     final filtered = instruments.where((i) => 
       i.symbol.toLowerCase().contains(query) ||
@@ -83,41 +84,41 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     ).toList();
 
     if (!_isActive && query.isEmpty) {
-      return _buildDefaultState(instruments.take(5).toList());
+      return _buildDefaultState(instruments.take(5).toList(), isDark);
     }
     
     if (filtered.isEmpty) {
-      return _buildNoResultsState();
+      return _buildNoResultsState(isDark);
     }
 
-    return _buildActiveState(filtered);
+    return _buildActiveState(filtered, isDark);
   }
 
-  Widget _buildDefaultState(List<MarketInstrument> popular) {
+  Widget _buildDefaultState(List<MarketInstrument> popular, bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM + 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Recent search',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 14),
           ),
           const SizedBox(height: 16),
           ..._recentSearches.map((search) => Padding(
             padding: const EdgeInsets.only(bottom: 16.0),
             child: Row(
               children: [
-                Text(search, style: const TextStyle(color: AppColors.textPrimary, fontSize: 16)),
+                Text(search, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16)),
                 const Spacer(),
-                const Icon(Icons.close, color: AppColors.textMuted, size: 18),
+                Icon(Icons.close, color: Theme.of(context).iconTheme.color?.withOpacity(0.5), size: 18),
               ],
             ),
           )),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'Popular',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+            style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 14),
           ),
           const SizedBox(height: 16),
           Expanded(
@@ -132,7 +133,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     );
   }
 
-  Widget _buildActiveState(List<MarketInstrument> filtered) {
+  Widget _buildActiveState(List<MarketInstrument> filtered, bool isDark) {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM + 4, vertical: 10),
       itemCount: filtered.length,
@@ -141,7 +142,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     );
   }
 
-  Widget _buildNoResultsState() {
+  Widget _buildNoResultsState(bool isDark) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 40.0),
@@ -152,22 +153,22 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               width: 100,
               height: 100,
               decoration: BoxDecoration(
-                color: AppColors.textPrimary.withOpacity(0.05),
+                color: isDark ? AppColors.textPrimary.withOpacity(0.05) : Colors.black.withOpacity(0.05),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.search, color: AppColors.textMuted, size: 50),
+              child: Icon(Icons.search, color: isDark ? AppColors.textMuted : Colors.black38, size: 50),
             ),
             const SizedBox(height: 24),
             Text(
               'No results found for "${_searchController.text}"',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'We couldn\'t find what you\'re looking for. Try a different symbol or name',
               textAlign: TextAlign.center,
-              style: TextStyle(color: AppColors.textMuted, fontSize: 14),
+              style: TextStyle(color: isDark ? AppColors.textMuted : Colors.black45, fontSize: 14),
             ),
           ],
         ),
@@ -202,7 +203,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   Text(
                     instrument.name,
                     style: TextStyle(
-                      color: isDark ? AppColors.textPrimary : Colors.black,
+                      color: Theme.of(context).textTheme.bodyLarge?.color,
                       fontSize: 16,
                       fontWeight: FontWeight.w400,
                     ),
@@ -230,7 +231,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 shape: BoxShape.circle,
                 border: Border.all(color: isDark ? Colors.white24 : Colors.black26),
               ),
-              child: const Icon(Icons.add, color: Colors.white70, size: 12),
+              child: Icon(Icons.add, color: isDark ? Colors.white70 : Colors.black54, size: 12),
             ),
           ),
         ],
@@ -239,6 +240,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   void _showSuccessSnackBar(BuildContext context, MarketInstrument instrument) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         backgroundColor: Colors.transparent,
@@ -247,8 +249,15 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         content: Container(
           padding: const EdgeInsets.fromLTRB(0, 12, 12, 12),
           decoration: BoxDecoration(
-            color: const Color(0xFF131722),
+            color: isDark ? const Color(0xFF131722) : Colors.white,
             borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              if (!isDark) BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Row(
             children: [
@@ -267,7 +276,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               Expanded(
                 child: Text(
                   '${instrument.name} ${instrument.symbol} successfully added to watchlist',
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87, fontSize: 13),
                 ),
               ),
               const SizedBox(width: 8),

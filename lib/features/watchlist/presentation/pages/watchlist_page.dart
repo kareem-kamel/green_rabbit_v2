@@ -193,9 +193,9 @@ class WatchlistPage extends ConsumerWidget {
                 context,
                 instrument.name,
                 instrument.symbol,
-                instrument.price.toStringAsFixed(2),
-                '${instrument.change >= 0 ? '+' : ''}${instrument.change.toStringAsFixed(2)} (${instrument.changePercent.toStringAsFixed(2)}%)',
-                instrument.change >= 0,
+                instrument.price?.toStringAsFixed(2) ?? 'N/A',
+                '${(instrument.change ?? 0) >= 0 ? '+' : ''}${instrument.change?.toStringAsFixed(2) ?? '0.00'} (${instrument.changePercent?.toStringAsFixed(2) ?? '0.00'}%)',
+                (instrument.change ?? 0) >= 0,
                 logoUrl: instrument.logoUrl,
                 onTap: () {
                   Navigator.push(
@@ -222,8 +222,15 @@ class WatchlistPage extends ConsumerWidget {
             width: 140,
             height: 140,
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
+              color: Colors.white,
               shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 20,
+                  spreadRadius: 5,
+                ),
+              ],
             ),
             child: Center(
               child: Image.asset(
