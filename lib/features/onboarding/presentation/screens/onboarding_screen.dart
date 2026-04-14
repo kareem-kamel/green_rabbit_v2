@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:green_rabbit/core/di/injection_container.dart';
 import 'package:green_rabbit/features/auth/data/api/auth_api.dart';
 import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/auth_cubit.dart';
@@ -37,15 +38,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (context) => BlocProvider(
-          create: (context) => AuthCubit(
-            repository: AuthRepository(
-              api: AuthApi(), // This will use your Dio setup!
+            builder: (context) => BlocProvider(
+              // The professional way: Ask your injection container for the Cubit!
+              create: (context) => sl<AuthCubit>(), 
+              child: const LoginScreen(),
             ),
           ),
-          child: const LoginScreen(),
-        ),
-      ),
     );
   }
 

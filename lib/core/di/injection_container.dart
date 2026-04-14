@@ -12,20 +12,25 @@ import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/subscriptions/data/repository/subscription_repository.dart';
 import '../../features/subscriptions/presentation/cubit/subscription_cubit.dart';
 import '../network/api_client.dart';
-import '../../features/auth/data/api/auth_api.dart';
+// import '../../features/auth/data/api/auth_api.dart'; // You don't need this anymore!
 
 final sl = GetIt.instance;
 
 Future<void> init() async {
   // Core
-  sl.registerLazySingleton(() => Logger());
-  sl.registerLazySingleton(() => const FlutterSecureStorage());
-  sl.registerLazySingleton(() => Dio());
-  sl.registerLazySingleton(() => ApiClient(
-        dio: sl(),
-        storage: sl(),
-        logger: sl(),
-      ));
+  sl.registerLazySingleton<Logger>(() => Logger());
+  sl.registerLazySingleton<FlutterSecureStorage>(
+    () => const FlutterSecureStorage(),
+  );
+  sl.registerLazySingleton<Dio>(() => Dio());
+
+  sl.registerLazySingleton<ApiClient>(
+    () => ApiClient(
+      dio: sl<Dio>(),
+      storage: sl<FlutterSecureStorage>(),
+      logger: sl<Logger>(),
+    ),
+  );
 
   // Data Sources
   sl.registerLazySingleton<MarketRemoteDataSource>(
@@ -36,19 +41,29 @@ Future<void> init() async {
   );
 
   // Repositories
-  sl.registerLazySingleton<MarketRepository>(
-    () => MarketRepositoryImpl(sl()),
-  );
+  sl.registerLazySingleton<MarketRepository>(() => MarketRepositoryImpl(sl()));
   sl.registerLazySingleton<WatchlistRepository>(
     () => WatchlistRepositoryImpl(sl()),
   );
 
   // Auth
-  sl.registerLazySingleton(() => AuthApi());
-  sl.registerLazySingleton(() => AuthRepository(api: sl()));
-  sl.registerFactory(() => AuthCubit(repository: sl()));
+  sl.registerLazySingleton<AuthRepository>(
+    () => AuthRepository(
+      apiClient: sl<ApiClient>(),
+      storage: sl<FlutterSecureStorage>(),
+    ),
+  );
+
+  sl.registerFactory<AuthCubit>(
+    () => AuthCubit(repository: sl<AuthRepository>()),
+  );
 
   // Subscriptions
-  sl.registerLazySingleton(() => SubscriptionRepository());
-  sl.registerFactory(() => SubscriptionCubit(repository: sl()));
+  sl.registerLazySingleton<SubscriptionRepository>(
+    () => SubscriptionRepository(),
+  );
+
+  sl.registerFactory<SubscriptionCubit>(
+    () => SubscriptionCubit(repository: sl<SubscriptionRepository>()),
+  );
 }

@@ -1,51 +1,114 @@
-import '../api/auth_api.dart';
-import '../models/user_model.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:green_rabbit/core/constants/app_constants.dart';
+import 'package:green_rabbit/core/network/api_client.dart';
+// Adjust path based on your folder structure
 
 class AuthRepository {
+  final ApiClient apiClient;
+  final FlutterSecureStorage storage;
 
-  final AuthApi api;
+  AuthRepository({required this.apiClient, required this.storage});
 
-  AuthRepository({required this.api});
-  Future<UserModel> register({
+  // --- REGISTER ---
+  Future<void> register({
     required String email,
     required String password,
     required String confirmPassword,
   }) async {
     try {
-      final response = await api.registerUser(
-        email: email,
-        password: password,
-        confirmPassword: confirmPassword,
+      final response = await apiClient.dio.post(
+        AppConstants.register,
+        data: {
+          "fullName": "kareem kamel",
+          "email": email.trim(),
+          "password": password,
+          "passwordConfirm": confirmPassword,
+          "country": "AE",
+          "phone": "+971501234567",
+          "acceptTerms": true,
+          "acceptPrivacy":
+              true, // Make sure this matches your backend's exact key!
+        },
       );
-      return UserModel.fromJson(response);
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception("Registration failed.");
+      }
+    } on DioException catch (e) {
+      // Extract the exact error message the backend team sends (e.g., "Email already in use")
+      final errorMessage =
+          e.response?.data['message'] ??
+          'An error occurred during registration.';
+      throw Exception(errorMessage);
     } catch (e) {
-      rethrow;
+      throw Exception(e.toString());
     }
   }
 
-  Future<UserModel> login({
+  // --- LOGIN ---
+  Future<void> login({
     required String email,
     required String password,
     required bool rememberMe,
   }) async {
     try {
-      // Call the fake API
-      final response = await api.loginUser(
-        email: email, 
-        password: password, 
-        rememberMe: rememberMe,
+      final response = await apiClient.dio.post(
+        AppConstants.login,
+        data: {"email": email.trim(), "password": password},
       );
-      
-      // Convert JSON Map into our Dart UserModel
-      return UserModel.fromJson(response);
+
+      // Grab the 'data' object from the response
+      final responseData = response.data['data'];
+
+      if (responseData != null && responseData['accessToken'] != null) {
+        final accessToken = responseData['accessToken'];
+        final refreshToken =
+            responseData['refreshToken']; // Good to grab this now!
+        final userStatus =
+            responseData['user']['status']; // e.g., "pending_onboarding"
+
+        // Save the tokens securely!
+        await storage.write(
+          key: AppConstants.keyAccessToken,
+          value: accessToken,
+        );
+
+        if (refreshToken != null) {
+          await storage.write(
+            key: AppConstants.keyRefreshToken,
+            value: refreshToken,
+          );
+        }
+
+        // Optional: Save user status to storage so your app knows where to route them on startup
+        if (userStatus != null) {
+          await storage.write(
+            key: AppConstants.keyUserStatus,
+            value: userStatus,
+          );
+        }
+      } else {
+        throw Exception("Login successful, but no access token was found.");
+      }
+    } on DioException catch (e) {
+      final errorMessage =
+          e.response?.data['message'] ?? 'Invalid email or password.';
+      throw Exception(errorMessage);
     } catch (e) {
-      // Pass the error up to the Cubit
-      rethrow; 
+      throw Exception(e.toString());
     }
   }
 
+  // --- LOGOUT ---
   Future<void> logout() async {
-    // Perform any cleanup (e.g. clearing tokens) here if needed.
-    return;
+    try {
+      // Clear all secure storage (tokens, user status, etc.)
+      await storage.deleteAll();
+      // Optional: If your backend has a /logout endpoint to invalidate the token, call it here:
+      // await apiClient.dio.post('/auth/logout');
+    } catch (e) {
+      throw Exception("Failed to logout securely.");
+    }
   }
 }
