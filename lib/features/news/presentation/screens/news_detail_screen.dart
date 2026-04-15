@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/ai_news_summary_card.dart';
+import '../../../../core/widgets/ask_ai_badge.dart';
 import '../../data/models/news_model.dart';
 import '../../data/repositories/news_repository.dart';
 import '../cubit/related_news_cubit.dart';
+import '../../../chatbot/presentation/screens/chatbot_screen.dart';
 import '../../../../core/di/injection_container.dart' as di;
 
 // ─────────────────────────────────────────────
@@ -164,25 +167,46 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: widget.article.largeImage.isNotEmpty
-                        ? Image.network(
-                            widget.article.largeImage,
-                            height: 220,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                Container(
-                              height: 220,
-                              color: isDark ? AppColors.cardBg : Colors.grey[300],
-                              child: Icon(Icons.image_not_supported,
-                                  color: isDark ? Colors.white : Colors.black54),
-                            ),
-                          )
-                        : Container(
-                            height: 220,
-                            color: isDark ? AppColors.cardBg : Colors.grey[300]),
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: widget.article.largeImage.isNotEmpty
+                            ? Image.network(
+                                widget.article.largeImage,
+                                height: 220,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                  height: 220,
+                                  color: isDark ? AppColors.cardBg : Colors.grey[300],
+                                  child: Icon(Icons.image_not_supported,
+                                      color: isDark ? Colors.white : Colors.black54),
+                                ),
+                              )
+                            : Container(
+                                height: 220,
+                                color: isDark ? AppColors.cardBg : Colors.grey[300]),
+                      ),
+                      Positioned(
+                        top: 12,
+                        left: 12,
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ChatBotScreen(
+                                  initialPrompt: "Tell me more about this news: ${widget.article.title}",
+                                ),
+                              ),
+                            );
+                          },
+                          child: const AskAIBadge(),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
 
@@ -204,7 +228,19 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                   const SizedBox(height: 12),
 
                   // AI summary card under the chips (CIEN, SBUX, ...)
-                  AiNewsSummaryCard(onTap: () {}),
+                  AiNewsSummaryCard(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatBotScreen(
+                            initialPrompt: "Summarize this article: ${widget.article.title}\n\n${widget.article.snippet}",
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  
                   const SizedBox(height: 8),
                   _buildSeparator(),
                   const SizedBox(height: 8),

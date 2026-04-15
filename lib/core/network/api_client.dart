@@ -25,6 +25,7 @@ class ApiClient {
     _dio.options.connectTimeout = const Duration(seconds: 30);
     _dio.options.receiveTimeout = const Duration(seconds: 30);
     _dio.options.headers['Content-Type'] = 'application/json';
+    _dio.options.headers['X-Pinggy-No-Screen'] = 'true';
 
     // Mock Interceptor for local development
     // TODO: REMOVE THIS LINE TO REVERT TO LIVE API

@@ -327,7 +327,7 @@ class _NewsScreenState extends State<NewsScreen> {
                       )
                     : Container(height: 220, color: isDark ? AppColors.cardBg : Colors.grey[300]),
               ),
-              _buildAskAIBadge(12, 12),
+              _buildAskAIBadge(context, 12, 12, article),
               Positioned(
                 top: 12,
                 right: 12,
@@ -359,11 +359,23 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
-  Widget _buildAskAIBadge(double top, double left) {
+  Widget _buildAskAIBadge(BuildContext context, double top, double left, NewsArticle article) {
     return Positioned(
       top: top,
       left: left,
-      child: const AskAIBadge(),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChatBotScreen(
+                initialPrompt: "Tell me more about this news: ${article.title}",
+              ),
+            ),
+          );
+        },
+        child: const AskAIBadge(),
+      ),
     );
   }
 
@@ -425,22 +437,47 @@ class _NewsScreenState extends State<NewsScreen> {
         ),
         child: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: article.smallImage.isNotEmpty
-                  ? Image.network(
-                      article.smallImage,
-                      width: 90,
-                      height: 90,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        width: 90,
-                        height: 90,
-                        color: isDark ? AppColors.scaffoldBg : Colors.grey[200],
-                        child: Icon(Icons.image_not_supported, color: isDark ? Colors.white : Colors.black54, size: 20),
-                      ),
-                    )
-                  : Container(width: 90, height: 90, color: isDark ? AppColors.scaffoldBg : Colors.grey[200]),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: article.smallImage.isNotEmpty
+                      ? Image.network(
+                          article.smallImage,
+                          width: 90,
+                          height: 90,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            width: 90,
+                            height: 90,
+                            color: isDark ? AppColors.scaffoldBg : Colors.grey[200],
+                            child: Icon(Icons.image_not_supported, color: isDark ? Colors.white : Colors.black54, size: 20),
+                          ),
+                        )
+                      : Container(width: 90, height: 90, color: isDark ? AppColors.scaffoldBg : Colors.grey[200]),
+                ),
+                Positioned(
+                  top: 4,
+                  left: 4,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatBotScreen(
+                            initialPrompt: "Tell me more about this news: ${article.title}",
+                          ),
+                        ),
+                      );
+                    },
+                    child: const AskAIBadge(
+                      iconSize: 12,
+                      label: "Ask AI",
+                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(width: 16),
             Expanded(

@@ -1,38 +1,21 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import '../../../../core/constants/app_constants.dart';
+import '../../../../core/network/api_client.dart';
 import '../models/news_model.dart';
 
 class NewsRepository {
-  final _storage = const FlutterSecureStorage();
+  final ApiClient _apiClient;
 
-  // Get values directly in the method to ensure they are fresh
-  String get _token => dotenv.get('API_TOKEN');
-  String get _baseUrl => dotenv.get('BASE_URL');
+  NewsRepository(this._apiClient);
+
   String get _endpoint => dotenv.get('NEWS_ENDPOINT');
-  String get _relatedEndpoint => dotenv.get('RELATED_NEWS_ENDPOINT');
 
   // THIS NAME MUST MATCH THE CUBIT CALL
   Future<List<NewsArticle>> fetchNewsFeed() async {
     try {
-      final url = '$_baseUrl$_endpoint';
-      print('Fetching news from: $url'); // Debug log
-
-      final headers = {
-        'X-Pinggy-No-Screen': 'true',
-        'Authorization': 'Bearer $_token',
-      };
-
-      final response = await http.get(
-        Uri.parse(url),
-        headers: headers,
-      );
+      final response = await _apiClient.dio.get(_endpoint);
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> decodedData = json.decode(response.body);
-        print('Response body: ${response.body}'); // Debug log
+        final decodedData = response.data;
         
         // Match the structure from your example data
         if (decodedData['success'] == true && decodedData.containsKey('data')) {
@@ -54,19 +37,11 @@ class NewsRepository {
   Future<List<NewsArticle>> fetchRelatedNews(String id) async {
     try {
       // Using RESTful pattern: {endpoint}/{id}/related
-      final url = '$_baseUrl$_endpoint/$id/related';
-      print('Fetching related news from: $url');
-
-      final headers = {
-        'X-Pinggy-No-Screen': 'true',
-        'Authorization': 'Bearer $_token',
-      };
-
-      final response = await http.get(Uri.parse(url), headers: headers);
+      final url = '$_endpoint/$id/related';
+      final response = await _apiClient.dio.get(url);
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> decodedData = json.decode(response.body);
-        print('Related news response: ${response.body}'); // Debug log
+        final decodedData = response.data;
         
         if (decodedData['success'] == true && decodedData.containsKey('data')) {
           final data = decodedData['data'];
@@ -85,15 +60,10 @@ class NewsRepository {
 
   Future<NewsArticle?> fetchArticleDetail(String id) async {
     try {
-      final url = '$_baseUrl$_endpoint/$id';
-      final headers = {
-        'X-Pinggy-No-Screen': 'true',
-        'Authorization': 'Bearer $_token',
-      };
-
-      final response = await http.get(Uri.parse(url), headers: headers);
+      final url = '$_endpoint/$id';
+      final response = await _apiClient.dio.get(url);
       if (response.statusCode == 200) {
-        final decodedData = json.decode(response.body);
+        final decodedData = response.data;
         if (decodedData['success'] == true && decodedData['data'] != null) {
           return NewsArticle.fromJson(decodedData['data']);
         }
@@ -107,16 +77,11 @@ class NewsRepository {
 
   Future<bool> toggleFavorite(String id, bool isAdd) async {
     try {
-      final url = '$_baseUrl/news/$id/favorite';
-      final headers = {
-        'X-Pinggy-No-Screen': 'true',
-        'Authorization': 'Bearer $_token',
-        'Content-Type': 'application/json',
-      };
+      final url = '$_endpoint/$id/favorite';
 
       final response = isAdd 
-          ? await http.post(Uri.parse(url), headers: headers)
-          : await http.delete(Uri.parse(url), headers: headers);
+          ? await _apiClient.dio.post(url)
+          : await _apiClient.dio.delete(url);
 
       return response.statusCode == 200;
     } catch (e) {
@@ -127,15 +92,10 @@ class NewsRepository {
 
   Future<List<NewsArticle>> fetchFavoriteArticles() async {
     try {
-      final url = '$_baseUrl/news/favorites';
-      final headers = {
-        'X-Pinggy-No-Screen': 'true',
-        'Authorization': 'Bearer $_token',
-      };
-
-      final response = await http.get(Uri.parse(url), headers: headers);
+      final url = '$_endpoint/favorites';
+      final response = await _apiClient.dio.get(url);
       if (response.statusCode == 200) {
-        final decodedData = json.decode(response.body);
+        final decodedData = response.data;
         if (decodedData['success'] == true && decodedData['data'] != null) {
           final List articlesJson = decodedData['data']['articles'] ?? [];
           return articlesJson.map((json) => NewsArticle.fromJson(json)).toList();

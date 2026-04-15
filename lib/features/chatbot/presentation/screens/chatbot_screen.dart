@@ -9,7 +9,13 @@ import '../cubit/chat_state.dart';
 
 class ChatBotScreen extends StatefulWidget {
   final bool startEmpty;
-  const ChatBotScreen({super.key, this.startEmpty = false});
+  final String? initialPrompt;
+
+  const ChatBotScreen({
+    super.key, 
+    this.startEmpty = false,
+    this.initialPrompt,
+  });
 
   @override
   State<ChatBotScreen> createState() => _ChatBotScreenState();
@@ -20,6 +26,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _clearedOnOpen = false;
+  bool _initialPromptSent = false;
 
   @override
   void dispose() {
@@ -57,6 +64,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             if (!mounted) return;
             _clearedOnOpen = true;
             cubit.startNewChat();
+          });
+        }
+
+        if (widget.initialPrompt != null && !_initialPromptSent) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _initialPromptSent = true;
+            cubit.sendMessage(widget.initialPrompt!);
           });
         }
 

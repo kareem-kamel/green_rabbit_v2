@@ -1,23 +1,24 @@
 import 'dart:convert';
 import 'dart:math';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:green_rabbit/core/network/api_client.dart';
 import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 
 class AIService {
-  String get _baseUrl => dotenv.get('BASE_URL');
+  final ApiClient _apiClient;
+
+  AIService(this._apiClient);
+
   String get _summarizeEndpoint => dotenv.get('AI_SUMMARIZE_ENDPOINT');
   String get _usageEndpoint => dotenv.get('AI_USAGE_ENDPOINT');
   String get _conversationsEndpoint => dotenv.get('AI_CHAT_CONVERSATIONS_ENDPOINT');
   
-  String get _token => dotenv.get('API_TOKEN');
-
-  Map<String, String> get _headers => {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer $_token',
-    'X-Pinggy-No-Screen': 'true',
-    'X-Idempotency-Key': _generateUuid(),
-  };
+  Map<String, String> _getHeaders() {
+    return {
+      'X-Idempotency-Key': _generateUuid(),
+    };
+  }
 
   String _generateUuid() {
     final random = Random();
@@ -32,17 +33,17 @@ class AIService {
   // --- Summarization ---
   Future<AISummary> summarizeContent(String targetId, String type) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl$_summarizeEndpoint'),
-        headers: _headers,
-        body: json.encode({
+      final response = await _apiClient.dio.post(
+        _summarizeEndpoint,
+        options: Options(headers: _getHeaders()),
+        data: {
           'targetId': targetId,
           'type': type,
-        }),
+        },
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = response.data;
         if (data['success'] == true) {
           return AISummary.fromJson(data['data']);
         }
@@ -56,13 +57,13 @@ class AIService {
   // --- Usage Statistics ---
   Future<AIUsageStats> getUsageStats() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl$_usageEndpoint'),
-        headers: _headers,
+      final response = await _apiClient.dio.get(
+        _usageEndpoint,
+        options: Options(headers: _getHeaders()),
       );
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = response.data;
         if (data['success'] == true) {
           return AIUsageStats.fromJson(data['data']);
         }
@@ -76,17 +77,13 @@ class AIService {
   // --- Conversations ---
   Future<List<Conversation>> listConversations() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_baseUrl$_conversationsEndpoint'),
-        headers: _headers,
+      final response = await _apiClient.dio.get(
+        _conversationsEndpoint,
+        options: Options(headers: _getHeaders()),
       );
 
-      print('List Conversations URL: ${Uri.parse('$_baseUrl$_conversationsEndpoint')}');
-      print('List Conversations Status: ${response.statusCode}');
-      print('List Conversations Body: ${response.body}');
-
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = response.data;
         if (data['success'] == true && data['data'] is List) {
           final List list = data['data'];
           return list.map((item) => Conversation.fromJson(item as Map<String, dynamic>)).toList();
@@ -101,22 +98,17 @@ class AIService {
 
   Future<Conversation> createConversation(String title) async {
     try {
-      final body = {'title': title};
-      final response = await http.post(
-        Uri.parse('$_baseUrl$_conversationsEndpoint'),
-        headers: _headers,
-        body: json.encode(body),
+      final data = {'title': title};
+      final response = await _apiClient.dio.post(
+        _conversationsEndpoint,
+        options: Options(headers: _getHeaders()),
+        data: data,
       );
 
-      print('Create Conversation URL: ${Uri.parse('$_baseUrl$_conversationsEndpoint')}');
-      print('Create Conversation Body: ${json.encode(body)}');
-      print('Create Conversation Status: ${response.statusCode}');
-      print('Create Conversation Response: ${response.body}');
-
       if (response.statusCode == 201 || response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['data'] != null) {
-          return Conversation.fromJson(data['data'] as Map<String, dynamic>);
+        final responseData = response.data;
+        if (responseData['data'] != null) {
+          return Conversation.fromJson(responseData['data'] as Map<String, dynamic>);
         }
       }
       throw Exception('Failed to create conversation');
@@ -128,9 +120,9 @@ class AIService {
 
   Future<bool> deleteConversation(String id) async {
     try {
-      final response = await http.delete(
-        Uri.parse('$_baseUrl$_conversationsEndpoint/$id'),
-        headers: _headers,
+      final response = await _apiClient.dio.delete(
+        '$_conversationsEndpoint/$id',
+        options: Options(headers: _getHeaders()),
       );
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
@@ -141,18 +133,14 @@ class AIService {
   // --- Messages ---
   Future<List<ChatMessage>> getConversationMessages(String conversationId) async {
     try {
-      final url = '$_baseUrl$_conversationsEndpoint/$conversationId/messages';
-      final response = await http.get(
-        Uri.parse(url),
-        headers: _headers,
+      final url = '$_conversationsEndpoint/$conversationId/messages';
+      final response = await _apiClient.dio.get(
+        url,
+        options: Options(headers: _getHeaders()),
       );
 
-      print('Get Messages URL: $url');
-      print('Get Messages Status: ${response.statusCode}');
-      print('Get Messages Body: ${response.body}');
-
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = response.data;
         if (data['success'] == true && data['data'] is List) {
           final List list = data['data'];
           return list.map((item) => ChatMessage.fromJson(item as Map<String, dynamic>)).toList();
@@ -167,33 +155,24 @@ class AIService {
 
   Future<ChatMessage> sendMessage(String conversationId, String content) async {
     try {
-      final url = '$_baseUrl$_conversationsEndpoint/$conversationId/messages';
-      final body = {'content': content, 'stream': false};
+      final url = '$_conversationsEndpoint/$conversationId/messages';
+      final data = {'content': content, 'stream': false};
       
-      print('Send Message URL: $url');
-      print('Send Message Body: ${json.encode(body)}');
-
-      final response = await http.post(
-        Uri.parse(url),
-        headers: _headers,
-        body: json.encode(body),
+      final response = await _apiClient.dio.post(
+        url,
+        options: Options(headers: _getHeaders()),
+        data: data,
       );
 
-      print('Send Message Status: ${response.statusCode}');
-      print('Send Message Response: ${response.body}');
-
       if (response.statusCode == 201 || response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['data'] != null && data['data']['message'] != null) {
-          final messageData = data['data']['message'] as Map<String, dynamic>;
-          // Inject the conversationId into the message data since it's needed by the model
+        final responseData = response.data;
+        if (responseData['data'] != null && responseData['data']['message'] != null) {
+          final messageData = responseData['data']['message'] as Map<String, dynamic>;
           messageData['conversationId'] = conversationId;
           return ChatMessage.fromJson(messageData);
         }
       }
-      
-      print('API Error [${response.statusCode}]: ${response.body}');
-      throw Exception('Failed to send message: ${response.statusCode}');
+      throw Exception('Failed to send message');
     } catch (e) {
       print('Send message error: $e');
       throw Exception('Send message error: $e');
@@ -202,8 +181,8 @@ class AIService {
 
   Stream<String> sendMessageStream(String conversationId, String content) async* {
     try {
-      final url = '$_baseUrl$_conversationsEndpoint/$conversationId/messages?stream=true';
-      final body = {
+      final url = '$_conversationsEndpoint/$conversationId/messages?stream=true';
+      final data = {
         'content': content,
         'metadata': {
           'temperature': 0.7,
@@ -211,131 +190,52 @@ class AIService {
         }
       };
       
-      print('--- STREAMING REQUEST START ---');
-      print('URL: $url');
-      print('Headers: $_headers');
-      print('Body: ${json.encode(body)}');
-      print('-------------------------------');
-
-      final request = http.Request('POST', Uri.parse(url));
-      request.headers.addAll(_headers);
-      request.body = json.encode(body);
-
-      final client = http.Client();
-      final response = await client.send(request);
-
-      print('Stream Response Status: ${response.statusCode}');
-      print('Stream Response Headers: ${response.headers}');
+      final response = await _apiClient.dio.post(
+        url,
+        data: data,
+        options: Options(
+          headers: _getHeaders(),
+          responseType: ResponseType.stream,
+        ),
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('Stream connected successfully, listening for chunks...');
-        await for (final chunk in response.stream.transform(utf8.decoder)) {
-          print('--- RAW CHUNK START ---');
-          print('Chunk: "$chunk"');
-          print('-----------------------');
-          
+        final ResponseBody stream = response.data;
+        await for (final chunk in utf8.decoder.bind(stream.stream)) {
           final lines = chunk.split('\n');
           for (final line in lines) {
             final trimmedLine = line.trim();
             if (trimmedLine.isEmpty) continue;
             
-            print('Processing line: "$trimmedLine"');
-            
             try {
-              // 1. Handle "data: {...}" format
               if (trimmedLine.startsWith('data:')) {
                 final cleanedLine = trimmedLine.replaceFirst('data:', '').trim();
-                if (cleanedLine == '[DONE]') {
-                  print('Stream received [DONE] signal');
-                  return;
-                }
+                if (cleanedLine == '[DONE]') return;
                 
                 final decoded = json.decode(cleanedLine);
                 final type = decoded['type']?.toString();
                 
-                // If it's a token, yield only the content chunk
-                if (type == 'token') {
-                  final text = decoded['content']?.toString() ?? '';
-                  if (text.isNotEmpty) {
-                    // Split the text into individual characters to ensure a smooth typing effect
-                    // even if the backend sends multiple characters or words in one chunk.
-                    for (var i = 0; i < text.length; i++) {
-                      yield text[i];
-                      await Future.delayed(const Duration(milliseconds: 15));
-                    }
-                  }
-                } 
-                // If it's the final 'done' message, we don't yield it 
-                // because we already yielded all tokens incrementally.
-                else if (type == 'done') {
-                  print('Stream received type: done');
-                  return; 
-                }
-                // Fallback for other formats (like legacy summary)
-                else {
-                  final text = decoded['data']?['message']?['content'] ?? 
-                               decoded['message']?['content'] ?? 
-                               decoded['content'] ?? '';
-                  if (text.isNotEmpty) {
-                    for (var i = 0; i < text.length; i++) {
-                      yield text[i];
-                      await Future.delayed(const Duration(milliseconds: 15));
-                    }
-                  }
-                }
-              } 
-              // 2. Ignore "event: message" or other SSE metadata lines
-              else if (trimmedLine.startsWith('event:')) {
-                print('Skipping SSE metadata: $trimmedLine');
-                continue;
-              }
-              // 3. Handle raw JSON line without "data:" prefix
-              else if (trimmedLine.startsWith('{')) {
-                final decoded = json.decode(trimmedLine);
-                final type = decoded['type']?.toString();
-                
                 if (type == 'token') {
                   final text = decoded['content']?.toString() ?? '';
                   if (text.isNotEmpty) {
                     for (var i = 0; i < text.length; i++) {
                       yield text[i];
-                      await Future.delayed(const Duration(milliseconds: 15));
+                      await Future.delayed(const Duration(milliseconds: 5));
                     }
                   }
                 } else if (type == 'done') {
-                  return;
-                } else {
-                  final text = decoded['data']?['message']?['content'] ?? 
-                               decoded['message']?['content'] ?? 
-                               decoded['content'] ?? '';
-                  if (text.isNotEmpty) {
-                    for (var i = 0; i < text.length; i++) {
-                      yield text[i];
-                      await Future.delayed(const Duration(milliseconds: 15));
-                    }
-                  }
+                  return; 
                 }
               }
             } catch (e) {
-              print('Error parsing line: $trimmedLine - Error: $e');
-              // Don't yield raw text unless it's clearly content
+              print('Error decoding stream line: $e');
             }
           }
         }
-        print('Stream closed by server.');
-      } else {
-        print('Stream connection failed with status: ${response.statusCode}');
-        if (response.statusCode == 429) {
-          yield "Error 429: Too many requests. Please wait a moment and try again.";
-        } else if (response.statusCode == 401) {
-          yield "Error 401: Unauthorized. Please check your token.";
-        } else {
-          yield "Error: ${response.statusCode}";
-        }
       }
     } catch (e) {
-      print('Critical Streaming Error: $e');
-      yield "Connection Error: $e";
+      print('Stream error: $e');
+      throw Exception('Stream error: $e');
     }
   }
 }

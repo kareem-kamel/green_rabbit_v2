@@ -14,6 +14,7 @@ import '../../features/subscriptions/presentation/cubit/subscription_cubit.dart'
 import '../../features/news/data/repositories/news_repository.dart';
 import '../../features/news/presentation/cubit/news_cubit.dart';
 import '../../features/news/presentation/cubit/related_news_cubit.dart';
+import '../../features/news/presentation/cubit/news_summary_cubit.dart';
 import '../network/api_client.dart';
 import '../../features/auth/data/api/auth_api.dart';
 import '../../features/chatbot/data/repository/chatbot_repository.dart';
@@ -71,16 +72,17 @@ Future<void> init() async {
   sl.registerFactory(() => SubscriptionCubit(repository: sl()));
 
   // News
-  sl.registerLazySingleton(() => NewsRepository());
+  sl.registerLazySingleton(() => NewsRepository(sl<ApiClient>()));
   sl.registerFactory(() => NewsCubit(repository: sl()));
   sl.registerFactory(() => RelatedNewsCubit(repository: sl()));
+  sl.registerFactory(() => NewsSummaryCubit(sl()));
 
   // AI & Chatbot
-  sl.registerLazySingleton(() => AIService());
+  sl.registerLazySingleton(() => AIService(sl<ApiClient>()));
   sl.registerLazySingleton(() => ChatbotRepository(sl()));
   sl.registerFactory(() => ChatCubit(repository: sl()));
 
   // Alerts
-  sl.registerLazySingleton(() => AlertRepository());
+  sl.registerLazySingleton(() => AlertRepository(sl<ApiClient>()));
   sl.registerFactory(() => AlertCubit(repository: sl()));
 }
