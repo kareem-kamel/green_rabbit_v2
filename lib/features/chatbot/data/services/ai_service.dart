@@ -10,7 +10,7 @@ class AIService {
   String get _usageEndpoint => dotenv.get('AI_USAGE_ENDPOINT');
   String get _conversationsEndpoint => dotenv.get('AI_CHAT_CONVERSATIONS_ENDPOINT');
   
-  String get _token => 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4N2Y3MDI4MC0wNWQzLTQwOTAtOTRmZS00MjVjNGIyOGY5Y2UiLCJlbWFpbCI6ImFobWVkNDExMTQ0QGdtYWlsLmNvbSIsInRpZXIiOiJmcmVlIiwibGFuZyI6ImVuIiwidHYiOjEsImlhdCI6MTc3NjIxMDYzMSwiZXhwIjoxNzc2MjE0MjMxfQ.2Ad77By0DH_1FEvBcJZBBE8O';
+  String get _token => dotenv.get('API_TOKEN');
 
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
@@ -251,38 +251,87 @@ class AIService {
                 }
                 
                 final decoded = json.decode(cleanedLine);
-                final text = decoded['data']?['message']?['content'] ?? 
-                             decoded['message']?['content'] ?? 
-                             decoded['content'] ?? '';
+                final type = decoded['type']?.toString();
                 
-                print('Parsed from SSE data: "$text"');
-                if (text.isNotEmpty) yield text;
+                // If it's a token, yield only the content chunk
+                if (type == 'token') {
+                  final text = decoded['content']?.toString() ?? '';
+                  if (text.isNotEmpty) {
+                    // Split the text into individual characters to ensure a smooth typing effect
+                    // even if the backend sends multiple characters or words in one chunk.
+                    for (var i = 0; i < text.length; i++) {
+                      yield text[i];
+                      await Future.delayed(const Duration(milliseconds: 15));
+                    }
+                  }
+                } 
+                // If it's the final 'done' message, we don't yield it 
+                // because we already yielded all tokens incrementally.
+                else if (type == 'done') {
+                  print('Stream received type: done');
+                  return; 
+                }
+                // Fallback for other formats (like legacy summary)
+                else {
+                  final text = decoded['data']?['message']?['content'] ?? 
+                               decoded['message']?['content'] ?? 
+                               decoded['content'] ?? '';
+                  if (text.isNotEmpty) {
+                    for (var i = 0; i < text.length; i++) {
+                      yield text[i];
+                      await Future.delayed(const Duration(milliseconds: 15));
+                    }
+                  }
+                }
               } 
-              // 2. Handle raw JSON line without "data:" prefix
+              // 2. Ignore "event: message" or other SSE metadata lines
+              else if (trimmedLine.startsWith('event:')) {
+                print('Skipping SSE metadata: $trimmedLine');
+                continue;
+              }
+              // 3. Handle raw JSON line without "data:" prefix
               else if (trimmedLine.startsWith('{')) {
                 final decoded = json.decode(trimmedLine);
-                final text = decoded['data']?['message']?['content'] ?? 
-                             decoded['message']?['content'] ?? 
-                             decoded['content'] ?? '';
+                final type = decoded['type']?.toString();
                 
-                print('Parsed from raw JSON line: "$text"');
-                if (text.isNotEmpty) yield text;
-              }
-              // 3. Handle raw text (not JSON)
-              else {
-                print('Yielding as raw text line: "$trimmedLine"');
-                yield trimmedLine;
+                if (type == 'token') {
+                  final text = decoded['content']?.toString() ?? '';
+                  if (text.isNotEmpty) {
+                    for (var i = 0; i < text.length; i++) {
+                      yield text[i];
+                      await Future.delayed(const Duration(milliseconds: 15));
+                    }
+                  }
+                } else if (type == 'done') {
+                  return;
+                } else {
+                  final text = decoded['data']?['message']?['content'] ?? 
+                               decoded['message']?['content'] ?? 
+                               decoded['content'] ?? '';
+                  if (text.isNotEmpty) {
+                    for (var i = 0; i < text.length; i++) {
+                      yield text[i];
+                      await Future.delayed(const Duration(milliseconds: 15));
+                    }
+                  }
+                }
               }
             } catch (e) {
               print('Error parsing line: $trimmedLine - Error: $e');
-              yield trimmedLine;
+              // Don't yield raw text unless it's clearly content
             }
           }
         }
         print('Stream closed by server.');
       } else {
         print('Stream connection failed with status: ${response.statusCode}');
-        yield "Error: ${response.statusCode}";
+        if (response.statusCode == 429) {
+          yield "Error 429: Too many requests. Please wait a moment and try again.";
+        } else if (response.statusCode == 401) {
+          yield "Error 401: Unauthorized. Please check your token.";
+        } else {
+          yield "Error: ${response.statusCode}";
+        }
       }
     } catch (e) {
       print('Critical Streaming Error: $e');

@@ -9,7 +9,7 @@ class NewsRepository {
   final _storage = const FlutterSecureStorage();
 
   // Get values directly in the method to ensure they are fresh
-  String get _token => 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4N2Y3MDI4MC0wNWQzLTQwOTAtOTRmZS00MjVjNGIyOGY5Y2UiLCJlbWFpbCI6ImFobWVkNDExMTQ0QGdtYWlsLmNvbSIsInRpZXIiOiJmcmVlIiwibGFuZyI6ImVuIiwidHYiOjEsImlhdCI6MTc3NjIxMDYzMSwiZXhwIjoxNzc2MjE0MjMxfQ.2Ad77By0DH_1FEvBcJZBBE8O';
+  String get _token => dotenv.get('API_TOKEN');
   String get _baseUrl => dotenv.get('BASE_URL');
   String get _endpoint => dotenv.get('NEWS_ENDPOINT');
   String get _relatedEndpoint => dotenv.get('RELATED_NEWS_ENDPOINT');

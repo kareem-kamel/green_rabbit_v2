@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import '../widgets/typing_indicator.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 import '../cubit/chat_cubit.dart';
@@ -310,18 +312,51 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      itemCount: state.messages.length + 1,
+      itemCount: state.messages.length + (state.isGenerating ? 2 : 1),
       itemBuilder: (context, index) {
-        if (index == state.messages.length) {
+        if (index == state.messages.length + (state.isGenerating ? 1 : 0)) {
           return _buildCreditsRow(state);
         }
+        if (state.isGenerating && index == state.messages.length) {
+          // Only show a separate typing bubble if the last message is from the user
+          // (meaning the assistant placeholder hasn't been added or is still being prepared)
+          final lastMsg = state.messages.last;
+          if (lastMsg.isUser) {
+            return _buildTypingIndicatorBubble();
+          }
+          return const SizedBox.shrink();
+        }
+        
         final msg = state.messages[index];
-        return _buildMessageBubble(context, msg);
+        return _buildMessageBubble(context, msg, state.isGenerating && index == state.messages.length - 1);
       },
     );
   }
 
-  Widget _buildMessageBubble(BuildContext context, ChatMessage msg) {
+  Widget _buildTypingIndicatorBubble() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12, right: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.07),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(4),
+            topRight: Radius.circular(16),
+            bottomLeft: Radius.circular(16),
+            bottomRight: Radius.circular(16),
+          ),
+        ),
+        child: const SizedBox(
+          width: 40,
+          child: TypingIndicator(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(BuildContext context, ChatMessage msg, bool isLastGenerating) {
     if (msg.isUser) {
       return Align(
         alignment: Alignment.centerRight,
@@ -337,7 +372,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               bottomRight: Radius.circular(4),
             ),
           ),
-          child: Text(msg.content, style: const TextStyle(color: Colors.white, fontSize: 14)),
+          child: MarkdownBody(
+            data: msg.content,
+            selectable: true,
+            styleSheet: MarkdownStyleSheet(
+              p: const TextStyle(color: Colors.white, fontSize: 14),
+              strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+          ),
         ),
       );
     }
@@ -359,7 +401,20 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 bottomRight: Radius.circular(16),
               ),
             ),
-            child: Text(msg.content, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5)),
+            child: msg.content.isEmpty && isLastGenerating
+                ? const SizedBox(width: 40, child: TypingIndicator())
+                : MarkdownBody(
+                    data: msg.content,
+                    selectable: true,
+                    styleSheet: MarkdownStyleSheet(
+                      p: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5),
+                      strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      h1: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      h2: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      h3: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                      listBullet: const TextStyle(color: Colors.white70),
+                    ),
+                  ),
           ),
           if (msg.hasChart) ...[
             const SizedBox(height: 8),

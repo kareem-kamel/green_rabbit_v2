@@ -5,7 +5,7 @@ import '../../features/news/data/models/news_model.dart';
 
 class NewsRepository {
   String get _url => dotenv.get('BASE_URL') + dotenv.get('NEWS_ENDPOINT');
-  String get _token => 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4N2Y3MDI4MC0wNWQzLTQwOTAtOTRmZS00MjVjNGIyOGY5Y2UiLCJlbWFpbCI6ImFobWVkNDExMTQ0QGdtYWlsLmNvbSIsInRpZXIiOiJmcmVlIiwibGFuZyI6ImVuIiwidHYiOjEsImlhdCI6MTc3NjIxMDYzMSwiZXhwIjoxNzc2MjE0MjMxfQ.2Ad77By0DH_1FEvBcJZBBE8O';
+  String get _token => dotenv.get('API_TOKEN');
 
   // THIS NAME MUST MATCH THE CUBIT CALL
   Future<List<NewsArticle>> fetchNewsFeed() async {
