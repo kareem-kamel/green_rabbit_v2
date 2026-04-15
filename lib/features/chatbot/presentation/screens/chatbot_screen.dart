@@ -184,23 +184,25 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 itemCount: state.history.length,
                 itemBuilder: (context, index) {
                   final chat = state.history[index];
+                  final isActive = state.activeConversationId == chat.id;
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
                     decoration: BoxDecoration(
-                      color: chat.isActive ? Colors.white.withOpacity(0.1) : Colors.transparent,
+                      color: isActive ? Colors.white.withOpacity(0.1) : Colors.transparent,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: ListTile(
                       title: Text(chat.title,
                           style: TextStyle(
-                            color: chat.isActive ? Colors.white : Colors.grey,
+                            color: isActive ? Colors.white : Colors.grey,
                             fontSize: 14,
                           )),
-                      trailing: chat.isActive
+                      trailing: isActive
                           ? const Icon(Icons.more_horiz, color: Colors.grey, size: 18)
                           : null,
                       onTap: () {
                         Navigator.pop(context);
+                        context.read<ChatCubit>().selectConversation(chat.id);
                       },
                     ),
                   );

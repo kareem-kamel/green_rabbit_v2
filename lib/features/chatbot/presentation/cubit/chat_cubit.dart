@@ -6,21 +6,61 @@ import 'chat_state.dart';
 class ChatCubit extends Cubit<ChatState> {
   final ChatbotRepository repository;
 
-  ChatCubit({required this.repository}) : super(ChatState(
-    history: const [
-      ChatHistory(title: "Intel Stock", isActive: true),
-      ChatHistory(title: "Apple go vi"),
-      ChatHistory(title: "Nividia Up"),
-    ],
-    messages: const [
+  ChatCubit({required this.repository}) : super(const ChatState(
+    messages: [
       ChatMessage(content: "Hello there! How may I assist you today?", role: 'assistant', id: '0', conversationId: '0', createdAt: null),
     ]
-  ));
+  )) {
+    loadHistory();
+    loadUsageStats();
+  }
+
+  Future<void> loadHistory() async {
+    try {
+      final history = await repository.getConversations();
+      emit(state.copyWith(history: history));
+    } catch (e) {
+      print('Error loading history: $e');
+    }
+  }
+
+  Future<void> loadUsageStats() async {
+    try {
+      final stats = await repository.getUsageStats();
+      emit(state.copyWith(
+        creditsUsed: stats.currentPeriod.tokensUsed,
+        totalCredits: stats.currentPeriod.tokensLimit,
+      ));
+    } catch (e) {
+      print('Error loading usage stats: $e');
+    }
+  }
+
+  Future<void> selectConversation(String id) async {
+    emit(state.copyWith(isGenerating: true, activeConversationId: id, hasMessages: true));
+    try {
+      final messages = await repository.getMessages(id);
+      emit(state.copyWith(
+        messages: messages.isEmpty 
+          ? [const ChatMessage(content: "Hello there! How may I assist you today?", role: 'assistant', id: '0', conversationId: '0', createdAt: null)]
+          : messages,
+        isGenerating: false,
+      ));
+    } catch (e) {
+      emit(state.copyWith(isGenerating: false));
+      print('Error loading messages: $e');
+    }
+  }
 
   void toggleVoiceMode(bool val) => emit(state.copyWith(isVoiceMode: val));
 
   void startNewChat() {
-    emit(state.copyWith(hasMessages: false, isVoiceMode: false, messages: []));
+    emit(state.copyWith(
+      hasMessages: false, 
+      isVoiceMode: false, 
+      messages: [const ChatMessage(content: "Hello there! How may I assist you today?", role: 'assistant', id: '0', conversationId: '0', createdAt: null)],
+      activeConversationId: null,
+    ));
   }
 
   Future<void> sendMessage(String text) async {
@@ -28,7 +68,7 @@ class ChatCubit extends Cubit<ChatState> {
 
     final userMessage = ChatMessage(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
-      conversationId: 'current',
+      conversationId: state.activeConversationId ?? 'current',
       role: 'user',
       content: text,
       createdAt: DateTime.now(),
@@ -46,15 +86,16 @@ class ChatCubit extends Cubit<ChatState> {
 
     try {
       // 1. Check if we have an active conversation
-      List<Conversation> conversations = await repository.getConversations();
       String conversationId;
-      
-      if (conversations.isNotEmpty) {
-        conversationId = conversations.first.id;
+      if (state.activeConversationId != null) {
+        conversationId = state.activeConversationId!;
       } else {
         // 2. Create one if not
-        final newConv = await repository.createConversation("New Chat");
+        final newConv = await repository.createConversation(text.length > 30 ? "${text.substring(0, 30)}..." : text);
         conversationId = newConv.id;
+        emit(state.copyWith(activeConversationId: conversationId));
+        // Refresh history to show the new conversation in sidebar
+        loadHistory();
       }
 
       // 3. Send message (Streaming)
@@ -72,14 +113,9 @@ class ChatCubit extends Cubit<ChatState> {
       emit(state.copyWith(messages: withAiPlaceholder));
 
       String fullContent = '';
-      print('Starting to process stream from repository...');
       await for (final chunk in repository.sendMessageStream(conversationId, text)) {
-        if (isClosed) {
-          print('Cubit closed while streaming, stopping.');
-          return;
-        }
+        if (isClosed) return;
         
-        print('Cubit received chunk: "$chunk"');
         fullContent += chunk;
         
         final lastMsg = state.messages.last.copyWith(content: fullContent);
@@ -89,15 +125,14 @@ class ChatCubit extends Cubit<ChatState> {
         emit(state.copyWith(messages: updatedStreamMessages, isGenerating: true));
       }
       
-      print('Stream processing complete. Full response length: ${fullContent.length}');
       emit(state.copyWith(isGenerating: false));
+      loadUsageStats();
     } catch (e) {
       if (isClosed) return;
       
-      // Add error message to chat for visibility
       final errorMsg = ChatMessage(
         id: 'err_${DateTime.now().millisecondsSinceEpoch}',
-        conversationId: 'current',
+        conversationId: state.activeConversationId ?? 'current',
         role: 'assistant',
         content: "Sorry, I'm having trouble connecting to the AI. Please check your network and try again.",
         createdAt: DateTime.now(),

@@ -218,9 +218,12 @@ class AIService {
                 if (type == 'token') {
                   final text = decoded['content']?.toString() ?? '';
                   if (text.isNotEmpty) {
-                    for (var i = 0; i < text.length; i++) {
-                      yield text[i];
-                      await Future.delayed(const Duration(milliseconds: 5));
+                    // Split the token into words/parts to type faster than letter-by-letter
+                    // but still maintain the "typing" flow.
+                    final parts = text.split(RegExp(r'(?<=\s)|(?=\s)'));
+                    for (final part in parts) {
+                      yield part;
+                      await Future.delayed(const Duration(milliseconds: 10));
                     }
                   }
                 } else if (type == 'done') {

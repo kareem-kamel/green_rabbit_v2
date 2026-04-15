@@ -19,6 +19,7 @@ class NewsScreen extends StatefulWidget {
 
 class _NewsScreenState extends State<NewsScreen> {
   String selectedCategory = "Featured";
+  bool _showAllNews = false;
 
   // --- OPEN THE ALERT MENU ---
   void _openAlertMenu(BuildContext context) {
@@ -62,7 +63,7 @@ class _NewsScreenState extends State<NewsScreen> {
         ),
         actions: [
           _buildAppBarIcon(
-            icon: Icons.search,
+            assetPath: 'assets/icons/filter.png',
             onTap: () {},
           ),
           const SizedBox(width: 12),
@@ -88,7 +89,16 @@ class _NewsScreenState extends State<NewsScreen> {
           } else if (state is NewsLoaded) {
             final articles = state.articles;
             final featuredArticle = articles.isNotEmpty ? articles.first : null;
-            final otherArticles = articles.length > 1 ? articles.sublist(1) : <NewsArticle>[];
+            
+            // Separate latest news and analysis
+            final analysisArticles = articles.where((a) => a.relatedAnalysis.isNotEmpty).toList();
+            
+            // Limit latest news to 10 articles (excluding featured) if _showAllNews is false
+            final displayedArticles = _showAllNews 
+                ? (articles.length > 1 ? articles.sublist(1) : <NewsArticle>[])
+                : (articles.length > 1 
+                    ? articles.sublist(1, (articles.length > 11 ? 11 : articles.length)) 
+                    : <NewsArticle>[]);
 
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -114,7 +124,12 @@ class _NewsScreenState extends State<NewsScreen> {
                   const SizedBox(height: 24),
 
                   // Section header
-                  _buildSectionHeader("Latest News", hasFilter: true),
+                  _buildSectionHeader(
+                    "Latest News", 
+                    hasFilter: true,
+                    hasViewAll: !_showAllNews && articles.length > 11,
+                    onViewAll: () => setState(() => _showAllNews = true),
+                  ),
                   const SizedBox(height: 12),
 
                   // Featured article
@@ -126,11 +141,49 @@ class _NewsScreenState extends State<NewsScreen> {
                   const SizedBox(height: 8),
 
                   // Analysis & Opinions header
-                  _buildSectionHeader("Analysis & Opinions", hasViewAll: true),
+                  _buildSectionHeader("Analysis & Opinions", hasViewAll: false),
                   const SizedBox(height: 12),
 
-                  // Small articles
-                  ...otherArticles.map((article) => _buildSmallArticle(context, article)).toList(),
+                  // Show articles that have analysis data
+                  if (analysisArticles.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20),
+                      child: Center(
+                        child: Text(
+                          "No recent analysis available.",
+                          style: TextStyle(color: Colors.grey, fontSize: 14),
+                        ),
+                      ),
+                    )
+                  else
+                    ...analysisArticles.take(3).map((article) => _buildSmallArticle(context, article)).toList(),
+
+                  const SizedBox(height: 8),
+                  _buildSeparator(),
+                  const SizedBox(height: 8),
+
+                  // All News section (the limited list)
+                  _buildSectionHeader("All Latest News", hasViewAll: false),
+                  const SizedBox(height: 12),
+                  ...displayedArticles.map((article) => _buildSmallArticle(context, article)).toList(),
+
+                  if (!_showAllNews && articles.length > 11)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: TextButton(
+                          onPressed: () => setState(() => _showAllNews = true),
+                          child: const Text(
+                            "View All News",
+                            style: TextStyle(
+                              color: AppColors.secondaryBlue,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
 
                   const SizedBox(height: 8),
                   _buildSeparator(),
@@ -266,7 +319,7 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, {bool hasFilter = false, bool hasViewAll = false}) {
+  Widget _buildSectionHeader(String title, {bool hasFilter = false, bool hasViewAll = false, VoidCallback? onViewAll}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -275,8 +328,9 @@ class _NewsScreenState extends State<NewsScreen> {
       children: [
         Text(title,
             style: TextStyle(
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
+                fontFamily: 'Urbanist',
                 color: isDark ? Colors.white : Colors.black)),
         if (hasFilter)
           Image.asset(
@@ -287,9 +341,13 @@ class _NewsScreenState extends State<NewsScreen> {
           ),
         if (hasViewAll)
           GestureDetector(
-            onTap: () {},
+            onTap: onViewAll,
             child: const Text("View all",
-                style: TextStyle(color: AppColors.secondaryBlue, fontWeight: FontWeight.w600)),
+                style: TextStyle(
+                    color: AppColors.secondaryBlue,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Urbanist')),
           ),
       ],
     );
