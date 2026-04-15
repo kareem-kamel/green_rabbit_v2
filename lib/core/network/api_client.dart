@@ -21,14 +21,14 @@ class ApiClient {
   }
 
   void _setupInterceptors() {
-    _dio.options.baseUrl = '${AppConstants.apiBaseUrl}/api';
+    _dio.options.baseUrl = AppConstants.apiBaseUrl;
     _dio.options.connectTimeout = const Duration(seconds: 30);
     _dio.options.receiveTimeout = const Duration(seconds: 30);
     _dio.options.headers['Content-Type'] = 'application/json';
 
     // Mock Interceptor for local development
     // TODO: REMOVE THIS LINE TO REVERT TO LIVE API
-    _dio.interceptors.add(MockInterceptor());
+    // _dio.interceptors.add(MockInterceptor());
 
     // Logging Interceptor
     _dio.interceptors.add(LogInterceptor(

@@ -11,6 +11,9 @@ class AppConstants {
   static const String keyRefreshToken = 'refresh_token';
   static const String keyUserStatus = 'user_status';
   static const String keyThemeMode = 'theme_mode';
+  static const String register = "/auth/register";
+  static const String verifyEmail = "/auth/verify-email";
+  static const String login = "/auth/login";
 
   // Animation Durations
   static const Duration splashDelay = Duration(seconds: 3);
