@@ -135,8 +135,15 @@ class ChatCubit extends Cubit<ChatState> {
       
       emit(state.copyWith(messages: withAiPlaceholder));
 
+      // Pass the previous messages as history to provide context to the AI
+      // We exclude the current user message (last message in withAiPlaceholder is the AI placeholder, 
+      // the one before that is the current user message)
+      final history = withAiPlaceholder.length >= 2 
+          ? withAiPlaceholder.sublist(0, withAiPlaceholder.length - 2) 
+          : <ChatMessage>[];
+
       String fullContent = '';
-      await for (final chunk in repository.sendMessageStream(conversationId, text)) {
+      await for (final chunk in repository.sendMessageStream(conversationId, text, history: history)) {
         if (isClosed) return;
         
         // CRITICAL: Only update state if the user is still in the SAME conversation
@@ -173,6 +180,12 @@ class ChatCubit extends Cubit<ChatState> {
 
       emit(state.copyWith(isGenerating: false, messages: aiMessages));
     }
+  }
+
+  // This is a placeholder for non-streaming messages if needed
+  Future<void> sendMessageNonStreaming(String text) async {
+    if (text.isEmpty) return;
+    // ... logic for non-streaming if ever needed
   }
 
   void stopGenerating() => emit(state.copyWith(isGenerating: false));

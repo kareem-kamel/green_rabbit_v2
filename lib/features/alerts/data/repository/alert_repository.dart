@@ -1,5 +1,5 @@
+import 'package:green_rabbit/core/constants/app_constants.dart';
 import 'package:green_rabbit/core/network/api_client.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/alert_model.dart';
 
 class AlertRepository {
@@ -7,7 +7,7 @@ class AlertRepository {
 
   AlertRepository(this._apiClient);
 
-  String get _alertsEndpoint => dotenv.get('ALERTS_ENDPOINT');
+  String get _alertsEndpoint => AppConstants.alertsEndpoint;
 
   Future<List<AlertModel>> fetchAlerts() async {
     try {

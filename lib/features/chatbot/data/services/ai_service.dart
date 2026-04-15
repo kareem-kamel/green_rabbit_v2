@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:dio/dio.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:green_rabbit/core/constants/app_constants.dart';
 import 'package:green_rabbit/core/network/api_client.dart';
 import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 
@@ -10,9 +10,9 @@ class AIService {
 
   AIService(this._apiClient);
 
-  String get _summarizeEndpoint => dotenv.get('AI_SUMMARIZE_ENDPOINT');
-  String get _usageEndpoint => dotenv.get('AI_USAGE_ENDPOINT');
-  String get _conversationsEndpoint => dotenv.get('AI_CHAT_CONVERSATIONS_ENDPOINT');
+  String get _summarizeEndpoint => AppConstants.aiSummarizeEndpoint;
+  String get _usageEndpoint => AppConstants.aiUsageEndpoint;
+  String get _conversationsEndpoint => AppConstants.aiChatConversationsEndpoint;
   
   Map<String, String> _getHeaders() {
     return {
@@ -153,10 +153,14 @@ class AIService {
     }
   }
 
-  Future<ChatMessage> sendMessage(String conversationId, String content) async {
+  Future<ChatMessage> sendMessage(String conversationId, String content, {List<ChatMessage> history = const []}) async {
     try {
       final url = '$_conversationsEndpoint/$conversationId/messages';
-      final data = {'content': content, 'stream': false};
+      final messagesJson = history.map((m) => m.toJson()).toList();
+      final data = {
+        'content': content,
+        'messages': messagesJson, // The backend likely expects history in 'messages'
+      };
       
       final response = await _apiClient.dio.post(
         url,
@@ -179,11 +183,13 @@ class AIService {
     }
   }
 
-  Stream<String> sendMessageStream(String conversationId, String content) async* {
+  Stream<String> sendMessageStream(String conversationId, String content, {List<ChatMessage> history = const []}) async* {
     try {
       final url = '$_conversationsEndpoint/$conversationId/messages?stream=true';
+      final messagesJson = history.map((m) => m.toJson()).toList();
       final data = {
         'content': content,
+        'messages': messagesJson,
         'metadata': {
           'temperature': 0.7,
           'maxTokens': 1000,

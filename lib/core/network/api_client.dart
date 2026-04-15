@@ -43,12 +43,19 @@ class ApiClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           try {
-            final token = await _storage.read(key: AppConstants.keyAccessToken);
-            if (token != null) {
+            // Priority: Check storage first for a dynamic login token
+            String? token = await _storage.read(key: AppConstants.keyAccessToken);
+            
+            // If storage is empty, fall back to the hardcoded AppConstants.apiToken
+            if (token == null || token.isEmpty) {
+              token = AppConstants.apiToken;
+            }
+
+            if (token != null && token.isNotEmpty) {
               options.headers['Authorization'] = 'Bearer $token';
             }
           } catch (e) {
-            _logger.e('Error reading token from storage: $e');
+            _logger.e('Error reading token: $e');
           }
           
           _logger.d('Proceeding with actual request to: ${options.uri}');

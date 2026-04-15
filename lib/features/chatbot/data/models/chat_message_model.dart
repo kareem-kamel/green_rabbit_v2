@@ -68,6 +68,13 @@ class ChatMessage extends Equatable {
   @override
   List<Object?> get props => [id, conversationId, role, content, tokensUsed, feedback, createdAt, hasChart];
 
+  Map<String, dynamic> toJson() {
+    return {
+      'role': role,
+      'content': content,
+    };
+  }
+
   ChatMessage copyWith({
     String? id,
     String? conversationId,

@@ -34,11 +34,11 @@ class ChatbotRepository {
     return _aiService.getConversationMessages(conversationId);
   }
 
-  Future<ChatMessage> sendMessage(String conversationId, String content) {
-    return _aiService.sendMessage(conversationId, content);
+  Future<ChatMessage> sendMessage(String conversationId, String content, {List<ChatMessage> history = const []}) {
+    return _aiService.sendMessage(conversationId, content, history: history);
   }
 
-  Stream<String> sendMessageStream(String conversationId, String content) {
-    return _aiService.sendMessageStream(conversationId, content);
+  Stream<String> sendMessageStream(String conversationId, String content, {List<ChatMessage> history = const []}) {
+    return _aiService.sendMessageStream(conversationId, content, history: history);
   }
 }

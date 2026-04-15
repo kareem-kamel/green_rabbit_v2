@@ -1,4 +1,4 @@
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:green_rabbit/core/constants/app_constants.dart';
 import '../../../../core/network/api_client.dart';
 import '../models/news_model.dart';
 
@@ -7,7 +7,7 @@ class NewsRepository {
 
   NewsRepository(this._apiClient);
 
-  String get _endpoint => dotenv.get('NEWS_ENDPOINT');
+  String get _endpoint => AppConstants.newsEndpoint;
 
   // THIS NAME MUST MATCH THE CUBIT CALL
   Future<List<NewsArticle>> fetchNewsFeed() async {
