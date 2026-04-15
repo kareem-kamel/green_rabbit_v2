@@ -10,7 +10,7 @@ class AIService {
   String get _usageEndpoint => dotenv.get('AI_USAGE_ENDPOINT');
   String get _conversationsEndpoint => dotenv.get('AI_CHAT_CONVERSATIONS_ENDPOINT');
   
-  String get _token => dotenv.get('API_TOKEN');
+  String get _token => 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4N2Y3MDI4MC0wNWQzLTQwOTAtOTRmZS00MjVjNGIyOGY5Y2UiLCJlbWFpbCI6ImFobWVkNDExMTQ0QGdtYWlsLmNvbSIsInRpZXIiOiJmcmVlIiwibGFuZyI6ImVuIiwidHYiOjEsImlhdCI6MTc3NjIxMDYzMSwiZXhwIjoxNzc2MjE0MjMxfQ.2Ad77By0DH_1FEvBcJZBBE8O';
 
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',

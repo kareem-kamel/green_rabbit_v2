@@ -6,7 +6,7 @@ import '../models/alert_model.dart';
 class AlertRepository {
   String get _baseUrl => dotenv.get('BASE_URL');
   String get _alertsEndpoint => dotenv.get('ALERTS_ENDPOINT');
-  String get _token => dotenv.get('API_TOKEN');
+  String get _token => 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4N2Y3MDI4MC0wNWQzLTQwOTAtOTRmZS00MjVjNGIyOGY5Y2UiLCJlbWFpbCI6ImFobWVkNDExMTQ0QGdtYWlsLmNvbSIsInRpZXIiOiJmcmVlIiwibGFuZyI6ImVuIiwidHYiOjEsImlhdCI6MTc3NjIxMDYzMSwiZXhwIjoxNzc2MjE0MjMxfQ.2Ad77By0DH_1FEvBcJZBBE8O';
 
   Future<List<AlertModel>> fetchAlerts() async {
     try {
