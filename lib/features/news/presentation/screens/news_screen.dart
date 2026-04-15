@@ -63,7 +63,7 @@ class _NewsScreenState extends State<NewsScreen> {
         ),
         actions: [
           _buildAppBarIcon(
-            assetPath: 'assets/icons/filter.png',
+            icon: Icons.search,
             onTap: () {},
           ),
           const SizedBox(width: 12),
@@ -90,15 +90,15 @@ class _NewsScreenState extends State<NewsScreen> {
             final articles = state.articles;
             final featuredArticle = articles.isNotEmpty ? articles.first : null;
             
-            // Separate latest news and analysis
-            final analysisArticles = articles.where((a) => a.relatedAnalysis.isNotEmpty).toList();
-            
-            // Limit latest news to 10 articles (excluding featured) if _showAllNews is false
-            final displayedArticles = _showAllNews 
-                ? (articles.length > 1 ? articles.sublist(1) : <NewsArticle>[])
-                : (articles.length > 1 
-                    ? articles.sublist(1, (articles.length > 11 ? 11 : articles.length)) 
-                    : <NewsArticle>[]);
+            // Show only the first 4 small articles initially (total 5 with featured)
+            final initialSmallArticles = articles.length > 1 
+                ? (articles.length > 5 ? articles.sublist(1, 5) : articles.sublist(1)) 
+                : <NewsArticle>[];
+                
+            // The rest of the news
+            final remainingArticles = articles.length > 5 
+                ? articles.sublist(5) 
+                : <NewsArticle>[];
 
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -127,55 +127,34 @@ class _NewsScreenState extends State<NewsScreen> {
                   _buildSectionHeader(
                     "Latest News", 
                     hasFilter: true,
-                    hasViewAll: !_showAllNews && articles.length > 11,
-                    onViewAll: () => setState(() => _showAllNews = true),
+                    hasViewAll: false,
                   ),
                   const SizedBox(height: 12),
 
-                  // Featured article
+                  // Featured article (only the first one)
                   if (featuredArticle != null)
                     _buildFeaturedArticle(featuredArticle),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
                   _buildSeparator(),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 16),
 
-                  // Analysis & Opinions header
-                  _buildSectionHeader("Analysis & Opinions", hasViewAll: false),
-                  const SizedBox(height: 12),
+                  // Initial small articles (up to 4)
+                  ...initialSmallArticles.map((article) => _buildSmallArticle(context, article)).toList(),
 
-                  // Show articles that have analysis data
-                  if (analysisArticles.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 20),
-                      child: Center(
-                        child: Text(
-                          "No recent analysis available.",
-                          style: TextStyle(color: Colors.grey, fontSize: 14),
-                        ),
-                      ),
-                    )
-                  else
-                    ...analysisArticles.take(3).map((article) => _buildSmallArticle(context, article)).toList(),
+                  // All News section (the rest)
+                  if (_showAllNews)
+                    ...remainingArticles.map((article) => _buildSmallArticle(context, article)).toList(),
 
-                  const SizedBox(height: 8),
-                  _buildSeparator(),
-                  const SizedBox(height: 8),
-
-                  // All News section (the limited list)
-                  _buildSectionHeader("All Latest News", hasViewAll: false),
-                  const SizedBox(height: 12),
-                  ...displayedArticles.map((article) => _buildSmallArticle(context, article)).toList(),
-
-                  if (!_showAllNews && articles.length > 11)
+                  if (articles.length > 5)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       child: Center(
                         child: TextButton(
-                          onPressed: () => setState(() => _showAllNews = true),
-                          child: const Text(
-                            "View All News",
-                            style: TextStyle(
+                          onPressed: () => setState(() => _showAllNews = !_showAllNews),
+                          child: Text(
+                            _showAllNews ? "View Less" : "View All News",
+                            style: const TextStyle(
                               color: AppColors.secondaryBlue,
                               fontWeight: FontWeight.bold,
                               fontSize: 16,

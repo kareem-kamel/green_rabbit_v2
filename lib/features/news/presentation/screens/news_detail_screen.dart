@@ -304,19 +304,6 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
             ),
             const SizedBox(height: 8),
             _buildSeparator(),
-            const SizedBox(height: 8),
-
-            // ── Related analysis
-            _buildSectionHeader("Related Analysis"),
-            if (widget.article.relatedAnalysis.isEmpty)
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text("No analysis available for this article.",
-                    style: TextStyle(color: Colors.grey, fontSize: 13)),
-              )
-            else
-              ...widget.article.relatedAnalysis.map((analysis) =>
-                  _buildAnalysisItem(analysis.firm, analysis.text)),
             const SizedBox(height: 48),
           ],
         ),

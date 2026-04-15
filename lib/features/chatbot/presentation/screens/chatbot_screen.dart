@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../widgets/typing_indicator.dart';
@@ -27,24 +28,70 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _clearedOnOpen = false;
   bool _initialPromptSent = false;
+  bool _autoScroll = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_scrollListener);
+  }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_scrollListener);
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
+  void _scrollListener() {
+    if (!_scrollController.hasClients) return;
+    
+    final pos = _scrollController.position;
+    
+    // Use a slightly larger buffer (50px) to detect if the user is NOT at the bottom.
+    // Also check if the user is currently touching the screen.
+    final atBottom = pos.pixels >= (pos.maxScrollExtent - 50);
+    
+    if (_autoScroll != atBottom) {
+      setState(() {
+        _autoScroll = atBottom;
+      });
+    }
+  }
+
   void _scrollToBottom() {
+    if (!_autoScroll) return;
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
       }
     });
+  }
+
+  void _showDeleteConfirmation(BuildContext context, String chatId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        title: const Text('Delete Chat', style: TextStyle(color: Colors.white)),
+        content: const Text('Are you sure you want to delete this chat?', style: TextStyle(color: Colors.grey)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              this.context.read<ChatCubit>().deleteConversation(chatId);
+              Navigator.pop(context);
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -58,8 +105,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       builder: (context, state) {
         final cubit = context.read<ChatCubit>();
 
-        if (widget.startEmpty && !_clearedOnOpen) {
-          // Ensure empty suggestion state only once on entry
+        // Always clear state if startEmpty is requested on a new screen entry
+        if (widget.startEmpty && !_clearedOnOpen && !state.isGenerating) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             _clearedOnOpen = true;
@@ -75,22 +122,27 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           });
         }
 
-        return Scaffold(
-          key: _scaffoldKey,
-          backgroundColor: AppColors.scaffoldBg,
-          drawer: _buildSidebar(context, state),
-          appBar: _buildAppBar(context, cubit),
-          body: Column(
-            children: [
-              Expanded(
-                child: state.isVoiceMode
-                    ? _buildVoiceInterface(context, cubit)
-                    : (state.messages.isNotEmpty
-                        ? _buildChatHistory(state)
-                        : _buildEmptyState(cubit)),
-              ),
-              _buildInputArea(context, cubit, state),
-            ],
+        return GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: Scaffold(
+            key: _scaffoldKey,
+            backgroundColor: AppColors.scaffoldBg,
+            drawer: _buildSidebar(context, state),
+            appBar: _buildAppBar(context, cubit),
+            body: Column(
+              children: [
+                Expanded(
+                  child: state.isVoiceMode
+                      ? _buildVoiceInterface(context, cubit)
+                      : (state.isGenerating && state.messages.isEmpty
+                          ? const Center(child: CircularProgressIndicator())
+                          : (state.messages.isNotEmpty
+                              ? _buildChatHistory(state)
+                              : _buildEmptyState(cubit))),
+                ),
+                _buildInputArea(context, cubit, state),
+              ],
+            ),
           ),
         );
       },
@@ -193,13 +245,32 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     ),
                     child: ListTile(
                       title: Text(chat.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: isActive ? Colors.white : Colors.grey,
                             fontSize: 14,
                           )),
-                      trailing: isActive
-                          ? const Icon(Icons.more_horiz, color: Colors.grey, size: 18)
-                          : null,
+                      trailing: PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_horiz, color: Colors.grey, size: 18),
+                        onSelected: (value) {
+                          if (value == 'delete') {
+                            _showDeleteConfirmation(context, chat.id);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                                SizedBox(width: 8),
+                                Text('Delete', style: TextStyle(color: Colors.redAccent)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                       onTap: () {
                         Navigator.pop(context);
                         context.read<ChatCubit>().selectConversation(chat.id);
@@ -305,7 +376,10 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             runSpacing: 10,
             alignment: WrapAlignment.center,
             children: suggestions.map((s) => GestureDetector(
-              onTap: () => _textController.text = s,
+              onTap: () {
+                cubit.sendMessage(s);
+                _textController.clear();
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(

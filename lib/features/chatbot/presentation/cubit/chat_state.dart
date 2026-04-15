@@ -31,11 +31,12 @@ class ChatState extends Equatable {
     bool? isGenerating,
     int? creditsUsed,
     int? totalCredits,
+    bool clearActiveConversationId = false,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
       history: history ?? this.history,
-      activeConversationId: activeConversationId ?? this.activeConversationId,
+      activeConversationId: clearActiveConversationId ? null : (activeConversationId ?? this.activeConversationId),
       isVoiceMode: isVoiceMode ?? this.isVoiceMode,
       hasMessages: hasMessages ?? this.hasMessages,
       isGenerating: isGenerating ?? this.isGenerating,

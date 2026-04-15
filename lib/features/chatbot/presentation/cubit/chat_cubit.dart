@@ -7,9 +7,7 @@ class ChatCubit extends Cubit<ChatState> {
   final ChatbotRepository repository;
 
   ChatCubit({required this.repository}) : super(const ChatState(
-    messages: [
-      ChatMessage(content: "Hello there! How may I assist you today?", role: 'assistant', id: '0', conversationId: '0', createdAt: null),
-    ]
+    messages: []
   )) {
     loadHistory();
     loadUsageStats();
@@ -37,17 +35,28 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   Future<void> selectConversation(String id) async {
-    emit(state.copyWith(isGenerating: true, activeConversationId: id, hasMessages: true));
+    // Clear current messages immediately to avoid "merging" UI flashes
+    emit(state.copyWith(
+      isGenerating: true, 
+      activeConversationId: id, 
+      hasMessages: true,
+      messages: [], // Clear old messages
+    ));
+    
     try {
       final messages = await repository.getMessages(id);
-      emit(state.copyWith(
-        messages: messages.isEmpty 
-          ? [const ChatMessage(content: "Hello there! How may I assist you today?", role: 'assistant', id: '0', conversationId: '0', createdAt: null)]
-          : messages,
-        isGenerating: false,
-      ));
+      
+      // Only update if the user hasn't switched to another chat while loading
+      if (state.activeConversationId == id) {
+        emit(state.copyWith(
+          messages: messages,
+          isGenerating: false,
+        ));
+      }
     } catch (e) {
-      emit(state.copyWith(isGenerating: false));
+      if (state.activeConversationId == id) {
+        emit(state.copyWith(isGenerating: false));
+      }
       print('Error loading messages: $e');
     }
   }
@@ -58,9 +67,23 @@ class ChatCubit extends Cubit<ChatState> {
     emit(state.copyWith(
       hasMessages: false, 
       isVoiceMode: false, 
-      messages: [const ChatMessage(content: "Hello there! How may I assist you today?", role: 'assistant', id: '0', conversationId: '0', createdAt: null)],
-      activeConversationId: null,
+      messages: [],
+      clearActiveConversationId: true,
     ));
+  }
+
+  Future<void> deleteConversation(String id) async {
+    try {
+      final success = await repository.deleteConversation(id);
+      if (success) {
+        if (state.activeConversationId == id) {
+          startNewChat();
+        }
+        loadHistory();
+      }
+    } catch (e) {
+      print('Error deleting conversation: $e');
+    }
   }
 
   Future<void> sendMessage(String text) async {
@@ -115,6 +138,13 @@ class ChatCubit extends Cubit<ChatState> {
       String fullContent = '';
       await for (final chunk in repository.sendMessageStream(conversationId, text)) {
         if (isClosed) return;
+        
+        // CRITICAL: Only update state if the user is still in the SAME conversation
+        // This prevents messages from "bleeding" into other chats if the user switches quickly.
+        if (state.activeConversationId != conversationId) {
+          print('User switched conversation, stopping stream update for $conversationId');
+          return;
+        }
         
         fullContent += chunk;
         
