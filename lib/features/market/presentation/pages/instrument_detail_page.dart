@@ -68,8 +68,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
 
   PreferredSizeWidget _buildAppBar() {
     final detailAsync = ref.watch(instrumentDetailsProvider(widget.instrumentId));
-    final watchlist = ref.watch(watchlistProvider);
-    final isFavorite = watchlist.items.any((i) => i.id == widget.instrumentId);
+    final isFavorite = ref.watch(isInstrumentInWatchlistProvider(widget.instrumentId));
 
     return AppBar(
       backgroundColor: Colors.transparent,
@@ -118,14 +117,18 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                 price: detail.price.current,
                 change: detail.price.change,
                 changePercent: detail.price.changePercent,
-                sparkline: [], // Placeholder or use historical if available
+                sparkline: [], 
                 logoUrl: detail.logoUrl,
               );
-              if (isFavorite) {
-                ref.read(watchlistProvider.notifier).removeInstrument(detail.id);
-              } else {
-                ref.read(watchlistProvider.notifier).addInstrument(instrument);
+              
+              ref.read(watchlistProvider.notifier).toggleInstrument(instrument);
+              
+              if (!isFavorite) {
                 _showSuccessSnackBar(context, instrument);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('${instrument.symbol} removed from watchlist')),
+                );
               }
             });
           },

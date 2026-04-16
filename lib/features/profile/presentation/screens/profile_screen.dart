@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
+import '../cubit/profile_state.dart';
 import '../widgets/profile_list_item.dart';
 import '../../../subscriptions/presentation/cubit/subscription_cubit.dart';
 import '../../../subscriptions/presentation/cubit/subscription_state.dart';
@@ -57,324 +58,500 @@ class ProfileScreen extends StatelessWidget {
 
           return BlocBuilder<ProfileCubit, ProfileState>(
             builder: (context, profileState) {
-              return BlocBuilder<SubscriptionCubit, SubscriptionState>(
-                builder: (context, state) {
-                  SubscriptionModel? currentSub;
-                  if (state is SubscriptionLoaded) {
-                    currentSub = state.currentSubscription;
-                  }
+              if (profileState is ProfileLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-                  final bool isTrialActive = currentSub != null && currentSub.status == 'active' && currentSub.isTrial;
+              if (profileState is ProfileError) {
+                return Center(child: Text(profileState.message,
+                    style: const TextStyle(color: Colors.red)));
+              }
 
-                  return SingleChildScrollView(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 800),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (isTrialActive) ...[
+              if (profileState is ProfileLoaded) {
+                final user = profileState.user;
+                return BlocBuilder<SubscriptionCubit, SubscriptionState>(
+                  builder: (context, state) {
+                    SubscriptionModel? currentSub;
+                    if (state is SubscriptionLoaded) {
+                      currentSub = state.currentSubscription;
+                    }
+
+                    final bool isTrialActive = currentSub != null &&
+                        currentSub.status == 'active' && currentSub.isTrial;
+
+                    return SingleChildScrollView(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: horizontalPadding),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 800),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (isTrialActive) ...[
+                                  const SizedBox(height: 10),
+                                  TrialStatusBanner(
+                                    daysLeft: currentSub.daysRemaining,
+                                    onTap: () {
+                                      Navigator.push(context, MaterialPageRoute(
+                                          builder: (
+                                              _) => const SubscriptionScreen()));
+                                    },
+                                  ),
+                                ],
                                 const SizedBox(height: 10),
-                                TrialStatusBanner(
-                                  daysLeft: currentSub.daysRemaining,
-                                  onTap: () {
-                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
-                                  },
-                                ),
-                              ],
-                              const SizedBox(height: 10),
 
-                              // --- Green Rabbit Banner ---
-                              Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).brightness == Brightness.dark ? AppColors.surface : Colors.black,
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Image.asset('assets/crown_gold.png', width: 24, height: 24, fit: BoxFit.contain),
-                                    const SizedBox(width: 12),
-                                    const Expanded(
-                                      child: Text(
-                                        'Green Rabbit',
-                                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: AppColors.premiumGold,
-                                        foregroundColor: Colors.black,
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                        minimumSize: Size.zero,
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                      ),
-                                      child: const Text('Get 50% off', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              const SizedBox(height: 24),
-
-                              // --- User Info Card ---
-                              Container(
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).brightness == Brightness.dark ? AppColors.surface : Colors.grey.shade100,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      children: [
-                                        CircleAvatar(
-                                          radius: 35,
-                                          backgroundImage: NetworkImage(profileState.avatarUrl),
+                                // --- Green Rabbit Banner ---
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Theme
+                                        .of(context)
+                                        .brightness == Brightness.dark
+                                        ? AppColors.surface
+                                        : Colors.black,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Image.asset(
+                                          'assets/crown_gold.png', width: 24,
+                                          height: 24,
+                                          fit: BoxFit.contain),
+                                      const SizedBox(width: 12),
+                                      const Expanded(
+                                        child: Text(
+                                          'Green Rabbit',
+                                          style: TextStyle(color: Colors.white,
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold),
                                         ),
-                                        const SizedBox(width: 16),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                children: [
-                                                  Text(
-                                                    profileState.name,
-                                                    style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
-                                                  ),
-                                                  GestureDetector(
-                                                    onTap: () {
-                                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const EditProfileScreen()));
-                                                    },
-                                                    child: Icon(Icons.edit_outlined, color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.6) : Colors.black45, size: 18),
-                                                  ),
-                                                ],
-                                              ),
-                                              Text(
-                                                profileState.email,
-                                                style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black54, fontSize: 13),
-                                              ),
-                                              const SizedBox(height: 8),
-                                              if (currentSub != null && currentSub.status == 'active')
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          Navigator.push(context,
+                                              MaterialPageRoute(builder: (
+                                                  _) => const SubscriptionScreen()));
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppColors
+                                              .premiumGold,
+                                          foregroundColor: Colors.black,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius
+                                                  .circular(8)),
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16, vertical: 8),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize: MaterialTapTargetSize
+                                              .shrinkWrap,
+                                        ),
+                                        child: const Text('Get 50% off',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12)),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                const SizedBox(height: 24),
+
+                                // --- User Info Card ---
+                                Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Theme
+                                        .of(context)
+                                        .brightness == Brightness.dark
+                                        ? AppColors.surface
+                                        : Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Theme
+                                        .of(context)
+                                        .brightness == Brightness.dark ? Colors
+                                        .white.withOpacity(0.05) : Colors.black
+                                        .withOpacity(0.05)),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Row(
+                                        children: [
+                                          CircleAvatar(
+                                            radius: 35,
+                                            backgroundImage: user.avatarUrl !=
+                                                null &&
+                                                user.avatarUrl!.isNotEmpty
+                                                ? NetworkImage(user.avatarUrl!)
+                                                : const NetworkImage(
+                                                'https://i.pravatar.cc/150?u=green_rabbit'),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment
+                                                  .start,
+                                              children: [
                                                 Row(
-                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                                  mainAxisAlignment: MainAxisAlignment
+                                                      .spaceBetween,
                                                   children: [
-                                                    Row(
-                                                      children: [
-                                                        Image.asset('assets/crown_gold.png', width: 14, height: 14, fit: BoxFit.contain),
-                                                        const SizedBox(width: 6),
-                                                        Text(
-                                                          '${currentSub.planName} Account',
-                                                          style: const TextStyle(color: AppColors.premiumGold, fontSize: 13, fontWeight: FontWeight.w600),
-                                                        ),
-                                                      ],
+                                                    Text(
+                                                      user.fullName,
+                                                      style: TextStyle(
+                                                          color: Theme
+                                                              .of(context)
+                                                              .brightness ==
+                                                              Brightness.dark
+                                                              ? Colors.white
+                                                              : Colors.black,
+                                                          fontSize: 18,
+                                                          fontWeight: FontWeight
+                                                              .bold),
                                                     ),
                                                     GestureDetector(
                                                       onTap: () {
-                                                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+                                                        Navigator.push(context,
+                                                            MaterialPageRoute(
+                                                                builder: (
+                                                                    _) => const EditProfileScreen()));
                                                       },
-                                                      child: const Text(
-                                                        'View Details',
-                                                        style: TextStyle(color: AppColors.premiumGold, fontSize: 13, fontWeight: FontWeight.w500),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                )
-                                              else
-                                                Row(
-                                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                  children: [
-                                                    Row(
-                                                      children: [
-                                                        Icon(Icons.lock_outline, color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.4) : Colors.black26, size: 14),
-                                                        const SizedBox(width: 4),
-                                                        const Text(
-                                                          'Limited AI access',
-                                                          style: TextStyle(color: AppColors.textGrey, fontSize: 12),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                    GestureDetector(
-                                                      onTap: () {
-                                                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
-                                                      },
-                                                      child: const Text(
-                                                        'Get Pro',
-                                                        style: TextStyle(color: AppColors.premiumGold, fontSize: 14, fontWeight: FontWeight.bold),
-                                                      ),
+                                                      child: Icon(
+                                                          Icons.edit_outlined,
+                                                          color: Theme
+                                                              .of(context)
+                                                              .brightness ==
+                                                              Brightness.dark
+                                                              ? Colors.white
+                                                              .withOpacity(0.6)
+                                                              : Colors.black45,
+                                                          size: 18),
                                                     ),
                                                   ],
                                                 ),
-                                            ],
+                                                Text(
+                                                  user.email,
+                                                  style: TextStyle(color: Theme
+                                                      .of(context)
+                                                      .brightness ==
+                                                      Brightness.dark ? Colors
+                                                      .white54 : Colors.black54,
+                                                      fontSize: 13),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                if (user.subscription.tier !=
+                                                    'free')
+                                                  Row(
+                                                    mainAxisAlignment: MainAxisAlignment
+                                                        .spaceBetween,
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          Image.asset(
+                                                              'assets/crown_gold.png',
+                                                              width: 14,
+                                                              height: 14,
+                                                              fit: BoxFit
+                                                                  .contain),
+                                                          const SizedBox(
+                                                              width: 6),
+                                                          Text(
+                                                            '${user.subscription
+                                                                .tier
+                                                                .toUpperCase()} Account',
+                                                            style: const TextStyle(
+                                                                color: AppColors
+                                                                    .premiumGold,
+                                                                fontSize: 13,
+                                                                fontWeight: FontWeight
+                                                                    .w600),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      GestureDetector(
+                                                        onTap: () {
+                                                          Navigator.push(
+                                                              context,
+                                                              MaterialPageRoute(
+                                                                  builder: (
+                                                                      _) => const SubscriptionScreen()));
+                                                        },
+                                                        child: const Text(
+                                                          'View Details',
+                                                          style: TextStyle(
+                                                              color: AppColors
+                                                                  .premiumGold,
+                                                              fontSize: 13,
+                                                              fontWeight: FontWeight
+                                                                  .w500),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  )
+                                                else
+                                                  Row(
+                                                    mainAxisAlignment: MainAxisAlignment
+                                                        .spaceBetween,
+                                                    children: [
+                                                      Row(
+                                                        children: [
+                                                          Icon(Icons
+                                                              .lock_outline,
+                                                              color: Theme
+                                                                  .of(context)
+                                                                  .brightness ==
+                                                                  Brightness
+                                                                      .dark
+                                                                  ? Colors.white
+                                                                  .withOpacity(
+                                                                  0.4)
+                                                                  : Colors
+                                                                  .black26,
+                                                              size: 14),
+                                                          const SizedBox(
+                                                              width: 4),
+                                                          const Text(
+                                                            'Limited AI access',
+                                                            style: TextStyle(
+                                                                color: AppColors
+                                                                    .textGrey,
+                                                                fontSize: 12),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      GestureDetector(
+                                                        onTap: () {
+                                                          Navigator.push(
+                                                              context,
+                                                              MaterialPageRoute(
+                                                                  builder: (
+                                                                      _) => const SubscriptionScreen()));
+                                                        },
+                                                        child: const Text(
+                                                          'Get Pro',
+                                                          style: TextStyle(
+                                                              color: AppColors
+                                                                  .premiumGold,
+                                                              fontSize: 14,
+                                                              fontWeight: FontWeight
+                                                                  .bold),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                    if (currentSub != null && currentSub.status == 'active') ...[
+                                        ],
+                                      ),
                                       const SizedBox(height: 20),
-                                      Divider(color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.black.withOpacity(0.05), height: 1),
+                                      Divider(color: Theme
+                                          .of(context)
+                                          .brightness == Brightness.dark
+                                          ? Colors.white10
+                                          : Colors.black.withOpacity(0.05),
+                                          height: 1),
                                       const SizedBox(height: 16),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                        mainAxisAlignment: MainAxisAlignment
+                                            .spaceAround,
                                         children: [
-                                          _buildStat(context, '101', 'Posts'),
-                                          _buildStat(context, '2', 'Followers'),
-                                          _buildStat(context, '5', 'Following'),
+                                          _buildStat(context,
+                                              '${user.stats?.totalComments ??
+                                                  0}', 'Comments'),
+                                          _buildStat(context,
+                                              '${user.stats?.totalWatchlists ??
+                                                  0}', 'Watchlists'),
+                                          _buildStat(context,
+                                              '${user.stats?.memberSinceDays ??
+                                                  0}', 'Days Active'),
                                         ],
                                       ),
                                     ],
-                                  ],
-                                ),
-                              ),
-
-                              const SizedBox(height: 32),
-
-                              // --- Account Section ---
-                              _buildSectionHeader(context, 'Account'),
-
-                              ProfileListItem(
-                                assetPath: 'assets/crown_gray.png',
-                                title: 'Premium membership',
-                                trailing: (currentSub != null && currentSub.status == 'active')
-                                    ? Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF16A34A).withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(8),
-                                          border: Border.all(color: const Color(0xFF16A34A).withOpacity(0.5)),
-                                        ),
-                                        child: const Text(
-                                          'Active',
-                                          style: TextStyle(color: Color(0xFF4ADE80), fontSize: 12, fontWeight: FontWeight.bold),
-                                        ),
-                                      )
-                                    : ElevatedButton(
-                                        onPressed: () {
-                                          Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppColors.premiumGold,
-                                          foregroundColor: Colors.black,
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                          minimumSize: Size.zero,
-                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Image.asset('assets/crown_black.png', width: 14, height: 14, fit: BoxFit.contain),
-                                            const SizedBox(width: 4),
-                                            const Text('Get Premium', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
-                                          ],
-                                        ),
-                                      ),
-                                onTap: () {
-                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
-                                },
-                              ),
-                              const SizedBox(height: 12),
-                              ProfileListItem(
-                                icon: Icons.notifications_active_outlined,
-                                title: 'Price Alerts',
-                                onTap: () {
-                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const AlertsPage()));
-                                },
-                              ),
-                              const SizedBox(height: 12),
-                              ProfileListItem(
-                                icon: Icons.payment,
-                                title: 'Payment & Billing',
-                                onTap: () {
-                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
-                                },
-                              ),
-
-                              const SizedBox(height: 24),
-
-                              // --- Settings Section ---
-                              _buildSectionHeader(context, 'Settings'),
-
-                              ProfileListItem(
-                                icon: Icons.settings_outlined,
-                                title: 'Settings & Notification',
-                                onTap: () {
-                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
-                                },
-                              ),
-
-                              const SizedBox(height: 24),
-
-                              // --- Support Section ---
-                              _buildSectionHeader(context, 'Support'),
-
-                              ProfileListItem(
-                                icon: Icons.help_outline,
-                                title: 'Help center',
-                                onTap: () {
-                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpCenterScreen()));
-                                },
-                              ),
-
-                              const SizedBox(height: 12),
-                              ProfileListItem(
-                                icon: Icons.star_border,
-                                title: 'Rate us',
-                                onTap: () => RatingBottomSheet.show(context),
-                              ),
-                              const SizedBox(height: 12),
-                              ProfileListItem(
-                                icon: Icons.info_outline,
-                                title: 'About',
-                                onTap: () {
-                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
-                                },
-                              ),
-
-                              const SizedBox(height: 40),
-
-                              // --- Log Out Button ---
-                              InkWell(
-                                onTap: () => _showLogoutBottomSheet(context),
-                                child: Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).brightness == Brightness.dark ? AppColors.surface : Colors.grey.shade100,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Theme.of(context).dividerColor),
-                                  ),
-                                  child: Row(
-                                    children: const [
-                                      Icon(Icons.logout, color: Colors.redAccent, size: 24),
-                                      SizedBox(width: 16),
-                                      Text(
-                                        'Log Out',
-                                        style: TextStyle(color: Colors.redAccent, fontSize: 16, fontWeight: FontWeight.bold),
-                                      ),
-                                    ],
                                   ),
                                 ),
-                              ),
-                              const SizedBox(height: 40),
-                            ],
+
+                                const SizedBox(height: 32),
+
+                                // --- Account Section ---
+                                _buildSectionHeader(context, 'Account'),
+
+                                ProfileListItem(
+                                  assetPath: 'assets/crown_gray.png',
+                                  title: 'Premium membership',
+                                  trailing: (currentSub != null &&
+                                      currentSub.status == 'active')
+                                      ? Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF16A34A)
+                                          .withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                          color: const Color(0xFF16A34A)
+                                              .withOpacity(0.5)),
+                                    ),
+                                    child: const Text(
+                                      'Active',
+                                      style: TextStyle(color: Color(0xFF4ADE80),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  )
+                                      : ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.push(context, MaterialPageRoute(
+                                          builder: (
+                                              _) => const SubscriptionScreen()));
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.premiumGold,
+                                      foregroundColor: Colors.black,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                              8)),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 6),
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize
+                                          .shrinkWrap,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Image.asset(
+                                            'assets/crown_black.png', width: 14,
+                                            height: 14,
+                                            fit: BoxFit.contain),
+                                        const SizedBox(width: 4),
+                                        const Text('Get Premium',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 11)),
+                                      ],
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    Navigator.push(context, MaterialPageRoute(
+                                        builder: (
+                                            _) => const SubscriptionScreen()));
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                ProfileListItem(
+                                  icon: Icons.notifications_active_outlined,
+                                  title: 'Price Alerts',
+                                  onTap: () {
+                                    Navigator.push(context, MaterialPageRoute(
+                                        builder: (_) => const AlertsPage()));
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                ProfileListItem(
+                                  icon: Icons.payment,
+                                  title: 'Payment & Billing',
+                                  onTap: () {
+                                    Navigator.push(context, MaterialPageRoute(
+                                        builder: (
+                                            _) => const SubscriptionScreen()));
+                                  },
+                                ),
+
+                                const SizedBox(height: 24),
+
+                                // --- Settings Section ---
+                                _buildSectionHeader(context, 'Settings'),
+
+                                ProfileListItem(
+                                  icon: Icons.settings_outlined,
+                                  title: 'Settings & Notification',
+                                  onTap: () {
+                                    Navigator.push(context, MaterialPageRoute(
+                                        builder: (
+                                            _) => const SettingsScreen()));
+                                  },
+                                ),
+
+                                const SizedBox(height: 24),
+
+                                // --- Support Section ---
+                                _buildSectionHeader(context, 'Support'),
+
+                                ProfileListItem(
+                                  icon: Icons.help_outline,
+                                  title: 'Help center',
+                                  onTap: () {
+                                    Navigator.push(context, MaterialPageRoute(
+                                        builder: (
+                                            _) => const HelpCenterScreen()));
+                                  },
+                                ),
+
+                                const SizedBox(height: 12),
+                                ProfileListItem(
+                                  icon: Icons.star_border,
+                                  title: 'Rate us',
+                                  onTap: () => RatingBottomSheet.show(context),
+                                ),
+                                const SizedBox(height: 12),
+                                ProfileListItem(
+                                  icon: Icons.info_outline,
+                                  title: 'About',
+                                  onTap: () {
+                                    Navigator.push(context, MaterialPageRoute(
+                                        builder: (_) => const AboutScreen()));
+                                  },
+                                ),
+
+                                const SizedBox(height: 40),
+
+                                // --- Log Out Button ---
+                                InkWell(
+                                  onTap: () => _showLogoutBottomSheet(context),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: Theme
+                                          .of(context)
+                                          .brightness == Brightness.dark
+                                          ? AppColors.surface
+                                          : Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Theme
+                                          .of(context)
+                                          .dividerColor),
+                                    ),
+                                    child: Row(
+                                      children: const [
+                                        Icon(Icons.logout,
+                                            color: Colors.redAccent, size: 24),
+                                        SizedBox(width: 16),
+                                        Text(
+                                          'Log Out',
+                                          style: TextStyle(
+                                              color: Colors.redAccent,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 40),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                },
-              );
-            },
-          );
+                    );
+                  },
+                );
+              }
+              
+              return const SizedBox.shrink();
+            });
         },
       ),
     );

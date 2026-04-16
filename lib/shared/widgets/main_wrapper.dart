@@ -25,6 +25,8 @@ class MainWrapper extends ConsumerWidget {
     ];
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
+      extendBody: true,
       body: pages[selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
@@ -93,7 +95,26 @@ class MainWrapper extends ConsumerWidget {
           child: Image.asset('assets/ai.png', fit: BoxFit.contain),
         ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      floatingActionButtonLocation: const _FixedCenterDockedFabLocation(),
     );
+  }
+}
+
+class _FixedCenterDockedFabLocation extends FloatingActionButtonLocation {
+  const _FixedCenterDockedFabLocation();
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
+    final double fabX = (scaffoldGeometry.scaffoldSize.width - scaffoldGeometry.floatingActionButtonSize.width) / 2.0;
+    
+    // We use a fixed estimate for the navigation bar height (usually ~80 with labels)
+    // to avoid using the undefined bottomNavigationBarSize getter.
+    final double fabHeight = scaffoldGeometry.floatingActionButtonSize.height;
+    final double bottomPadding = scaffoldGeometry.minInsets.bottom;
+    
+    // 56 is the standard BottomNavigationBar height, plus the bottom padding (safe area)
+    final double y = scaffoldGeometry.scaffoldSize.height - (56.0 + bottomPadding);
+    
+    return Offset(fabX, y - (fabHeight / 2));
   }
 }

@@ -23,7 +23,15 @@ class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
   void initState() {
     super.initState();
     _selectedName = widget.currentCountryName;
-    _selectedFlag = widget.countries.firstWhere((c) => c.name == _selectedName).flag;
+    
+    final match = widget.countries.firstWhere(
+      (c) => c.name == _selectedName,
+      orElse: () => widget.countries.first,
+    );
+    _selectedFlag = match.flag;
+    if (_selectedName == 'Select Country') {
+      _selectedName = match.name;
+    }
   }
 
   @override
@@ -80,7 +88,10 @@ class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<CountryModel>(
-                    value: widget.countries.firstWhere((c) => c.name == _selectedName),
+                    value: widget.countries.firstWhere(
+                      (c) => c.name == _selectedName,
+                      orElse: () => widget.countries.first,
+                    ),
                     isExpanded: true,
                     dropdownColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF11141B) : Colors.white,
                     icon: Padding(
@@ -149,6 +160,7 @@ class _CountrySelectionScreenState extends State<CountrySelectionScreen> {
                         ? () {
                             Navigator.pop(context, {
                               'name': _selectedName,
+                              'code': widget.countries.firstWhere((c) => c.name == _selectedName).code,
                               'flag': _selectedFlag,
                             });
                           }

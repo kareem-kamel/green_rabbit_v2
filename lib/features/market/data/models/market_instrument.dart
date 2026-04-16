@@ -17,6 +17,9 @@ class MarketInstrument {
   final String? logoUrl;
   final List<double>? sparkline;
 
+  final int? displayOrder;
+  final DateTime? addedAt;
+
   const MarketInstrument({
     required this.id,
     required this.symbol,
@@ -35,6 +38,8 @@ class MarketInstrument {
     this.marketCap,
     this.logoUrl,
     this.sparkline,
+    this.displayOrder,
+    this.addedAt,
   });
 
   factory MarketInstrument.fromJson(Map<String, dynamic> json) {
@@ -46,15 +51,15 @@ class MarketInstrument {
       exchange: json['exchange'] as String?,
       sector: json['sector'] as String?,
       currency: json['currency'] as String?,
-      price: (json['price'] ?? json['current_price']) != null 
-          ? ((json['price'] ?? json['current_price']) as num).toDouble() 
+      price: (json['price'] ?? json['current_price'] ?? json['currentPrice']) != null 
+          ? ((json['price'] ?? json['current_price'] ?? json['currentPrice']) as num).toDouble() 
           : null,
       previousClose: (json['previousClose'] as num?)?.toDouble(),
-      change: (json['change'] ?? json['price_change']) != null 
-          ? ((json['change'] ?? json['price_change']) as num).toDouble() 
+      change: (json['change'] ?? json['price_change'] ?? json['priceChange']) != null 
+          ? ((json['change'] ?? json['price_change'] ?? json['priceChange']) as num).toDouble() 
           : null,
-      changePercent: (json['changePercent'] ?? json['price_change_percent']) != null 
-          ? ((json['changePercent'] ?? json['price_change_percent']) as num).toDouble() 
+      changePercent: (json['changePercent'] ?? json['price_change_percent'] ?? json['priceChangePercent']) != null 
+          ? ((json['changePercent'] ?? json['price_change_percent'] ?? json['priceChangePercent']) as num).toDouble() 
           : null,
       dayHigh: (json['dayHigh'] as num?)?.toDouble(),
       dayLow: (json['dayLow'] as num?)?.toDouble(),
@@ -62,6 +67,8 @@ class MarketInstrument {
       marketCap: json['marketCap'] as int?,
       logoUrl: (json['logoUrl'] ?? json['logo_url']) as String?,
       sparkline: (json['sparkline7d'] as List<dynamic>?)?.map((e) => (e as num).toDouble()).toList(),
+      displayOrder: json['displayOrder'] as int?,
+      addedAt: json['addedAt'] != null ? DateTime.parse(json['addedAt'] as String) : null,
     );
   }
 

@@ -7,6 +7,10 @@ class AppConstants {
   
   static String get apiBaseUrl {
     String url = dotenv.get('API_BASE_URL', fallback: 'https://virtuous-cooperation-production-6420.up.railway.app/api');
+    // Ensure the URL ends with /api/
+    if (!url.contains('/api')) {
+      url = url.endsWith('/') ? '${url}api' : '$url/api';
+    }
     return url.endsWith('/') ? url : '$url/';
   }
   
@@ -20,9 +24,9 @@ class AppConstants {
   static const String keyThemeMode = 'theme_mode';
   
   // Routes
-  static const String register = "/auth/register";
-  static const String verifyEmail = "/auth/verify-email";
-  static const String login = "/auth/login";
+  static const String register = "auth/register";
+  static const String verifyEmail = "auth/verify-email";
+  static const String login = "auth/login";
 
   // Animation Durations
   static const Duration splashDelay = Duration(seconds: 3);

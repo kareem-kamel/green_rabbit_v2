@@ -12,6 +12,9 @@ import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/subscriptions/data/repository/subscription_repository.dart';
 import '../../features/subscriptions/presentation/cubit/subscription_cubit.dart';
 import '../network/api_client.dart';
+import '../../features/profile/data/sources/profile_remote_data_source.dart';
+import '../../features/profile/data/repositories/profile_repository_impl.dart';
+import '../../features/profile/presentation/cubit/profile_cubit.dart';
 // import '../../features/auth/data/api/auth_api.dart'; // You don't need this anymore!
 
 final sl = GetIt.instance;
@@ -39,11 +42,17 @@ Future<void> init() async {
   sl.registerLazySingleton<WatchlistRemoteDataSource>(
     () => WatchlistRemoteDataSourceImpl(sl()),
   );
+  sl.registerLazySingleton<ProfileRemoteDataSource>(
+    () => ProfileRemoteDataSourceImpl(apiClient: sl()),
+  );
 
   // Repositories
   sl.registerLazySingleton<MarketRepository>(() => MarketRepositoryImpl(sl()));
   sl.registerLazySingleton<WatchlistRepository>(
     () => WatchlistRepositoryImpl(sl()),
+  );
+  sl.registerLazySingleton<ProfileRepository>(
+    () => ProfileRepositoryImpl(remoteDataSource: sl()),
   );
 
   // Auth
@@ -65,5 +74,9 @@ Future<void> init() async {
 
   sl.registerFactory<SubscriptionCubit>(
     () => SubscriptionCubit(repository: sl<SubscriptionRepository>()),
+  );
+
+  sl.registerFactory<ProfileCubit>(
+    () => ProfileCubit(repository: sl<ProfileRepository>()),
   );
 }

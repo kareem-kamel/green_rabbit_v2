@@ -31,22 +31,24 @@ class ApiClient {
       _dio.interceptors.add(MockInterceptor());
     }
 
-    // Logging Interceptor
-    _dio.interceptors.add(LogInterceptor(
-      requestBody: true,
-      responseBody: true,
-      logPrint: (obj) => _logger.d(obj),
-    ));
-
-    // Request-response Interceptor for Errors
+    // Request-response Interceptor for Auth and Errors
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          final token = await _storage.read(key: AppConstants.keyAccessToken);
+          final isAuthRequest = options.path.contains('auth/login') ||
+              options.path.contains('auth/register') ||
+              options.path.contains('auth/verify-email');
+
+          if (token != null && !isAuthRequest) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
           _logger.d('Proceeding with actual request to: ${options.uri}');
           return handler.next(options);
         },
         onError: (DioException e, handler) async {
-          _logger.e('API Error [${e.response?.statusCode}] for ${e.requestOptions.uri}: ${e.message}');
+          _logger.e(
+              'API Error [${e.response?.statusCode}] for ${e.requestOptions.uri}: ${e.message}');
           if (e.response?.statusCode == 401) {
             _logger.w('Unauthorized: 401 Error');
           }
@@ -54,6 +56,13 @@ class ApiClient {
         },
       ),
     );
+
+    // Logging Interceptor (added after Auth for request visibility, but runs before for error/response)
+    _dio.interceptors.add(LogInterceptor(
+      requestBody: true,
+      responseBody: true,
+      logPrint: (obj) => _logger.d(obj),
+    ));
   }
 
   Dio get dio => _dio;

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:green_rabbit/features/profile/presentation/cubit/profile_cubit.dart';
+import 'package:green_rabbit/features/profile/presentation/cubit/profile_state.dart';
 import 'package:green_rabbit/core/theme/app_theme.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:green_rabbit/features/profile/presentation/screens/profile_screen.dart';
@@ -49,56 +52,53 @@ class _MarketPageState extends ConsumerState<MarketPage> {
     
     final instrumentsAsync = liveData.asData != null ? liveData : marketData;
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final double horizontalPadding = constraints.maxWidth > 900 
-                ? (constraints.maxWidth - 800) / 2 
-                : AppTheme.paddingM + 4;
+    return SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final double horizontalPadding = constraints.maxWidth > 900 
+              ? (constraints.maxWidth - 800) / 2 
+              : AppTheme.paddingM + 4;
 
-            return SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 800),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 10),
-                        _buildHeader(context, ref),
-                        const SizedBox(height: 24),
-                        const AIServiceCarousel(),
-                        const SizedBox(height: 24),
-                        const AppSectionHeader(title: 'Market'),
-                        const SizedBox(height: 16),
-                        _buildTabs(context),
-                        const SizedBox(height: 20),
-                        instrumentsAsync.when(
-                          data: (instruments) {
-                            final filtered = instruments.where((i) => 
-                              i.symbol.toLowerCase().contains(marketSearchQuery.toLowerCase()) ||
-                              i.name.toLowerCase().contains(marketSearchQuery.toLowerCase())
-                            ).toList();
-                            return _buildInstrumentList(context, ref, filtered);
-                          },
-                          loading: () => const Center(child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 40),
-                            child: CircularProgressIndicator(),
-                          )),
-                          error: (err, stack) => _buildErrorState(ref),
-                        ),
-                        const SizedBox(height: 100), 
-                      ],
-                    ),
+          return SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 10),
+                      _buildHeader(context, ref),
+                      const SizedBox(height: 24),
+                      const AIServiceCarousel(),
+                      const SizedBox(height: 24),
+                      const AppSectionHeader(title: 'Market'),
+                      const SizedBox(height: 16),
+                      _buildTabs(context),
+                      const SizedBox(height: 20),
+                      instrumentsAsync.when(
+                        data: (instruments) {
+                          final filtered = instruments.where((i) => 
+                            i.symbol.toLowerCase().contains(marketSearchQuery.toLowerCase()) ||
+                            i.name.toLowerCase().contains(marketSearchQuery.toLowerCase())
+                          ).toList();
+                          return _buildInstrumentList(context, ref, filtered);
+                        },
+                        loading: () => const Center(child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 40),
+                          child: CircularProgressIndicator(),
+                        )),
+                        error: (err, stack) => _buildErrorState(ref),
+                      ),
+                      const SizedBox(height: 100), 
+                    ],
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -123,55 +123,67 @@ class _MarketPageState extends ConsumerState<MarketPage> {
   }
 
   Widget _buildHeader(BuildContext context, WidgetRef ref) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const ProfileScreen()),
-        );
-      },
-      child: Row(
-        children: [
-          const CircleAvatar(
-            radius: 20,
-            backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=mahmoud'),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return BlocBuilder<ProfileCubit, ProfileState>(
+      builder: (context, state) {
+        String userName = 'User';
+        String avatarUrl = 'https://i.pravatar.cc/150?u=green_rabbit';
+        
+        if (state is ProfileLoaded) {
+          userName = state.user.fullName;
+          avatarUrl = state.user.avatarUrl ?? avatarUrl;
+        }
+
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            );
+          },
+          child: Row(
             children: [
-              Text(
-                'Welcome,',
-                style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 12),
+              CircleAvatar(
+                radius: 20,
+                backgroundImage: NetworkImage(avatarUrl),
               ),
-              Text(
-                'Mahmoud',
-                style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16, fontWeight: FontWeight.bold),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Welcome,',
+                    style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 12),
+                  ),
+                  Text(
+                    userName,
+                    style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage()));
+                },
+                child: _headerIcon(
+                  assetPath: 'assets/notification_icon.png',
+                  hasBadge: true,
+                  fallbackIcon: Icons.notifications_none,
+                ),
+              ),
+              const SizedBox(width: 12),
+              GestureDetector(
+                onTap: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchPage()));
+                },
+                child: _headerIcon(icon: Icons.search),
+              ),
+              const SizedBox(width: 12),
+              _headerIcon(icon: Icons.menu),
             ],
           ),
-          const Spacer(),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage()));
-            },
-            child: _headerIcon(
-              assetPath: 'assets/notification_icon.png',
-              hasBadge: true,
-              fallbackIcon: Icons.notifications_none,
-            ),
-          ),
-          const SizedBox(width: 12),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchPage()));
-            },
-            child: _headerIcon(icon: Icons.search),
-          ),
-          const SizedBox(width: 12),
-          _headerIcon(icon: Icons.menu),
-        ],
-      ),
+        );
+      },
     );
   }
 

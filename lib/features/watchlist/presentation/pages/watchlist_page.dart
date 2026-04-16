@@ -15,59 +15,68 @@ class WatchlistPage extends ConsumerWidget {
     final watchlistState = ref.watch(watchlistProvider);
 
     if (watchlistState.isLoading) {
-      return Scaffold(
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        body: const Center(child: CircularProgressIndicator()),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final double horizontalPadding = constraints.maxWidth > 900 
-                ? (constraints.maxWidth - 800) / 2 
-                : AppTheme.paddingM;
+    return SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final double horizontalPadding = constraints.maxWidth > 900 
+              ? (constraints.maxWidth - 800) / 2 
+              : AppTheme.paddingM;
 
-            return SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 800),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 10),
-                        _buildHeader(context),
-                        const SizedBox(height: 24),
-                        _buildAISummaryBanner(context),
-                        const SizedBox(height: 24),
-                        _buildTrackedSection(context, ref, watchlistState),
-                        const SizedBox(height: 32),
-                        _buildNewsSection(context),
-                        const SizedBox(height: 100), // Added safe margin above bottom nav
-                      ],
-                    ),
+          return SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 10),
+                      _buildHeader(context, ref, watchlistState),
+                      const SizedBox(height: 24),
+                      _buildAISummaryBanner(context),
+                      const SizedBox(height: 24),
+                      _buildTrackedSection(context, ref, watchlistState),
+                      const SizedBox(height: 32),
+                      _buildNewsSection(context),
+                      const SizedBox(height: 100), // Added safe margin above bottom nav
+                    ],
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildHeader(BuildContext context, WidgetRef ref, WatchlistState state) {
     return Row(
       children: [
-        Text(
-          'Watchlist',
-          style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Watchlist',
+              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            if (state.selectedWatchlist != null)
+              Text(
+                state.selectedWatchlist!.name,
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              ),
+          ],
         ),
         const Spacer(),
+        if (state.watchlists.length > 1)
+          IconButton(
+            icon: Icon(Icons.swap_horiz, color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black),
+            onPressed: () => _showWatchlistPicker(context, ref, state),
+          ),
         _headerIcon(context, Icons.filter_alt_outlined),
         const SizedBox(width: 12),
         _headerIcon(context, Icons.menu),
@@ -161,24 +170,38 @@ class WatchlistPage extends ConsumerWidget {
   }
 
   Widget _buildTrackedSection(BuildContext context, WidgetRef ref, WatchlistState state) {
+    final instruments = state.selectedWatchlist?.instruments ?? [];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Tracked Stocks',
-          style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Instruments (${instruments.length})',
+              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            if (state.selectedWatchlist != null)
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline, color: AppColors.primary, size: 24),
+                onPressed: () {
+                  // Navigate to market to add more
+                  ref.read(navigationIndexProvider.notifier).state = 0;
+                },
+              ),
+          ],
         ),
         const SizedBox(height: 16),
-        if (state.items.isEmpty)
+        if (instruments.isEmpty)
           _buildEmptyState(context, ref),
-        if (state.items.isNotEmpty)
-          ...state.items.map((instrument) => Padding(
+        if (instruments.isNotEmpty)
+          ...instruments.map((instrument) => Padding(
             padding: const EdgeInsets.only(bottom: 12.0),
             child: Dismissible(
-              key: Key(instrument.id),
+              key: Key('${state.selectedWatchlist!.id}_${instrument.id}'),
               direction: DismissDirection.endToStart,
               onDismissed: (_) {
-                ref.read(watchlistProvider.notifier).removeInstrument(instrument.id);
+                ref.read(watchlistProvider.notifier).toggleInstrument(instrument);
               },
               background: Container(
                 alignment: Alignment.centerRight,
@@ -209,6 +232,33 @@ class WatchlistPage extends ConsumerWidget {
             ),
           )),
       ],
+    );
+  }
+
+  void _showWatchlistPicker(BuildContext context, WidgetRef ref, WatchlistState state) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Padding(
+            padding: EdgeInsets.all(20),
+            child: Text('My Watchlists', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          ),
+          ...state.watchlists.map((w) => ListTile(
+            leading: Icon(Icons.list, color: state.selectedWatchlist?.id == w.id ? AppColors.primary : Colors.grey),
+            title: Text(w.name, style: const TextStyle(color: Colors.white)),
+            trailing: Text('${w.instrumentsCount} items', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            onTap: () {
+              ref.read(watchlistProvider.notifier).selectWatchlist(w);
+              Navigator.pop(context);
+            },
+          )),
+          const SizedBox(height: 20),
+        ],
+      ),
     );
   }
 

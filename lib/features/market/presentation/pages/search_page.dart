@@ -220,20 +220,34 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               ),
             ),
           ),
-          IconButton(
-            onPressed: () {
-              ref.read(watchlistProvider.notifier).addInstrument(instrument);
-              _showSuccessSnackBar(context, instrument);
-            },
-            icon: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: isDark ? Colors.white24 : Colors.black26),
+          (() {
+            final isInWatchlist = ref.watch(isInstrumentInWatchlistProvider(instrument.id));
+            return IconButton(
+              onPressed: () {
+                ref.read(watchlistProvider.notifier).toggleInstrument(instrument);
+                if (!isInWatchlist) {
+                  _showSuccessSnackBar(context, instrument);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${instrument.symbol} removed from watchlist')),
+                  );
+                }
+              },
+              icon: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isInWatchlist ? AppColors.success.withOpacity(0.1) : Colors.transparent,
+                  border: Border.all(color: isInWatchlist ? AppColors.success : (isDark ? Colors.white24 : Colors.black26)),
+                ),
+                child: Icon(
+                  isInWatchlist ? Icons.check : Icons.add, 
+                  color: isInWatchlist ? AppColors.success : (isDark ? Colors.white70 : Colors.black54), 
+                  size: 12,
+                ),
               ),
-              child: Icon(Icons.add, color: isDark ? Colors.white70 : Colors.black54, size: 12),
-            ),
-          ),
+            );
+          })(),
         ],
       ),
     );
