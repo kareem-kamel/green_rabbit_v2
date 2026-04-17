@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'news_detail_screen.dart';
 import '../../../chatbot/presentation/screens/chatbot_screen.dart';
 import '../../../alerts/presentation/widgets/create_alert_sheet.dart';
-import '../../../../core/widgets/ai_trading_assistant_card.dart';
 import '../../../../core/widgets/ask_ai_badge.dart';
+import '../../../../core/widgets/ai_service_carousel.dart';
+import '../cubit/news_cubit.dart';
+import '../cubit/news_state.dart';
+import '../../data/models/news_model.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -15,6 +19,7 @@ class NewsScreen extends StatefulWidget {
 
 class _NewsScreenState extends State<NewsScreen> {
   String selectedCategory = "Featured";
+  bool _showAllNews = false;
 
   // --- OPEN THE ALERT MENU ---
   void _openAlertMenu(BuildContext context) {
@@ -30,84 +35,148 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<NewsCubit>().fetchNewsFeed();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        backgroundColor: AppColors.scaffoldBg,
+        backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         centerTitle: false,
-        title: const Text(
+        title: Text(
           "News",
-          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black,
+          ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {},
+          _buildAppBarIcon(
+            icon: Icons.search,
+            onTap: () {},
           ),
-          IconButton(
-            icon: const Icon(Icons.add_alert_rounded, color: AppColors.primaryPurple),
-            onPressed: () => _openAlertMenu(context),
+          const SizedBox(width: 12),
+          _buildAppBarIcon(
+            icon: Icons.add_alert_rounded,
+            iconColor: AppColors.primaryPurple,
+            onTap: () => _openAlertMenu(context),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 16),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 10),
+      body: BlocBuilder<NewsCubit, NewsState>(
+        builder: (context, state) {
+          if (state is NewsLoading) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (state is NewsError) {
+            return Center(
+              child: Text(
+                state.message,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+              ),
+            );
+          } else if (state is NewsLoaded) {
+            final articles = state.articles;
+            final featuredArticle = articles.isNotEmpty ? articles.first : null;
+            
+            // Show only the first 4 small articles initially (total 5 with featured)
+            final initialSmallArticles = articles.length > 1 
+                ? (articles.length > 5 ? articles.sublist(1, 5) : articles.sublist(1)) 
+                : <NewsArticle>[];
+                
+            // The rest of the news
+            final remainingArticles = articles.length > 5 
+                ? articles.sublist(5) 
+                : <NewsArticle>[];
 
-            // AI Trading Assistant card
-            AITradingAssistantCard(
-              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatBotScreen())),
-            ),
-            const SizedBox(height: 8),
-            _buildSeparator(),
-            const SizedBox(height: 8),
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 10),
 
-            // Category chips
-            _buildCategoryRow(),
-            const SizedBox(height: 24),
+                  // AI Service Carousel (matches Market page)
+                  AIServiceCarousel(
+                    onItemTap: (index) {
+                      if (index == 0) {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatBotScreen()));
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  _buildSeparator(),
+                  const SizedBox(height: 8),
 
-            // Section header
-            _buildSectionHeader("Latest News", hasFilter: true),
-            const SizedBox(height: 12),
+                  // Category chips
+                  _buildCategoryRow(),
+                  const SizedBox(height: 24),
 
-            // Featured article
-            _buildFeaturedArticle(),
-            const SizedBox(height: 8),
-            _buildSeparator(),
-            const SizedBox(height: 8),
+                  // Section header
+                  _buildSectionHeader(
+                    "Latest News", 
+                    hasFilter: true,
+                    hasViewAll: false,
+                  ),
+                  const SizedBox(height: 12),
 
-            // Opinion cards (header removed per request)
-            _buildOpinionCard(context, 'https://i.pravatar.cc/150?u=op1', "Alex Rivera", "Why the Fed's next move matters for tech stocks."),
-            _buildOpinionCard(context, 'https://i.pravatar.cc/150?u=op2', "Elena Belova", "Crypto regulation: The winter is finally thawing."),
-            const SizedBox(height: 8),
-            _buildSeparator(),
-            const SizedBox(height: 8),
+                  // Featured article (only the first one)
+                  if (featuredArticle != null)
+                    _buildFeaturedArticle(featuredArticle),
 
-            // Analysis & Opinions header replaces "More News"
-            _buildSectionHeader("Analysis & Opinions", hasViewAll: true),
-            const SizedBox(height: 12),
-            _buildSmallArticle(context, isBullish: true),
-            _buildSmallArticle(context, 
-                isBullish: false,
-                title: "Apple unveils new MacBook Pro with M4 chip architecture."),
-            _buildSmallArticle(context, 
-                isBullish: true,
-                title: "Oil prices stabilize after OPEC+ unexpected meeting."),
-            const SizedBox(height: 8),
-            _buildSeparator(),
-            const SizedBox(height: 8),
+                  const SizedBox(height: 16),
+                  _buildSeparator(),
+                  const SizedBox(height: 16),
 
-            // Ad banner at the end
-            _buildAdBanner(),
-            const SizedBox(height: 24),
-          ],
-        ),
+                  // Initial small articles (up to 4)
+                  ...initialSmallArticles.map((article) => _buildSmallArticle(context, article)).toList(),
+
+                  // All News section (the rest)
+                  if (_showAllNews)
+                    ...remainingArticles.map((article) => _buildSmallArticle(context, article)).toList(),
+
+                  if (articles.length > 5)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Center(
+                        child: TextButton(
+                          onPressed: () => setState(() => _showAllNews = !_showAllNews),
+                          child: Text(
+                            _showAllNews ? "View Less" : "View All News",
+                            style: const TextStyle(
+                              color: AppColors.secondaryBlue,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  const SizedBox(height: 8),
+                  _buildSeparator(),
+                  const SizedBox(height: 8),
+
+                  // Ad banner at the end
+                  _buildAdBanner(),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            );
+          }
+          return const SizedBox.shrink();
+        },
       ),
     );
   }
@@ -116,8 +185,37 @@ class _NewsScreenState extends State<NewsScreen> {
   //  WIDGET BUILDERS
   // ─────────────────────────────────────────────
 
+  Widget _buildAppBarIcon({String? assetPath, IconData? icon, Color? iconColor, required VoidCallback onTap}) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1C1F26) : Colors.grey[100],
+          shape: BoxShape.circle,
+          border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+        ),
+        child: assetPath != null
+            ? Image.asset(
+                assetPath,
+                width: 22,
+                height: 22,
+                color: iconColor ?? (isDark ? Colors.white : Colors.black87),
+              )
+            : Icon(
+                icon,
+                size: 22,
+                color: iconColor ?? (isDark ? Colors.white : Colors.black87),
+              ),
+      ),
+    );
+  }
+
   Widget _buildCategoryRow() {
-    final categories = ["Featured", "Most Popular", "Cryptocurrency", "Forex", "Stocks"];
+    final categories = ["Featured"];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
@@ -134,7 +232,7 @@ class _NewsScreenState extends State<NewsScreen> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
         image: const DecorationImage(
-          image: NetworkImage('https://picsum.photos/seed/ad_banner/600/200'),
+          image: NetworkImage('https://picsum.photos/id/237/600/200'),
           fit: BoxFit.cover,
         ),
       ),
@@ -168,58 +266,83 @@ class _NewsScreenState extends State<NewsScreen> {
       ),
     );
   }
+
   Widget _buildCategoryChip(String label) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     bool isActive = selectedCategory == label;
+
     return GestureDetector(
       onTap: () => setState(() => selectedCategory = label),
       child: Container(
         margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primaryPurple : AppColors.cardBg.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(25),
+          color: isActive ? Colors.transparent : (isDark ? AppColors.cardBg.withOpacity(0.5) : Colors.grey[200]),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isActive ? AppColors.primaryPurple : Colors.white10,
+            color: isActive ? AppColors.unlockBlue : (isDark ? Colors.white10 : Colors.black12),
+            width: isActive ? 1.5 : 1,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: isActive ? Colors.white : AppColors.textGrey,
-            fontSize: 14,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            color: isActive ? (isDark ? Colors.white : AppColors.primary) : AppColors.textGrey,
+            fontSize: 16,
+            fontFamily: 'Urbanist',
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title, {bool hasFilter = false, bool hasViewAll = false}) {
+  Widget _buildSectionHeader(String title, {bool hasFilter = false, bool hasViewAll = false, VoidCallback? onViewAll}) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(title,
-            style: const TextStyle(
-                fontSize: 20,
+            style: TextStyle(
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.white)),
+                fontFamily: 'Urbanist',
+                color: isDark ? Colors.white : Colors.black)),
         if (hasFilter)
-          const Icon(Icons.filter_list, color: AppColors.secondaryBlue),
+          Image.asset(
+            'assets/icons/filter.png',
+            width: 24,
+            height: 24,
+            color: isDark ? null : Colors.black87,
+          ),
         if (hasViewAll)
           GestureDetector(
-            onTap: () {},
+            onTap: onViewAll,
             child: const Text("View all",
-                style: TextStyle(color: AppColors.secondaryBlue, fontWeight: FontWeight.w600)),
+                style: TextStyle(
+                    color: AppColors.secondaryBlue,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'Urbanist')),
           ),
       ],
     );
   }
 
-  // Removed old _buildAICard in favor of AITradingAssistantCard
+  Widget _buildFeaturedArticle(NewsArticle article) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-  Widget _buildFeaturedArticle() {
     return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NewsDetailScreen())),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => NewsDetailScreen(article: article),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -227,64 +350,84 @@ class _NewsScreenState extends State<NewsScreen> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: Image.network(
-                  'https://picsum.photos/seed/market/600/300',
-                  height: 220,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
+                child: article.largeImage.isNotEmpty
+                    ? Image.network(
+                        article.largeImage,
+                        height: 220,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          height: 220,
+                          color: isDark ? AppColors.cardBg : Colors.grey[300],
+                          child: Icon(Icons.image_not_supported, color: isDark ? Colors.white : Colors.black54),
+                        ),
+                      )
+                    : Container(height: 220, color: isDark ? AppColors.cardBg : Colors.grey[300]),
+              ),
+              _buildAskAIBadge(context, 12, 12, article),
+              Positioned(
+                top: 12,
+                right: 12,
+                child: Row(
+                  children: [
+                    _buildCircleIcon('assets/icons/star.png'),
+                    const SizedBox(width: 8),
+                    _buildCircleIcon('assets/icons/share.png'),
+                  ],
                 ),
               ),
-              _buildAskAIBadge(12, 12),
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            "Global markets react as inflation data suggests potential rate cuts in Q3.",
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white, height: 1.3),
+          Text(
+            article.title,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black,
+              height: 1.3,
+            ),
           ),
           const SizedBox(height: 8),
-          const Text("Financial Times • 2 hours ago",
-              style: TextStyle(color: AppColors.textGrey, fontSize: 13)),
+          Text("${article.sourceName} • ${article.timeAgo}",
+              style: const TextStyle(color: AppColors.textGrey, fontSize: 13)),
         ],
       ),
     );
   }
 
-  Widget _buildAskAIBadge(double top, double left) {
+  Widget _buildAskAIBadge(BuildContext context, double top, double left, NewsArticle article) {
     return Positioned(
       top: top,
       left: left,
-      child: const AskAIBadge(),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChatBotScreen(
+                initialPrompt: "Tell me more about this news: ${article.title}",
+              ),
+            ),
+          );
+        },
+        child: const AskAIBadge(),
+      ),
     );
   }
 
-  Widget _buildOpinionCard(BuildContext context, String imgUrl, String author, String summary) {
-    return InkWell(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NewsDetailScreen())),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.cardBg,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(radius: 24, backgroundImage: NetworkImage(imgUrl)),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(author, style: const TextStyle(color: AppColors.secondaryBlue, fontSize: 12, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text(summary, maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-                ],
-              ),
-            ),
-          ],
-        ),
+  Widget _buildCircleIcon(String assetPath) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.3),
+        shape: BoxShape.circle,
+      ),
+      child: Image.asset(
+        assetPath,
+        width: 20,
+        height: 20,
+        color: Colors.white,
       ),
     );
   }
@@ -296,21 +439,82 @@ class _NewsScreenState extends State<NewsScreen> {
       color: AppColors.borderGrey.withOpacity(0.08),
     );
   }
-  Widget _buildSmallArticle(BuildContext context, {required bool isBullish, String title = "Winter storm impacts energy sector..."}) {
+
+  Widget _buildSmallArticle(BuildContext context, NewsArticle article) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    bool isBullish = article.relatedSymbols.isNotEmpty && article.relatedSymbols.first.changePercent >= 0;
+    String tickerText = article.relatedSymbols.isNotEmpty 
+        ? article.relatedSymbols.first.symbol 
+        : "N/A";
+    String changeText = article.relatedSymbols.isNotEmpty 
+        ? "${article.relatedSymbols.first.changePercent >= 0 ? '+' : ''}${article.relatedSymbols.first.changePercent}%" 
+        : "";
+
     return InkWell(
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NewsDetailScreen())),
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => NewsDetailScreen(article: article),
+        ),
+      ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: AppColors.cardBg,
+          color: isDark ? AppColors.cardBg : theme.cardColor,
           borderRadius: BorderRadius.circular(16),
+          boxShadow: isDark ? null : [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
         child: Row(
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network('https://picsum.photos/seed/$title/100', width: 90, height: 90, fit: BoxFit.cover),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: article.smallImage.isNotEmpty
+                      ? Image.network(
+                          article.smallImage,
+                          width: 90,
+                          height: 90,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            width: 90,
+                            height: 90,
+                            color: isDark ? AppColors.scaffoldBg : Colors.grey[200],
+                            child: Icon(Icons.image_not_supported, color: isDark ? Colors.white : Colors.black54, size: 20),
+                          ),
+                        )
+                      : Container(width: 90, height: 90, color: isDark ? AppColors.scaffoldBg : Colors.grey[200]),
+                ),
+                Positioned(
+                  top: 4,
+                  left: 4,
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatBotScreen(
+                            initialPrompt: "Tell me more about this news: ${article.title}",
+                          ),
+                        ),
+                      );
+                    },
+                    child: const AskAIBadge(
+                      iconSize: 12,
+                      label: "Ask AI",
+                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -319,22 +523,47 @@ class _NewsScreenState extends State<NewsScreen> {
                 children: [
                   Row(
                     children: [
-                      const Text("Ticker ", style: TextStyle(color: AppColors.textGrey, fontSize: 11)),
-                      Text(isBullish ? "+0.82%" : "-1.14%",
-                          style: TextStyle(color: isBullish ? AppColors.profitGreen : AppColors.lossRed, fontSize: 11, fontWeight: FontWeight.bold)),
+                      Flexible(
+                        child: Text("$tickerText ",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: AppColors.textGrey, fontSize: 11)),
+                      ),
+                      if (changeText.isNotEmpty)
+                        Text(changeText,
+                            style: TextStyle(
+                                color: isBullish
+                                    ? AppColors.profitGreen
+                                    : AppColors.lossRed,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15)),
+                  Text(article.title, maxLines: 2, overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black,
+                        fontSize: 15,
+                      )),
                   const SizedBox(height: 8),
-                  const Row(
+                  Row(
                     children: [
-                      Text("Bloomberg • 4h ago", style: TextStyle(color: AppColors.textGrey, fontSize: 11)),
-                      Spacer(),
-                      Icon(Icons.mode_comment_outlined, color: AppColors.textGrey, size: 14),
-                      SizedBox(width: 4),
-                      Text("5", style: TextStyle(color: AppColors.textGrey, fontSize: 11)),
+                      Flexible(
+                        child: Text("${article.sourceName} • ${article.timeAgo}",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: AppColors.textGrey, fontSize: 11)),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.mode_comment_outlined,
+                          color: AppColors.textGrey, size: 14),
+                      const SizedBox(width: 4),
+                      Text("${article.commentCount}",
+                          style: const TextStyle(
+                              color: AppColors.textGrey, fontSize: 11)),
                     ],
                   ),
                 ],

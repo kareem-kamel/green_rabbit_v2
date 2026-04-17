@@ -27,58 +27,73 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Plan Icon Header
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                widget.isClassic ? Icons.shield : Icons.auto_awesome, 
-                color: AppColors.premiumGold, 
-                size: 30
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Choose Your Plan',
-              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Last updated: January 2026',
-              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black45, fontSize: 14),
-            ),
-            const SizedBox(height: 32),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final double horizontalPadding = constraints.maxWidth > 900 
+              ? (constraints.maxWidth - 800) / 2 
+              : 24.0;
 
-            // Toggle Monthly/Yearly
-            _buildBillingToggle(),
-            const SizedBox(height: 40),
+          return SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Plan Icon Header
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          widget.isClassic ? Icons.shield : Icons.auto_awesome, 
+                          color: AppColors.premiumGold, 
+                          size: 30
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Choose Your Plan',
+                        style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 28, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Last updated: January 2026',
+                        style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white54 : Colors.black45, fontSize: 14),
+                      ),
+                      const SizedBox(height: 32),
 
-            // Main Plan Card
-            _buildPlanCard(context),
-            
-            const SizedBox(height: 40),
-            
-            // Footer Info
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildFooterItem(context, 'Cancel anytime'),
-                _buildFooterItem(context, 'Secure payment'),
-                _buildFooterItem(context, 'Instant access'),
-              ],
+                      // Toggle Monthly/Yearly
+                      _buildBillingToggle(),
+                      const SizedBox(height: 40),
+
+                      // Main Plan Card
+                      _buildPlanCard(context),
+                      
+                      const SizedBox(height: 40),
+                      
+                      // Footer Info
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildFooterItem(context, 'Cancel anytime'),
+                          _buildFooterItem(context, 'Secure payment'),
+                          _buildFooterItem(context, 'Instant access'),
+                        ],
+                      ),
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
+              ),
             ),
-            const SizedBox(height: 40),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

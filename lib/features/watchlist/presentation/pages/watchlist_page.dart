@@ -24,24 +24,37 @@ class WatchlistPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: AppTheme.paddingM),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 10),
-                _buildHeader(context),
-                const SizedBox(height: 24),
-                _buildAISummaryBanner(context),
-                const SizedBox(height: 24),
-                _buildTrackedSection(context, ref, watchlistState),
-                const SizedBox(height: 32),
-                _buildNewsSection(context),
-                const SizedBox(height: 100), // Added safe margin above bottom nav
-              ],
-            ),
-          ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final double horizontalPadding = constraints.maxWidth > 900 
+                ? (constraints.maxWidth - 800) / 2 
+                : AppTheme.paddingM;
+
+            return SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 800),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 10),
+                        _buildHeader(context),
+                        const SizedBox(height: 24),
+                        _buildAISummaryBanner(context),
+                        const SizedBox(height: 24),
+                        _buildTrackedSection(context, ref, watchlistState),
+                        const SizedBox(height: 32),
+                        _buildNewsSection(context),
+                        const SizedBox(height: 100), // Added safe margin above bottom nav
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

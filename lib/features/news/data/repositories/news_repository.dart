@@ -1,23 +1,29 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:green_rabbit/core/constants/app_constants.dart';
+import '../../../../core/network/api_client.dart';
 import '../models/news_model.dart';
 
 class NewsRepository {
-  // Use a placeholder if you don't have the link yet, so it doesn't crash
-  final String _url = "https://jsonplaceholder.typicode.com/posts"; 
+  final ApiClient _apiClient;
+
+  NewsRepository(this._apiClient);
+
+  String get _endpoint => AppConstants.newsEndpoint;
 
   // THIS NAME MUST MATCH THE CUBIT CALL
   Future<List<NewsArticle>> fetchNewsFeed() async {
     try {
-      final response = await http.get(Uri.parse(_url));
+      final response = await _apiClient.dio.get(_endpoint);
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> decodedData = json.decode(response.body);
+        final decodedData = response.data;
         
-        // This part depends on your APIdog JSON structure
-        if (decodedData.containsKey('data')) {
-           final List articlesJson = decodedData['data']['news']['articles'];
-           return articlesJson.map((json) => NewsArticle.fromJson(json)).toList();
+        // Match the structure from your example data
+        if (decodedData['success'] == true && decodedData.containsKey('data')) {
+           final newsData = decodedData['data']['news'];
+           if (newsData != null && newsData.containsKey('articles')) {
+             final List articlesJson = newsData['articles'];
+             return articlesJson.map((json) => NewsArticle.fromJson(json)).toList();
+           }
         }
         return [];
       } else {
@@ -25,6 +31,80 @@ class NewsRepository {
       }
     } catch (e) {
       throw Exception("Connection Error: $e");
+    }
+  }
+
+  Future<List<NewsArticle>> fetchRelatedNews(String id) async {
+    try {
+      // Using RESTful pattern: {endpoint}/{id}/related
+      final url = '$_endpoint/$id/related';
+      final response = await _apiClient.dio.get(url);
+
+      if (response.statusCode == 200) {
+        final decodedData = response.data;
+        
+        if (decodedData['success'] == true && decodedData.containsKey('data')) {
+          final data = decodedData['data'];
+          // Look for 'related_articles' specifically for this endpoint
+          final List articlesJson = data['related_articles'] ?? [];
+          return articlesJson.map((json) => NewsArticle.fromJson(json)).toList();
+        }
+        return [];
+      } else {
+        throw Exception("Server Error: ${response.statusCode}");
+      }
+    } catch (e) {
+      throw Exception("Connection Error: $e");
+    }
+  }
+
+  Future<NewsArticle?> fetchArticleDetail(String id) async {
+    try {
+      final url = '$_endpoint/$id';
+      final response = await _apiClient.dio.get(url);
+      if (response.statusCode == 200) {
+        final decodedData = response.data;
+        if (decodedData['success'] == true && decodedData['data'] != null) {
+          return NewsArticle.fromJson(decodedData['data']);
+        }
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching article detail: $e');
+      return null;
+    }
+  }
+
+  Future<bool> toggleFavorite(String id, bool isAdd) async {
+    try {
+      final url = '$_endpoint/$id/favorite';
+
+      final response = isAdd 
+          ? await _apiClient.dio.post(url)
+          : await _apiClient.dio.delete(url);
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error toggling favorite: $e');
+      return false;
+    }
+  }
+
+  Future<List<NewsArticle>> fetchFavoriteArticles() async {
+    try {
+      final url = '$_endpoint/favorites';
+      final response = await _apiClient.dio.get(url);
+      if (response.statusCode == 200) {
+        final decodedData = response.data;
+        if (decodedData['success'] == true && decodedData['data'] != null) {
+          final List articlesJson = decodedData['data']['articles'] ?? [];
+          return articlesJson.map((json) => NewsArticle.fromJson(json)).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching favorites: $e');
+      return [];
     }
   }
 }

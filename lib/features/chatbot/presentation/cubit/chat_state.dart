@@ -1,35 +1,10 @@
 import 'package:equatable/equatable.dart';
-
-class ChatMessage {
-  final String text;
-  final bool isUser;
-  final DateTime? timestamp;
-  final bool hasChart; // Add this property
-
-  const ChatMessage({
-    required this.text,
-    required this.isUser,
-    this.timestamp,
-    this.hasChart = false,
-  });
-
-  @override
-  String toString() => 'ChatMessage(text: $text, isUser: $isUser)';
-}
-
-class ChatHistory {
-  final String title;
-  final bool isActive;
-
-  const ChatHistory({required this.title, this.isActive = false});
-
-  @override
-  String toString() => 'ChatHistory(title: $title, isActive: $isActive)';
-}
+import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 
 class ChatState extends Equatable {
   final List<ChatMessage> messages;
-  final List<ChatHistory> history;
+  final List<Conversation> history;
+  final String? activeConversationId;
   final bool isVoiceMode;
   final bool hasMessages;
   final bool isGenerating;
@@ -39,6 +14,7 @@ class ChatState extends Equatable {
   const ChatState({
     this.messages = const [],
     this.history = const [],
+    this.activeConversationId,
     this.isVoiceMode = false,
     this.hasMessages = false,
     this.isGenerating = false,
@@ -48,23 +24,27 @@ class ChatState extends Equatable {
 
   ChatState copyWith({
     List<ChatMessage>? messages,
-    List<ChatHistory>? history,
+    List<Conversation>? history,
+    String? activeConversationId,
     bool? isVoiceMode,
     bool? hasMessages,
     bool? isGenerating,
     int? creditsUsed,
+    int? totalCredits,
+    bool clearActiveConversationId = false,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
       history: history ?? this.history,
+      activeConversationId: clearActiveConversationId ? null : (activeConversationId ?? this.activeConversationId),
       isVoiceMode: isVoiceMode ?? this.isVoiceMode,
       hasMessages: hasMessages ?? this.hasMessages,
       isGenerating: isGenerating ?? this.isGenerating,
       creditsUsed: creditsUsed ?? this.creditsUsed,
-      totalCredits: totalCredits,
+      totalCredits: totalCredits ?? this.totalCredits,
     );
   }
 
   @override
-  List<Object?> get props => [messages, history, isVoiceMode, hasMessages, isGenerating, creditsUsed];
+  List<Object?> get props => [messages, history, activeConversationId, isVoiceMode, hasMessages, isGenerating, creditsUsed, totalCredits];
 }

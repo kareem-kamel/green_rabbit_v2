@@ -11,8 +11,17 @@ import '../../features/auth/data/repository/auth_repository.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/subscriptions/data/repository/subscription_repository.dart';
 import '../../features/subscriptions/presentation/cubit/subscription_cubit.dart';
+import '../../features/news/data/repositories/news_repository.dart';
+import '../../features/news/presentation/cubit/news_cubit.dart';
+import '../../features/news/presentation/cubit/related_news_cubit.dart';
+import '../../features/news/presentation/cubit/news_summary_cubit.dart';
 import '../network/api_client.dart';
-// import '../../features/auth/data/api/auth_api.dart'; // You don't need this anymore!
+import '../../features/auth/data/api/auth_api.dart';
+import '../../features/chatbot/data/repository/chatbot_repository.dart';
+import '../../features/chatbot/data/services/ai_service.dart';
+import '../../features/chatbot/presentation/cubit/chat_cubit.dart';
+import '../../features/alerts/data/repository/alert_repository.dart';
+import '../../features/alerts/presentation/cubit/alert_cubit.dart';
 
 final sl = GetIt.instance;
 
@@ -59,11 +68,21 @@ Future<void> init() async {
   );
 
   // Subscriptions
-  sl.registerLazySingleton<SubscriptionRepository>(
-    () => SubscriptionRepository(),
-  );
+  sl.registerLazySingleton(() => SubscriptionRepository());
+  sl.registerFactory(() => SubscriptionCubit(repository: sl()));
 
-  sl.registerFactory<SubscriptionCubit>(
-    () => SubscriptionCubit(repository: sl<SubscriptionRepository>()),
-  );
+  // News
+  sl.registerLazySingleton(() => NewsRepository(sl<ApiClient>()));
+  sl.registerFactory(() => NewsCubit(repository: sl()));
+  sl.registerFactory(() => RelatedNewsCubit(repository: sl()));
+  sl.registerFactory(() => NewsSummaryCubit(sl()));
+
+  // AI & Chatbot
+  sl.registerLazySingleton(() => AIService(sl<ApiClient>()));
+  sl.registerLazySingleton(() => ChatbotRepository(sl()));
+  sl.registerFactory(() => ChatCubit(repository: sl()));
+
+  // Alerts
+  sl.registerLazySingleton(() => AlertRepository(sl<ApiClient>()));
+  sl.registerFactory(() => AlertCubit(repository: sl()));
 }

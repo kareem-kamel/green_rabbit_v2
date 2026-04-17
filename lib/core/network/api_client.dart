@@ -21,10 +21,11 @@ class ApiClient {
   }
 
   void _setupInterceptors() {
-    _dio.options.baseUrl = AppConstants.baseUrl;
+    _dio.options.baseUrl = AppConstants.apiBaseUrl;
     _dio.options.connectTimeout = const Duration(seconds: 30);
     _dio.options.receiveTimeout = const Duration(seconds: 30);
     _dio.options.headers['Content-Type'] = 'application/json';
+    _dio.options.headers['X-Pinggy-No-Screen'] = 'true';
 
     // Mock Interceptor for local development
     // TODO: REMOVE THIS LINE TO REVERT TO LIVE API
@@ -42,12 +43,19 @@ class ApiClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           try {
-            final token = await _storage.read(key: AppConstants.keyAccessToken);
-            if (token != null) {
+            // Priority: Check storage first for a dynamic login token
+            String? token = await _storage.read(key: AppConstants.keyAccessToken);
+            
+            // If storage is empty, fall back to the hardcoded AppConstants.apiToken
+            if (token == null || token.isEmpty) {
+              token = AppConstants.apiToken;
+            }
+
+            if (token != null && token.isNotEmpty) {
               options.headers['Authorization'] = 'Bearer $token';
             }
           } catch (e) {
-            _logger.e('Error reading token from storage: $e');
+            _logger.e('Error reading token: $e');
           }
           
           _logger.d('Proceeding with actual request to: ${options.uri}');

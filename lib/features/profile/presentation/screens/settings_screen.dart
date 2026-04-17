@@ -43,173 +43,188 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             centerTitle: false,
           ),
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 8),
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final double horizontalPadding = constraints.maxWidth > 900 
+                  ? (constraints.maxWidth - 800) / 2 
+                  : 16.0;
+
+              return SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 800),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 8),
+                          
+                          // --- Green Rabbit Banner ---
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).brightness == Brightness.dark ? AppColors.surface : Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                 Image.asset(
+                                  'assets/crown_gold.png',
+                                  width: 28,
+                                  height: 28,
+                                  fit: BoxFit.contain,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Green Rabbit',
+                                    style: TextStyle(
+                                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFFFFB800), Color(0xFFFF8A00)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Text(
+                                    'Get 50% off',
+                                    style: TextStyle(
+                                      color: Colors.black,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          
+                          _buildSectionHeader('App preferences'),
+                          _buildSettingsGroup(context, [
+                            _buildSettingsTile(
+                              context,
+                              icon: Icons.attach_money,
+                              title: 'Default currency (${state.currency})',
+                              onTap: () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => CurrencySelectionScreen(currentCurrency: state.currency),
+                                  ),
+                                );
+                                if (result != null && result is String) {
+                                  context.read<SettingsCubit>().setCurrency(result);
+                                }
+                              },
+                            ),
                 
-                // --- Green Rabbit Banner ---
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).brightness == Brightness.dark ? AppColors.surface : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                       Image.asset(
-                        'assets/crown_gold.png',
-                        width: 28,
-                        height: 28,
-                        fit: BoxFit.contain,
+                            _buildSettingsTile(
+                              context,
+                              icon: Icons.notifications_none_outlined,
+                              title: 'Notification',
+                              trailing: _buildSwitch(
+                                state.notificationsEnabled,
+                                (val) => context.read<SettingsCubit>().toggleNotifications(val),
+                              ),
+                            ),
+                            _buildSettingsTile(
+                              context,
+                              icon: Icons.wb_sunny_outlined,
+                              title: 'Light mode',
+                              trailing: _buildSwitch(
+                                state.lightModeEnabled,
+                                (val) => context.read<SettingsCubit>().toggleLightMode(val),
+                              ),
+                            ),
+                            _buildSettingsTile(
+                              context,
+                              icon: Icons.laptop_windows_outlined, 
+                              title: 'Prevent screen awake',
+                              trailing: _buildSwitch(
+                                state.preventScreenAwake,
+                                (val) => context.read<SettingsCubit>().togglePreventScreenAwake(val),
+                              ),
+                            ),
+                          ]),
+                          
+                          const SizedBox(height: 24),
+                          _buildSectionHeader('AI Preferences'),
+                          _buildSettingsGroup(context, [
+                            _buildSettingsTile(
+                              context,
+                              icon: Icons.notifications_active_outlined, 
+                              title: 'AI Alerts Frequency',
+                              trailing: Text(
+                                state.alertFrequency.split('(')[0].trim(),
+                                style: const TextStyle(color: Colors.white38, fontSize: 13),
+                              ),
+                              onTap: () => _showAlertFrequencyBottomSheet(context, state.alertFrequency),
+                            ),
+                          ]),
+                
+                          const SizedBox(height: 24),
+                          _buildSectionHeader('Security'),
+                          _buildSettingsGroup(context, [
+                            _buildSettingsTile(
+                              context,
+                              icon: Icons.lock_outline,
+                              title: 'App lock',
+                              trailing: _buildSwitch(
+                                state.appLockEnabled,
+                                (val) => context.read<SettingsCubit>().toggleAppLock(val),
+                              ),
+                            ),
+                            _buildSettingsTile(
+                              context,
+                              icon: Icons.key_outlined,
+                              title: 'Remember password',
+                              trailing: _buildSwitch(
+                                state.rememberPassword,
+                                (val) => context.read<SettingsCubit>().toggleRememberPassword(val),
+                              ),
+                            ),
+                            _buildSettingsTile(
+                              context,
+                              icon: Icons.shield_outlined,
+                              title: 'Privacy policy',
+                              onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()));
+                              },
+                            ),
+                            _buildSettingsTile(
+                              context,
+                              icon: Icons.description_outlined,
+                              title: 'Terms of sevices',
+                              onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsOfServiceScreen()));
+                              },
+                            ),
+                            _buildSettingsTile(
+                              context,
+                              icon: Icons.star_border,
+                              title: 'Rate us',
+                              onTap: () => RatingBottomSheet.show(context),
+                            ),
+                          ]),
+                          const SizedBox(height: 48),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Green Rabbit',
-                          style: TextStyle(
-                            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFFFB800), Color(0xFFFF8A00)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Text(
-                          'Get 50% off',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                
-                _buildSectionHeader('App preferences'),
-                _buildSettingsGroup(context, [
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.attach_money,
-                    title: 'Default currency (${state.currency})',
-                    onTap: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => CurrencySelectionScreen(currentCurrency: state.currency),
-                        ),
-                      );
-                      if (result != null && result is String) {
-                        context.read<SettingsCubit>().setCurrency(result);
-                      }
-                    },
-                  ),
-    
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.notifications_none_outlined,
-                    title: 'Notification',
-                    trailing: _buildSwitch(
-                      state.notificationsEnabled,
-                      (val) => context.read<SettingsCubit>().toggleNotifications(val),
-                    ),
-                  ),
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.wb_sunny_outlined,
-                    title: 'Light mode',
-                    trailing: _buildSwitch(
-                      state.lightModeEnabled,
-                      (val) => context.read<SettingsCubit>().toggleLightMode(val),
-                    ),
-                  ),
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.laptop_windows_outlined, 
-                    title: 'Prevent screen awake',
-                    trailing: _buildSwitch(
-                      state.preventScreenAwake,
-                      (val) => context.read<SettingsCubit>().togglePreventScreenAwake(val),
-                    ),
-                  ),
-                ]),
-                
-                const SizedBox(height: 24),
-                _buildSectionHeader('AI Preferences'),
-                _buildSettingsGroup(context, [
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.notifications_active_outlined, 
-                    title: 'AI Alerts Frequency',
-                    trailing: Text(
-                      state.alertFrequency.split('(')[0].trim(),
-                      style: const TextStyle(color: Colors.white38, fontSize: 13),
-                    ),
-                    onTap: () => _showAlertFrequencyBottomSheet(context, state.alertFrequency),
-                  ),
-                ]),
-    
-                const SizedBox(height: 24),
-                _buildSectionHeader('Security'),
-                _buildSettingsGroup(context, [
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.lock_outline,
-                    title: 'App lock',
-                    trailing: _buildSwitch(
-                      state.appLockEnabled,
-                      (val) => context.read<SettingsCubit>().toggleAppLock(val),
-                    ),
-                  ),
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.key_outlined,
-                    title: 'Remember password',
-                    trailing: _buildSwitch(
-                      state.rememberPassword,
-                      (val) => context.read<SettingsCubit>().toggleRememberPassword(val),
-                    ),
-                  ),
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.shield_outlined,
-                    title: 'Privacy policy',
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()));
-                    },
-                  ),
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.description_outlined,
-                    title: 'Terms of sevices',
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const TermsOfServiceScreen()));
-                    },
-                  ),
-                  _buildSettingsTile(
-                    context,
-                    icon: Icons.star_border,
-                    title: 'Rate us',
-                    onTap: () => RatingBottomSheet.show(context),
-                  ),
-                ]),
-                const SizedBox(height: 48),
-              ],
-            ),
+              );
+            },
           ),
         );
       },
