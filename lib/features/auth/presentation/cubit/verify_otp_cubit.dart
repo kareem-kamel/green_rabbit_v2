@@ -1,12 +1,17 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
 import 'verify_otp_state.dart';
+// Import your repository!
+
 
 class VerifyOtpCubit extends Cubit<VerifyOtpState> {
-  VerifyOtpCubit() : super(VerifyOtpInitial());
+  final AuthRepository repository; // Inject the real repository
 
-  Future<void> verifyCode(String code) async {
-    // Check if the user filled all 6 boxes
+  VerifyOtpCubit({required this.repository}) : super(VerifyOtpInitial());
+
+  // 👇 Now it takes BOTH email and code
+  Future<void> verifyCode( {required String email, required String code}) async {
     if (code.length < 6) {
       emit(VerifyOtpError("Please enter the complete 6-digit code."));
       return;
@@ -15,26 +20,24 @@ class VerifyOtpCubit extends Cubit<VerifyOtpState> {
     emit(VerifyOtpLoading());
 
     debugPrint('=========================================');
-    debugPrint('🚀 MOCK API CALL: Verifying code: $code');
+    debugPrint('🚀 REAL API CALL: Verifying code $code for $email');
     debugPrint('=========================================');
 
     try {
-      await Future.delayed(const Duration(seconds: 2)); // Fake network delay
+      // Call the real backend
+      await repository.verifyEmailCode(email: email, code: code);
       
-      // Mock validation: Only 123456 works for our test
-      if (code == "123456") {
-        emit(VerifyOtpSuccess());
-      } else {
-        emit(VerifyOtpError("Invalid code. Try 123456 for testing."));
-      }
+      // If it doesn't crash, it was a success!
+      emit(VerifyOtpSuccess());
     } catch (e) {
-      emit(VerifyOtpError(e.toString()));
+      // Clean up the error message
+      emit(VerifyOtpError(e.toString().replaceAll('Exception: ', '')));
     }
   }
 
-  // Mock function for the Resend button
+  // You can link your resendCode function to the repository later!
   Future<void> resendCode(String email) async {
-    debugPrint('🚀 MOCK API CALL: Resending code to $email');
-    // You could emit a state here to show a "Code Resent!" snackbar if you want
+    debugPrint('🚀 API CALL: Resending code to $email');
+    // await repository.resendOtp(email: email);
   }
 }

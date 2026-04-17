@@ -10,6 +10,7 @@ class AuthSuccess extends AuthState {
   // AuthSuccess({required this.user});
 }
 
+
 class AuthFailure extends AuthState {
   final String errorMessage;
   AuthFailure({required this.errorMessage});

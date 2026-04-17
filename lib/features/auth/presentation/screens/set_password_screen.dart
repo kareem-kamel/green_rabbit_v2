@@ -7,7 +7,7 @@ import 'package:green_rabbit/features/auth/presentation/screens/password_updated
 
 
 class SetPasswordScreen extends StatefulWidget {
-  const SetPasswordScreen({super.key});
+  const SetPasswordScreen({super.key, required String email});
 
   @override
   State<SetPasswordScreen> createState() => _SetPasswordScreenState();

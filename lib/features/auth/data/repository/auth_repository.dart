@@ -46,6 +46,31 @@ class AuthRepository {
     }
   }
 
+  // --- VERIFY OTP ---
+  Future<void> verifyEmailCode({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      final response = await apiClient.dio.post(
+        AppConstants
+            .verifyEmail, // You will need to add this to AppConstants! (e.g., '/api/auth/verify-email')
+        data: {"email": email, "otp": code},
+      );
+
+      // If the API returns a success message, we are good!
+      if (response.data['success'] != true) {
+        throw Exception("Invalid code. Please try again.");
+      }
+    } on DioException catch (e) {
+      final errorMessage =
+          e.response?.data['message'] ?? 'Invalid code. Try again.';
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
   // --- LOGIN ---
   Future<void> login({
     required String email,
@@ -73,6 +98,7 @@ class AuthRepository {
           key: AppConstants.keyAccessToken,
           value: accessToken,
         );
+        await storage.write(key: 'rememberMe', value: rememberMe.toString());
 
         if (refreshToken != null) {
           await storage.write(
@@ -98,6 +124,22 @@ class AuthRepository {
     } catch (e) {
       throw Exception(e.toString());
     }
+  }
+
+  // --- CHECK AUTH STATUS ---
+  Future<bool> checkAuthStatus() async {
+    // 1. Did the user check "Remember Me"?
+    final rememberMeStr = await storage.read(key: 'rememberMe');
+
+    // If they explicitly unchecked it, we don't remember them on next app start.
+    if (rememberMeStr == 'false') {
+      await storage.delete(key: AppConstants.keyAccessToken);
+      return false;
+    }
+
+    // 2. Check if the token exists
+    final token = await storage.read(key: AppConstants.keyAccessToken);
+    return token != null; // Returns true if logged in, false if not
   }
 
   // --- LOGOUT ---

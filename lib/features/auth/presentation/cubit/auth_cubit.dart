@@ -51,6 +51,25 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  // Call this when the app first starts!
+  Future<void> checkAuth() async {
+    emit(AuthLoading()); // Show splash screen or spinner
+    
+    try {
+      final isLoggedIn = await repository.checkAuthStatus();
+      
+      if (isLoggedIn) {
+        // User has a token and wanted to be remembered!
+        emit(AuthSuccess()); 
+      } else {
+        // No token, or "Remember Me" was false
+        emit(AuthInitial()); 
+      }
+    } catch (e) {
+      emit(AuthInitial());
+    }
+  }
+
   // --- LOGOUT ---
   Future<void> logout() async {
     try {

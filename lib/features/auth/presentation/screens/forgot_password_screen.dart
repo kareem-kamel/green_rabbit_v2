@@ -65,7 +65,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => VerifyOtpScreen(
-                        email: _emailController.text, // 👈 Passing the email here
+                        email: _emailController.text, 
+                        isForgotPasswordFlow: true, // 👈 Passing the email here
                       ),
                     ),
                   );

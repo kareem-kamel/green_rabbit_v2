@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:green_rabbit/core/widgets/primary_button.dart';
+import 'package:green_rabbit/features/auth/presentation/screens/verify_otp_screen.dart';
 import 'package:green_rabbit/features/auth/presentation/widget/social_auth.dart';
 import '../widget/auth_text_field.dart';
 import '../cubit/auth_cubit.dart';
@@ -95,21 +96,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
       backgroundColor: AppColors.scaffoldBg,
       body: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
-          if (state is AuthFailure) {
+          if (state is AuthSuccess) {
+            // 1. Optional: Show a quick success message
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Please verify your email.'),
+                backgroundColor: Colors.green,
+              ),
+            );
+
+            // 2. 🚀 NAVIGATE TO OTP SCREEN
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => VerifyOtpScreen(
+                  email:
+                      _emailController.text, // Pass the email they just typed!
+                  isForgotPasswordFlow:
+                      false, // 👇 Make sure this is FALSE for Signup!
+                ),
+              ),
+            );
+          } else if (state is AuthFailure) {
+            // Show error message if backend rejects the signup
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.errorMessage),
                 backgroundColor: Colors.red,
               ),
             );
-          } else if (state is AuthSuccess) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Account created for !'), //${state.user.email}
-                backgroundColor: Colors.green,
-              ),
-            );
-            // TODO: Navigate to Home Dashboard
           }
         },
         builder: (context, state) {
