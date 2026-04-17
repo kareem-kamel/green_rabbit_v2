@@ -3,10 +3,10 @@ import '../models/market_instrument_detail.dart';
 import '../sources/market_remote_data_source.dart';
 
 abstract class MarketRepository {
-  Future<List<MarketInstrument>> getMarketOverview(String type);
+  Future<List<MarketInstrument>> getMarketOverview(String type, {String? search});
   Future<MarketInstrumentDetail> getInstrumentDetails(String id);
   Future<Map<String, dynamic>> getInstrumentChart(String id, {String? period, String? interval});
-  Future<Map<String, dynamic>> getInstrumentStats(String id);
+  Future<MarketInstrumentStats> getInstrumentStats(String id);
   Future<List<dynamic>> getInstrumentNews(String id);
   Future<List<MarketInstrument>> getTrendingInstruments();
 }
@@ -17,8 +17,8 @@ class MarketRepositoryImpl implements MarketRepository {
   MarketRepositoryImpl(this._remoteDataSource);
 
   @override
-  Future<List<MarketInstrument>> getMarketOverview(String type) async {
-    return _remoteDataSource.getMarketOverview(type);
+  Future<List<MarketInstrument>> getMarketOverview(String type, {String? search}) async {
+    return _remoteDataSource.getMarketOverview(type, search: search);
   }
 
   @override
@@ -32,7 +32,7 @@ class MarketRepositoryImpl implements MarketRepository {
   }
 
   @override
-  Future<Map<String, dynamic>> getInstrumentStats(String id) async {
+  Future<MarketInstrumentStats> getInstrumentStats(String id) async {
     return _remoteDataSource.getInstrumentStats(id);
   }
 

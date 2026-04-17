@@ -1,5 +1,8 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:green_rabbit/core/theme/app_theme.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
@@ -117,8 +120,8 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                 price: detail.price.current,
                 change: detail.price.change,
                 changePercent: detail.price.changePercent,
-                sparkline: [], 
                 logoUrl: detail.logoUrl,
+                sparkline7d: [], 
               );
               
               ref.read(watchlistProvider.notifier).toggleInstrument(instrument);
@@ -174,18 +177,23 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         const SizedBox(height: 20),
         _buildTabBar(),
         Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildOverviewTab(detail),
-              _buildTechnicalTab(detail),
-              _buildNewsTab(detail),
-              _buildAnalysisTab(detail),
-              _buildHistoryDataTab(detail),
-              _buildContractsTab(detail),
-              _buildCommentsTab(detail),
-              _buildChartTab(detail),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 700;
+              return TabBarView(
+                controller: _tabController,
+                children: [
+                   _buildOverviewTab(detail, isWide: isWide),
+                  _buildTechnicalTab(detail),
+                  _buildNewsTab(detail),
+                  _buildAnalysisTab(detail),
+                  _buildHistoryDataTab(detail),
+                  _buildContractsTab(detail),
+                  _buildCommentsTab(detail),
+                  _buildChartTab(detail),
+                ],
+              );
+            }
           ),
         ),
       ],
@@ -194,75 +202,99 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
 
   Widget _buildHeader(MarketInstrumentDetail detail) {
     final isUp = (detail.price.change ?? 0) >= 0;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmall = constraints.maxWidth < 360;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                '${detail.name} (${detail.symbol})',
-                style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${detail.name} (${detail.symbol})',
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, 
+                        fontSize: 18, 
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: () => _showSharePopup(context, 'https://greenrabbit.app/${detail.symbol}'),
+                    child: const Icon(Icons.share_outlined, color: AppColors.textSecondary, size: 20),
+                  ),
+                ],
               ),
-              const Spacer(),
-              InkWell(
-                onTap: () => _showSharePopup(context, 'https://greenrabbit.app/${detail.symbol}'),
-                child: const Icon(Icons.share_outlined, color: AppColors.textSecondary, size: 20),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 12,
+                      runSpacing: 8,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(isUp ? Icons.arrow_drop_up : Icons.arrow_drop_down, color: isUp ? AppColors.success : AppColors.error, size: 32),
+                            const SizedBox(width: 4),
+                            Text(
+                              detail.price.current?.toStringAsFixed(2) ?? '--',
+                              style: TextStyle(
+                                color: Theme.of(context).textTheme.displayMedium?.color, 
+                                fontSize: isSmall ? 28 : 36, 
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          '${isUp ? '+' : ''}${detail.price.change?.toStringAsFixed(2) ?? '--'} (${detail.price.changePercent?.toStringAsFixed(2) ?? '--'}%)',
+                          style: TextStyle(color: isUp ? AppColors.success : AppColors.error, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, color: Color(0xFF34D399), size: 16),
+                        const SizedBox(width: 6),
+                        const Text('13 : 01 : 32', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                        const SizedBox(width: 8),
+                        const Text('.', style: TextStyle(color: AppColors.textMuted, fontSize: 14, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 8),
+                        Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFF34D399), shape: BoxShape.circle)),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Real time derived Currency in USD', 
+                            style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Icon(isUp ? Icons.arrow_drop_up : Icons.arrow_drop_down, color: isUp ? AppColors.success : AppColors.error, size: 32),
-                    const SizedBox(width: 4),
-                    Text(
-                      detail.price.current?.toStringAsFixed(2) ?? '--',
-                      style: TextStyle(color: Theme.of(context).textTheme.displayMedium?.color, fontSize: 36, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      '${isUp ? '+' : ''}${detail.price.change?.toStringAsFixed(2) ?? '--'} (${detail.price.changePercent?.toStringAsFixed(2) ?? '--'}%)',
-                      style: TextStyle(color: isUp ? AppColors.success : AppColors.error, fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    const Icon(Icons.access_time, color: Color(0xFF34D399), size: 16),
-                    const SizedBox(width: 6),
-                    const Text('13 : 01 : 32', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
-                    const SizedBox(width: 8),
-                    const Text('.', style: TextStyle(color: AppColors.textMuted, fontSize: 14, fontWeight: FontWeight.bold)),
-                    const SizedBox(width: 8),
-                    Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFF34D399), shape: BoxShape.circle)),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Real time derived Currency in USD', 
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+        );
+      }
     );
   }
 
@@ -313,13 +345,13 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     );
   }
 
-  Widget _buildOverviewTab(MarketInstrumentDetail detail) {
+  Widget _buildOverviewTab(MarketInstrumentDetail detail, {bool isWide = false}) {
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 20),
       children: [
         _buildToolbar(detail),
         _buildSparklineSection(detail),
-        _buildKeyStatsSection(detail),
+        _buildKeyStatsSection(detail, isWide: isWide),
         _buildTechnicalSection(detail),
         _buildNewsDashboardTab(detail),
         _buildContractsSection(detail),
@@ -464,21 +496,6 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     );
   }
 
-  Widget _buildStatRow(String label, String value) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.border.withOpacity(0.5), width: 1)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM, vertical: 14),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16)),
-          Text(value, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 16, fontWeight: FontWeight.normal)),
-        ],
-      ),
-    );
-  }
 
 
   Widget _buildNewsTab(MarketInstrumentDetail detail) {
@@ -518,6 +535,12 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       backgroundColor: Theme.of(context).cardColor,
+      onTap: () async {
+        final url = article['url'];
+        if (url != null && await canLaunchUrl(Uri.parse(url))) {
+          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        }
+      },
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -555,75 +578,72 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   Widget _buildNewsItem(Map<String, dynamic> article, int index) {
+    final sentiment = article['sentiment']?.toString().toLowerCase() ?? 'neutral';
+    final isBullish = sentiment == 'bullish';
+    final isBearish = sentiment == 'bearish';
+    final sentimentColor = isBullish ? AppColors.success : (isBearish ? AppColors.error : AppColors.textSecondary);
+    
     return AppCard(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
       backgroundColor: AppColors.cardBackground,
+      onTap: () async {
+        final url = article['url'];
+        if (url != null && await canLaunchUrl(Uri.parse(url))) {
+          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        }
+      },
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              article['imageUrl'] ?? '',
-              width: 100,
-              height: 100,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                width: 100,
-                height: 100,
-                color: AppColors.surface,
-                child: const Icon(Icons.article, color: AppColors.textMuted),
-              ),
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              image: article['imageUrl'] != null 
+                ? DecorationImage(image: NetworkImage(article['imageUrl']), fit: BoxFit.cover)
+                : null,
+              color: AppColors.surface,
             ),
+            child: article['imageUrl'] == null ? const Icon(Icons.newspaper, color: AppColors.textMuted) : null,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (article['tickers'] != null) ...[
-                  Row(
-                    children: [
-                      Text(
-                        article['tickers'].toString(),
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                      ),
-                      const SizedBox(width: 8),
-                      // Mocking the price change if not in data, following the image style
-                      if (article['tickers'].toString().contains('ATCOa')) 
-                        const Text('-0.47%', style: TextStyle(color: AppColors.error, fontSize: 12)),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                ],
-                Text(
-                  article['title'] ?? '',
-                  style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14, fontWeight: FontWeight.bold),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      '${article['source']['name']} . 3 hours ago',
-                      style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 12),
+                      article['source']?.toString().toUpperCase() ?? 'NEWS',
+                      style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold),
                     ),
-                    const Spacer(),
-                    if (article['commentCount'] != null && article['commentCount'] > 0) ...[
-                      const Icon(Icons.mode_comment_outlined, color: AppColors.textSecondary, size: 14),
-                      const SizedBox(width: 4),
-                      Text(
-                        article['commentCount'].toString(),
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: sentimentColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                    ] else if (index == 1) ...[ // Match image for demo if needed
-                      const Icon(Icons.mode_comment_outlined, color: AppColors.textSecondary, size: 14),
-                      const SizedBox(width: 4),
-                      const Text('2', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                    ],
+                      child: Text(
+                        sentiment.toUpperCase(),
+                        style: TextStyle(color: sentimentColor, fontSize: 9, fontWeight: FontWeight.bold),
+                      ),
+                    ),
                   ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  article['title'] ?? '',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  article['publishedAt']?.toString() ?? 'Today',
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
                 ),
               ],
             ),
@@ -828,28 +848,33 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     
     return statsAsync.when(
       data: (stats) {
-        final perf = stats['performance'] as Map<String, dynamic>?;
-        final vol = stats['volatility'] as Map<String, dynamic>?;
+        final perf = stats.performance;
+        final vol = stats.volatility;
+        final div = stats.dividends;
         
         return ListView(
           padding: const EdgeInsets.all(20),
           children: [
             Text('Performance', style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color ?? Theme.of(context).textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            if (perf != null) ...[
-              _buildStatRow('1D Return', '${perf['return1d']}%'),
-              _buildStatRow('1W Return', '${perf['return1w']}%'),
-              _buildStatRow('1M Return', '${perf['return1m']}%'),
-            ] else 
-              const Text('Performance data not available', style: TextStyle(color: AppColors.textMuted)),
+            _buildStatRow('1D Return', '${perf.return1d?.toStringAsFixed(2) ?? '-'}%'),
+            _buildStatRow('1W Return', '${perf.return1w?.toStringAsFixed(2) ?? '-'}%'),
+            _buildStatRow('1M Return', '${perf.return1m?.toStringAsFixed(2) ?? '-'}%'),
+            _buildStatRow('1Y Return', '${perf.return1y?.toStringAsFixed(2) ?? '-'}%'),
             const SizedBox(height: 24),
             Text('Volatility', style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color ?? Theme.of(context).textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            if (vol != null) ...[
-              _buildStatRow('Beta', vol['beta']?.toString() ?? '-'),
-              _buildStatRow('Std Dev (30d)', vol['standardDeviation30d']?.toString() ?? '-'),
-            ] else
-              const Text('Volatility data not available', style: TextStyle(color: AppColors.textMuted)),
+            _buildStatRow('Beta', vol.beta?.toStringAsFixed(2) ?? '-'),
+            _buildStatRow('Std Dev (30d)', vol.standardDeviation30d?.toStringAsFixed(4) ?? '-'),
+            _buildStatRow('ATR (14d)', vol.averageTrueRange14d?.toStringAsFixed(4) ?? '-'),
+            if (div != null) ...[
+              const SizedBox(height: 24),
+              Text('Dividends', style: TextStyle(color: Theme.of(context).textTheme.titleLarge?.color ?? Theme.of(context).textTheme.bodyLarge?.color, fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              _buildStatRow('Yield', '${div.yield?.toStringAsFixed(2) ?? '-'}%'),
+              _buildStatRow('Annual Div.', div.annualDividend?.toStringAsFixed(2) ?? '-'),
+              _buildStatRow('Ex-Date', div.exDividendDate ?? '-'),
+            ],
           ],
         );
       },
@@ -905,18 +930,41 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   Widget _buildSparklineSection(MarketInstrumentDetail detail) {
+    final chartAsync = ref.watch(instrumentChartProvider(widget.instrumentId));
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM),
       child: Column(
         children: [
           SizedBox(
             height: 250,
-            child: SparklineChart(
-              data: const [112000, 107000, 110000, 108000, 111000, 106000, 113000, 107000, 112000, 111000],
-              currentPrice: 112000,
-              labelsY: const ['105,000', '108,000', '110,000', '114,000', '117,000'],
-              labelsX: const ['10:30', '06:00', '01:15', '20:00', '15:30'],
-              color: const Color(0xFF4A68FF),
+            child: chartAsync.when(
+              data: (chartData) {
+                final List<dynamic> candlesJson = chartData['candles'] ?? [];
+                // Use backend fields: t (time), o (open), h (high), l (low), c (close), v (volume)
+                final sparkData = candlesJson.map((e) => ((e['c'] ?? e['close'] ?? 0.0) as num).toDouble()).toList();
+                final currentPrice = detail.price.current ?? 0.0;
+                
+                if (sparkData.isEmpty) {
+                  return _buildChartError('Insufficient data', onRetry: () => ref.refresh(instrumentChartProvider(widget.instrumentId)));
+                }
+
+                // Generate simple labels based on data range
+                final min = sparkData.reduce((a, b) => a < b ? a : b);
+                final max = sparkData.reduce((a, b) => a > b ? a : b);
+                final step = (max - min) / 4;
+                final yLabels = List.generate(5, (i) => (min + i * step).toStringAsFixed(2));
+
+                return SparklineChart(
+                  data: sparkData,
+                  currentPrice: currentPrice,
+                  labelsY: yLabels,
+                  labelsX: const ['10:30', '06:00', '01:15', '20:00', '15:30'],
+                  color: (detail.price.change ?? 0) >= 0 ? AppColors.success : AppColors.error,
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, _) => _buildChartError('Chart data unavailable: $err'),
             ),
           ),
           const SizedBox(height: 16),
@@ -948,24 +996,63 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     );
   }
 
-  Widget _buildKeyStatsSection(MarketInstrumentDetail detail) {
+  Widget _buildKeyStatsSection(MarketInstrumentDetail detail, {bool isWide = false}) {
+    final stats = [
+      {'label': 'Previous Close', 'value': detail.price.previousClose?.toString() ?? '-'},
+      {'label': 'Open', 'value': detail.price.open?.toString() ?? '-'},
+      {'label': 'Day Range', 'value': '${detail.price.dayLow ?? '-'}-${detail.price.dayHigh ?? '-'}'},
+      {'label': '52wk Range', 'value': '${detail.price.week52Low ?? '-'}-${detail.price.week52High ?? '-'}'},
+      {'label': 'Market Cap', 'value': detail.fundamentals?.marketCap?.toString() ?? '-'},
+      {'label': 'P/E Ratio', 'value': detail.fundamentals?.peRatio?.toString() ?? '-'},
+      {'label': 'Div. Yield', 'value': '${detail.fundamentals?.dividendYield?.toString() ?? '-'}%'},
+    ];
+
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.all(AppTheme.paddingM),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Key Statistics', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
-            ],
-          ),
+        const Padding(
+          padding: EdgeInsets.all(AppTheme.paddingM),
+          child: Text('Key Statistics', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
         ),
-        _buildStatRow('Previous Close', detail.price.previousClose?.toStringAsFixed(3) ?? '-'),
-        _buildStatRow('Open', detail.price.open?.toStringAsFixed(3) ?? '-'),
-        _buildStatRow('Day Range', '${detail.price.dayLow?.toStringAsFixed(3)}-${detail.price.dayHigh?.toStringAsFixed(3)}'),
-        _buildStatRow('53wk Change', '${detail.price.dayLow?.toStringAsFixed(3)}-${detail.price.dayHigh?.toStringAsFixed(3)}'),
-        _buildStatRow('1-Year Charge', '258.5%'),
+        if (isWide)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 4,
+                mainAxisSpacing: 0,
+                crossAxisSpacing: 24,
+              ),
+              itemCount: stats.length,
+              itemBuilder: (context, index) {
+                return _buildStatRow(stats[index]['label']!, stats[index]['value']!, horizontalPadding: 0);
+              },
+            ),
+          )
+        else
+          Column(
+            children: stats.map<Widget>((s) => _buildStatRow(s['label']!, s['value']!)).toList(),
+          ),
       ],
+    );
+  }
+
+  Widget _buildStatRow(String label, String value, {double horizontalPadding = AppTheme.paddingM}) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.border.withOpacity(0.3), width: 1)),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 14),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(child: Text(label, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 15))),
+          Text(value, style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 15, fontWeight: FontWeight.w500)),
+        ],
+      ),
     );
   }
 
@@ -978,30 +1065,15 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Technical', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text('Technical Analysis', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
               InkWell(
                 onTap: () => _tabController.animateTo(1),
-                child: Text('View More', style: TextStyle(color: AppColors.primary, fontSize: 14)),
+                child: Text('More Details', style: TextStyle(color: AppColors.primary, fontSize: 14)),
               ),
             ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM),
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1.2,
-            ),
-            itemCount: detail.technicals?.length ?? 0,
-            itemBuilder: (context, index) => _buildTechnicalBadge(detail.technicals![index]),
-          ),
-        ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 8),
       ],
     );
   }
@@ -1355,77 +1427,237 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   Widget _buildTechnicalTab(MarketInstrumentDetail detail) {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        // Timeframes (4x2 Grid)
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 4,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.2,
-          ),
-          itemCount: detail.technicals?.length ?? 0,
-          itemBuilder: (context, index) => _buildTechnicalBadge(detail.technicals![index]),
-        ),
-        const SizedBox(height: 24),
-        
-        // Market Bias Card
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFF161922),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('Market Bias', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.normal)),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
+    final statsAsync = ref.watch(instrumentStatsProvider(widget.instrumentId));
+
+    return statsAsync.when(
+      data: (stats) => ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          // Timeframes (Placeholder for now as individual stats come per interval)
+          _buildTimeframeSection(stats),
+          const SizedBox(height: 24),
+          
+          // Market Bias Card
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161922),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    const Text('Market Bias', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.normal)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: (stats.technicals.overallSignal?.contains('Bullish') ?? false) 
+                            ? AppColors.success.withOpacity(0.1) 
+                            : AppColors.error.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(stats.technicals.overallSignal ?? 'Neutral', style: TextStyle(
+                            color: (stats.technicals.overallSignal?.contains('Bullish') ?? false) ? AppColors.success : AppColors.error, 
+                            fontSize: 18, fontWeight: FontWeight.w500)),
+                          const SizedBox(width: 8),
+                          Icon(
+                            (stats.technicals.overallSignal?.contains('Bullish') ?? false) ? Icons.trending_up : Icons.trending_down, 
+                            color: (stats.technicals.overallSignal?.contains('Bullish') ?? false) ? AppColors.success : AppColors.error, size: 20),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      children: const [
-                        Text('Strong Bullish', style: TextStyle(color: AppColors.success, fontSize: 18, fontWeight: FontWeight.w500)),
-                        SizedBox(width: 8),
-                        Icon(Icons.trending_up, color: AppColors.success, size: 20),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-              _buildBiasRow('Moving averages', 'Strong Bullish', 'Bullish (12)', 'Bearish (0)'),
-              const SizedBox(height: 20),
-              _buildBiasRow('Technical indicators', 'Bullish', 'Bullish (5)', 'Bearish (2)'),
-            ],
+                  ],
+                ),
+                const SizedBox(height: 32),
+                _buildBiasRow('Moving averages', stats.technicals.overallSignal ?? '-', 'Overall Signal', ''),
+              ],
+            ),
           ),
+          const SizedBox(height: 32),
+          
+          // Pivot Point
+          _buildTechnicalSectionHeader('Pivot Point'),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 600;
+              return _buildPivotPointsTable(stats.technicals.pivotPoints, isWide: isWide);
+            }
+          ),
+          const SizedBox(height: 32),
+          
+          // Moving Averages
+          _buildTechnicalSectionHeader('Moving Averages'),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 600;
+              return _buildMovingAveragesTable(stats.technicals.movingAverages, isWide: isWide);
+            }
+          ),
+          const SizedBox(height: 32),
+          
+          // Technical Indicators
+          _buildTechnicalSectionHeader('Technical Indicators'),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 600;
+              return _buildTechnicalIndicatorsTable(stats.technicals.indicators, isWide: isWide);
+            }
+          ),
+        ],
+      ),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => Center(child: Text('Error loading stats: $err', style: const TextStyle(color: Colors.white))),
+    );
+  }
+
+  Widget _buildTimeframeSection(MarketInstrumentStats stats) {
+    // Current API provides one interval at a time, so we show the current one clearly
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _buildTimeframeItem('Current', signal: stats.technicals.overallSignal ?? 'Neutral', 
+            color: (stats.technicals.overallSignal?.contains('Bullish') ?? false) ? AppColors.success : AppColors.error),
+          _buildTimeframeItem('1h', isLocked: true),
+          _buildTimeframeItem('1d', isLocked: true),
+          _buildTimeframeItem('1w', isLocked: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPivotPointsTable(Map<String, dynamic>? pivotPoints, {bool isWide = false}) {
+    if (pivotPoints == null || pivotPoints['classic'] == null) return const Center(child: Text('No pivot data', style: TextStyle(color: Colors.white54)));
+    final classic = pivotPoints['classic'] as Map<String, dynamic>;
+    
+    final rows = [
+      {'label': 'R3', 'value': classic['r3'].toString()},
+      {'label': 'R2', 'value': classic['r2'].toString()},
+      {'label': 'R1', 'value': classic['r1'].toString()},
+      {'label': 'Pivot', 'value': classic['pivot'].toString(), 'isMain': true},
+      {'label': 'S1', 'value': classic['s1'].toString()},
+      {'label': 'S2', 'value': classic['s2'].toString()},
+      {'label': 'S3', 'value': classic['s3'].toString()},
+    ];
+
+    if (isWide) {
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 5,
+          crossAxisSpacing: 32,
         ),
-        const SizedBox(height: 32),
-        
-        // Pivot Point
-        _buildTechnicalSectionHeader('Pivot point'),
-        _buildPivotPointTable(),
-        const SizedBox(height: 32),
-        
-        // Moving Averages
-        _buildTechnicalSectionHeader('Moving Averages'),
-        _buildMovingAveragesTable(),
-        const SizedBox(height: 32),
-        
-        // Technical Indicators
-        _buildTechnicalSectionHeader('Technical Indicators'),
-        _buildTechnicalIndicatorsTable(),
-      ],
+        itemCount: rows.length,
+        itemBuilder: (context, index) => _buildPivotRow(rows[index]['label'] as String, rows[index]['value'] as String, isMain: rows[index]['isMain'] == true),
+      );
+    }
+
+    return Column(
+      children: rows.map((r) => _buildPivotRow(r['label'] as String, r['value'] as String, isMain: r['isMain'] == true)).toList(),
+    );
+  }
+
+  Widget _buildPivotRow(String label, String value, {bool isMain = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: isMain ? AppColors.primary : Colors.white70, fontWeight: isMain ? FontWeight.bold : FontWeight.normal)),
+          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMovingAveragesTable(List<dynamic>? maData, {bool isWide = false}) {
+    if (maData == null || maData.isEmpty) return const Center(child: Text('No MA data', style: TextStyle(color: Colors.white54)));
+    
+    if (isWide) {
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 6,
+          crossAxisSpacing: 32,
+        ),
+        itemCount: maData.length,
+        itemBuilder: (context, index) => _buildMARow(maData[index]),
+      );
+    }
+
+    return Column(
+      children: maData.map((ma) => _buildMARow(ma)).toList(),
+    );
+  }
+
+  Widget _buildMARow(dynamic ma) {
+    final period = ma['period']?.toString() ?? '-';
+    final simple = ma['simple'] as Map<String, dynamic>?;
+    final signal = simple?['signal']?.toString() ?? '-';
+    final color = signal.contains('buy') ? AppColors.success : (signal.contains('sell') ? AppColors.error : Colors.white70);
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Expanded(flex: 2, child: Text(period, style: const TextStyle(color: Colors.white70))),
+          Expanded(flex: 3, child: Text(simple?['value']?.toString() ?? '-', style: const TextStyle(color: Colors.white))),
+          Expanded(flex: 2, child: Text(signal.toUpperCase(), style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTechnicalIndicatorsTable(List<dynamic>? indicators, {bool isWide = false}) {
+    if (indicators == null || indicators.isEmpty) return const Center(child: Text('No indicators data', style: TextStyle(color: Colors.white54)));
+    
+    if (isWide) {
+      return GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 6,
+          crossAxisSpacing: 32,
+        ),
+        itemCount: indicators.length,
+        itemBuilder: (context, index) => _buildIndicatorRow(indicators[index]),
+      );
+    }
+
+    return Column(
+      children: indicators.map((ind) => _buildIndicatorRow(ind)).toList(),
+    );
+  }
+
+  Widget _buildIndicatorRow(dynamic ind) {
+    final name = ind['name']?.toString() ?? '-';
+    final value = ind['value']?.toString() ?? '-';
+    final signal = ind['signal']?.toString() ?? '-';
+    final color = signal.contains('Bullish') || signal.contains('Buy') ? AppColors.success : (signal.contains('Bearish') || signal.contains('Sell') ? AppColors.error : Colors.white70);
+    
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        children: [
+          Expanded(flex: 3, child: Text(name, style: const TextStyle(color: Colors.white70))),
+          Expanded(flex: 2, child: Text(value, style: const TextStyle(color: Colors.white))),
+          Expanded(flex: 2, child: Text(signal, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500))),
+        ],
+      ),
     );
   }
 
@@ -1523,186 +1755,6 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     );
   }
 
-  Widget _buildPivotPointTable() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF161922),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                const Expanded(flex: 2, child: Text('Level', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                const Expanded(flex: 2, child: Text('Classic', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                const Expanded(flex: 2, child: Text('fibonacci', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-              ],
-            ),
-          ),
-          _buildPivotRow('R3', '119.771', '118.748', color: AppColors.error),
-          _buildPivotRow('R2', '119.771', '118.748', color: AppColors.error),
-          _buildPivotRow('R1', '119.771', '118.748', color: AppColors.error),
-          _buildPivotRow('Pivot point', '119.771', '118.748', color: const Color(0xFF94A3B8)),
-          _buildPivotRow('R3', '119.771', '118.748', color: AppColors.success),
-          _buildPivotRow('R2', '119.771', '118.748', color: AppColors.success),
-          _buildPivotRow('R1', '119.771', '118.748', color: AppColors.success),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPivotRow(String label, String val1, String val2, {required Color color}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Expanded(flex: 2, child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 15))),
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(color: color.withOpacity(0.8), borderRadius: BorderRadius.circular(6)),
-              child: Text(val1, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 13)),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(color: color.withOpacity(0.8), borderRadius: BorderRadius.circular(6)),
-              child: Text(val2, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 13)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMovingAveragesTable() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF161922),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                const Expanded(flex: 2, child: Text('Level', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                const Expanded(flex: 2, child: Text('Simple', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                const Expanded(flex: 2, child: Text('fibonacci', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-              ],
-            ),
-          ),
-          _buildMARow('MA5', '119.771', '118.748', color: AppColors.error),
-          _buildMARow('MA10', '119.771', '118.748', color: AppColors.success),
-          _buildMARow('MA20', '119.771', '118.748', color: AppColors.success),
-          _buildMARow('MA50', '119.771', '118.748', color: AppColors.success),
-          _buildMARow('MA100', '119.771', '118.748', color: AppColors.success),
-          _buildMARow('MA200', '119.771', '118.748', color: AppColors.success),
-          Row(
-            children: [
-              const Expanded(flex: 2, child: Text('Market Bias', style: TextStyle(color: Colors.white, fontSize: 15))),
-              const Expanded(flex: 2, child: Text('Bullish(10)\nBearish(2)', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary, fontSize: 10))),
-              const SizedBox(width: 12),
-              Expanded(
-                flex: 2,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(color: AppColors.success.withOpacity(0.8), borderRadius: BorderRadius.circular(6)),
-                  child: const Text('118.748', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 13)),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMARow(String label, String val1, String val2, {required Color color}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Expanded(flex: 2, child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 15))),
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(color: color.withOpacity(0.8), borderRadius: BorderRadius.circular(6)),
-              child: Text(val1, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 13)),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(color: color.withOpacity(0.8), borderRadius: BorderRadius.circular(6)),
-              child: Text(val2, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 13)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTechnicalIndicatorsTable() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF161922),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                const Expanded(flex: 3, child: Text('Indicator', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                const Expanded(flex: 2, child: Text('Value', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                const Expanded(flex: 2, child: Text('Market Bias', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-              ],
-            ),
-          ),
-          _buildIndicatorRow('RSK(14)', '119.771', 'Bearish', AppColors.error),
-          _buildIndicatorRow('STOCH(9,6)', '119.771', 'Bearish', AppColors.error),
-          _buildIndicatorRow('MACD(12,26)', '119.771', 'Bearish', AppColors.error),
-          _buildIndicatorRow('ATR(14)', '119.771', 'Less Volatility', const Color(0xFF94A3B8)),
-          _buildIndicatorRow('ADX(14)', '119.771', 'Bullish', AppColors.success),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIndicatorRow(String label, String value, String bias, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Expanded(flex: 3, child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 15))),
-          Expanded(flex: 2, child: Text(value, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 13))),
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(color: color.withOpacity(0.8), borderRadius: BorderRadius.circular(6)),
-              child: Text(bias, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showSharePopup(BuildContext context, String url) {
     showModalBottomSheet(
@@ -1884,31 +1936,82 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   Widget _buildLandscapeChart(MarketInstrumentDetail detail) {
-    // Generate scale factor based on timeframe for visual variety
-    int multiplier = _selectedTimeframe.contains('h') ? 5 : (_selectedTimeframe.contains('D') ? 10 : (_selectedTimeframe.contains('M') ? 20 : 1));
-    
-    // Generate dummy candle data for professional display
-    final dummyCandles = List.generate(50, (index) => CandleData(
-      timestamp: DateTime.now().subtract(Duration(minutes: index * 15)).millisecondsSinceEpoch,
-      open: 112.0 + (index % 5) * multiplier * 0.1,
-      close: 112.5 + (index % 4) * multiplier * 0.1,
-      high: 113.8 + (index % 3) * multiplier * 0.1,
-      low: 111.2 - (index % 2) * multiplier * 0.1,
-      volume: 1000.0 + (index * 100),
-    )).reversed.toList();
+    final chartAsync = ref.watch(instrumentChartProvider(widget.instrumentId));
 
-    return Column(
-      children: [
-        _buildLandscapeHeader(detail),
-        Expanded(
-          child: ProTradingChart(
-            candles: dummyCandles,
-            showMovingAverages: _showMovingAverages,
-            mode: _chartMode,
-            timeframe: _selectedTimeframe,
+    return chartAsync.when(
+      data: (chartData) {
+        final List<dynamic> candlesJson = chartData['candles'] ?? [];
+        final realCandles = candlesJson.map((json) {
+          // Use backend fields: t (time), o (open), h (high), l (low), c (close), v (volume)
+          final ts = json['t'] ?? json['timestamp'];
+          final timestamp = ts is int ? ts * 1000 : (DateTime.tryParse(ts?.toString() ?? '')?.millisecondsSinceEpoch ?? 0);
+          
+          return CandleData(
+            timestamp: timestamp,
+            open: ((json['o'] ?? json['open'] ?? 0.0) as num).toDouble(),
+            close: ((json['c'] ?? json['close'] ?? 0.0) as num).toDouble(),
+            high: ((json['h'] ?? json['high'] ?? 0.0) as num).toDouble(),
+            low: ((json['l'] ?? json['low'] ?? 0.0) as num).toDouble(),
+            volume: ((json['v'] ?? json['volume'] ?? 0.0) as num).toDouble(),
+          );
+        }).toList();
+
+        return Column(
+          children: [
+            _buildLandscapeHeader(detail),
+            Expanded(
+              child: ProTradingChart(
+                candles: realCandles,
+                showMovingAverages: _showMovingAverages,
+                mode: _chartMode,
+                timeframe: _selectedTimeframe,
+              ),
+            ),
+          ],
+        );
+      },
+      loading: () => const Scaffold(backgroundColor: Colors.black, body: Center(child: CircularProgressIndicator())),
+      error: (err, _) => Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.cloud_off, color: Colors.white54, size: 48),
+              const SizedBox(height: 16),
+              const Text('Live Chart Unavailable', style: TextStyle(color: Colors.white, fontSize: 18)),
+              const SizedBox(height: 8),
+              Text(err.toString(), style: const TextStyle(color: Colors.white54, fontSize: 12), textAlign: TextAlign.center),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(instrumentChartProvider(widget.instrumentId)),
+                child: const Text('Retry'),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
+    );
+  }
+
+
+  Widget _buildChartError(String message, {VoidCallback? onRetry}) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.cloud_off, color: AppColors.textMuted, size: 40),
+          const SizedBox(height: 12),
+          Text(message, style: const TextStyle(color: AppColors.textMuted), textAlign: TextAlign.center),
+          if (onRetry != null) ...[
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: onRetry,
+              child: const Text('Retry', style: TextStyle(color: AppColors.primary)),
+            )
+          ]
+        ],
+      ),
     );
   }
 

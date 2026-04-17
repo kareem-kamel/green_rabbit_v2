@@ -12,13 +12,10 @@ class MarketInstrument {
   final double? changePercent;
   final double? dayHigh;
   final double? dayLow;
-  final int? volume;
-  final int? marketCap;
+  final num? volume;
+  final num? marketCap;
   final String? logoUrl;
-  final List<double>? sparkline;
-
-  final int? displayOrder;
-  final DateTime? addedAt;
+  final List<double>? sparkline7d;
 
   const MarketInstrument({
     required this.id,
@@ -37,9 +34,7 @@ class MarketInstrument {
     this.volume,
     this.marketCap,
     this.logoUrl,
-    this.sparkline,
-    this.displayOrder,
-    this.addedAt,
+    this.sparkline7d,
   });
 
   factory MarketInstrument.fromJson(Map<String, dynamic> json) {
@@ -51,24 +46,16 @@ class MarketInstrument {
       exchange: json['exchange'] as String?,
       sector: json['sector'] as String?,
       currency: json['currency'] as String?,
-      price: (json['price'] ?? json['current_price'] ?? json['currentPrice']) != null 
-          ? ((json['price'] ?? json['current_price'] ?? json['currentPrice']) as num).toDouble() 
-          : null,
+      price: (json['price'] as num?)?.toDouble(),
       previousClose: (json['previousClose'] as num?)?.toDouble(),
-      change: (json['change'] ?? json['price_change'] ?? json['priceChange']) != null 
-          ? ((json['change'] ?? json['price_change'] ?? json['priceChange']) as num).toDouble() 
-          : null,
-      changePercent: (json['changePercent'] ?? json['price_change_percent'] ?? json['priceChangePercent']) != null 
-          ? ((json['changePercent'] ?? json['price_change_percent'] ?? json['priceChangePercent']) as num).toDouble() 
-          : null,
+      change: (json['change'] as num?)?.toDouble(),
+      changePercent: (json['changePercent'] as num?)?.toDouble(),
       dayHigh: (json['dayHigh'] as num?)?.toDouble(),
       dayLow: (json['dayLow'] as num?)?.toDouble(),
-      volume: json['volume'] as int?,
-      marketCap: json['marketCap'] as int?,
-      logoUrl: (json['logoUrl'] ?? json['logo_url']) as String?,
-      sparkline: (json['sparkline7d'] as List<dynamic>?)?.map((e) => (e as num).toDouble()).toList(),
-      displayOrder: json['displayOrder'] as int?,
-      addedAt: json['addedAt'] != null ? DateTime.parse(json['addedAt'] as String) : null,
+      volume: json['volume'] as num?,
+      marketCap: json['marketCap'] as num?,
+      logoUrl: json['logoUrl'] as String?,
+      sparkline7d: (json['sparkline7d'] as List<dynamic>?)?.map((e) => (e as num).toDouble()).toList(),
     );
   }
 
@@ -78,11 +65,19 @@ class MarketInstrument {
       'symbol': symbol,
       'name': name,
       'type': type,
+      'exchange': exchange,
+      'sector': sector,
+      'currency': currency,
       'price': price,
+      'previousClose': previousClose,
       'change': change,
       'changePercent': changePercent,
+      'dayHigh': dayHigh,
+      'dayLow': dayLow,
+      'volume': volume,
+      'marketCap': marketCap,
       'logoUrl': logoUrl,
-      'sparkline': sparkline,
+      'sparkline7d': sparkline7d,
     };
   }
 }

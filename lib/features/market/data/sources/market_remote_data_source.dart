@@ -3,10 +3,10 @@ import '../models/market_instrument.dart';
 import '../models/market_instrument_detail.dart';
 
 abstract class MarketRemoteDataSource {
-  Future<List<MarketInstrument>> getMarketOverview(String type);
+  Future<List<MarketInstrument>> getMarketOverview(String type, {String? search});
   Future<MarketInstrumentDetail> getInstrumentDetails(String id);
   Future<Map<String, dynamic>> getInstrumentChart(String id, {String? period, String? interval});
-  Future<Map<String, dynamic>> getInstrumentStats(String id);
+  Future<MarketInstrumentStats> getInstrumentStats(String id);
   Future<List<dynamic>> getInstrumentNews(String id);
   Future<List<MarketInstrument>> getTrendingInstruments();
 }
@@ -17,8 +17,13 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
   MarketRemoteDataSourceImpl(this._apiClient);
 
   @override
-  Future<List<MarketInstrument>> getMarketOverview(String type) async {
-    final response = await _apiClient.dio.get('market/overview/$type');
+  Future<List<MarketInstrument>> getMarketOverview(String type, {String? search}) async {
+    final response = await _apiClient.dio.get(
+      'market/overview/$type',
+      queryParameters: {
+        if (search != null && search.isNotEmpty) 'search': search,
+      },
+    );
     final List<dynamic> list = response.data['data']['instruments'] ?? [];
     return list.map((json) => MarketInstrument.fromJson(json)).toList();
   }
@@ -26,7 +31,10 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
   @override
   Future<MarketInstrumentDetail> getInstrumentDetails(String id) async {
     final response = await _apiClient.dio.get('market/instruments/$id');
-    return MarketInstrumentDetail.fromJson(response.data['data']['instrument']);
+    final data = response.data['data'];
+    // Handle both { data: { instrument: { ... } } } and { data: { ...fields... } }
+    final instrumentJson = data['instrument'] ?? data;
+    return MarketInstrumentDetail.fromJson(instrumentJson);
   }
 
   @override
@@ -42,9 +50,9 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
   }
 
   @override
-  Future<Map<String, dynamic>> getInstrumentStats(String id) async {
+  Future<MarketInstrumentStats> getInstrumentStats(String id) async {
     final response = await _apiClient.dio.get('market/instruments/$id/stats');
-    return response.data['data'] as Map<String, dynamic>;
+    return MarketInstrumentStats.fromJson(response.data['data'] as Map<String, dynamic>);
   }
 
   @override

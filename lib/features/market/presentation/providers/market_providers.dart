@@ -7,7 +7,8 @@ import '../../data/repositories/market_repository_impl.dart';
 final marketRepositoryProvider = Provider<MarketRepository>((ref) => sl<MarketRepository>());
 
 final marketOverviewProvider = FutureProvider.family<List<MarketInstrument>, String>((ref, type) async {
-  return ref.watch(marketRepositoryProvider).getMarketOverview(type);
+  final searchQuery = ref.watch(marketSearchQueryProvider);
+  return ref.watch(marketRepositoryProvider).getMarketOverview(type, search: searchQuery);
 });
 
 final livePricesProvider = StreamProvider<List<MarketInstrument>>((ref) async* {
@@ -29,7 +30,7 @@ final instrumentNewsProvider = FutureProvider.family<List<dynamic>, String>((ref
   return ref.watch(marketRepositoryProvider).getInstrumentNews(id);
 });
 
-final instrumentStatsProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, id) async {
+final instrumentStatsProvider = FutureProvider.family<MarketInstrumentStats, String>((ref, id) async {
   return ref.watch(marketRepositoryProvider).getInstrumentStats(id);
 });
 

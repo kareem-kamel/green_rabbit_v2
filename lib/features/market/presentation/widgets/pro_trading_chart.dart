@@ -39,22 +39,25 @@ class _ProTradingChartState extends State<ProTradingChart> {
           padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16),
           child: widget.mode == ProChartMode.indicators 
             ? _buildIndicatorsLegend()
-            : Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  const Icon(Icons.remove_circle_outline, color: AppColors.textMuted, size: 14),
-                  const SizedBox(width: 8),
-                  Text('Silver Futures , ${widget.timeframe} , (CFD)', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13, fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.settings_outlined, color: AppColors.textMuted, size: 14),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.visibility_outlined, color: AppColors.textMuted, size: 14),
-                  const SizedBox(width: 12),
-                  _buildLegendValue('O', '112.320'),
-                  _buildLegendValue('H', '112.493'),
-                  _buildLegendValue('L', '111.955'),
-                  _buildLegendValue('C', '112.482'),
-                ],
+            : SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const Icon(Icons.remove_circle_outline, color: AppColors.textMuted, size: 14),
+                    const SizedBox(width: 8),
+                    Text('Silver Futures , ${widget.timeframe} , (CFD)', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13, fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.settings_outlined, color: AppColors.textMuted, size: 14),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.visibility_outlined, color: AppColors.textMuted, size: 14),
+                    const SizedBox(width: 12),
+                    _buildLegendValue('O', '112.320'),
+                    _buildLegendValue('H', '112.493'),
+                    _buildLegendValue('L', '111.955'),
+                    _buildLegendValue('C', '112.482'),
+                  ],
+                ),
               ),
         ),
         

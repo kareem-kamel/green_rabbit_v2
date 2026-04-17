@@ -91,63 +91,13 @@ class MockInterceptor extends Interceptor {
       );
     }
 
-    // --- Instrument Details & Sub-paths ---
+    // --- Instrument Details ---
     if (path.contains('market/instruments/')) {
       final segments = path.split('/');
-      // Path format: /market/instruments/{id} or /market/instruments/{id}/{subpath}
-      
-      String id;
-      String? subPath;
-      
-      if (segments.length >= 5) {
-        // e.g., /market/instruments/stock:AAPL/chart
-        id = segments[segments.length - 2];
-        subPath = segments.last;
-      } else {
-        // e.g., /market/instruments/stock:AAPL
-        id = segments.last;
-      }
-      
-      // News
-      if (subPath == 'news') {
-        return handler.resolve(
-          Response(
-            requestOptions: options,
-            data: {
-              'success': true,
-              'data': {
-                'instrumentId': id,
-                'articles': [
-                  {
-                    'id': 'news:1',
-                    'title': 'The United States is bracing for a winter storm that will impact the energy sector.',
-                    'summary': 'Major energy producers are adjusting operations as the storm approaches the Gulf Coast...',
-                    'source': {'name': 'Reuters', 'id': 'reuters', 'logoUrl': 'https://picsum.photos/seed/reuters/100'},
-                    'publishedAt': '2024-03-25T13:45:00.000Z',
-                    'imageUrl': 'https://picsum.photos/seed/storm/400/300',
-                    'tickers': 'UST -0.47% ENRG -0.22',
-                    'commentCount': 0,
-                  },
-                  {
-                    'id': 'news:2',
-                    'title': "Apple Reports Record Services Revenue in Q1 2025",
-                    'summary': "Apple's services division posted a record 23.1 billion in revenue...",
-                    'source': {'name': 'Bloomberg', 'id': 'bloomberg', 'logoUrl': 'https://picsum.photos/seed/bloomberg/100'},
-                    'publishedAt': '2024-03-25T11:20:00.000Z',
-                    'imageUrl': 'https://picsum.photos/seed/apple2/400/300',
-                    'tickers': 'ATCOa -0.47% ATLCY -0.22',
-                    'commentCount': 2,
-                  },
-                ]
-              }
-            },
-            statusCode: 200,
-          ),
-        );
-      }
-      
-      // Chart
-      if (subPath == 'chart') {
+      final id = segments.last == 'chart' || segments.last == 'stats' || segments.last == 'news' ? segments[segments.length - 2] : segments.last;
+
+      // Check for chart suffix
+      if (path.endsWith('/chart')) {
         return handler.resolve(
           Response(
             requestOptions: options,
@@ -187,8 +137,8 @@ class MockInterceptor extends Interceptor {
         );
       }
 
-      // Stats
-      if (subPath == 'stats') {
+      // Check for stats suffix
+      if (path.endsWith('/stats')) {
          return handler.resolve(
           Response(
             requestOptions: options,
@@ -212,7 +162,47 @@ class MockInterceptor extends Interceptor {
         );
       }
 
-      // Default Detail
+      // Check for news suffix
+      if (path.endsWith('/news')) {
+        return handler.resolve(
+          Response(
+            requestOptions: options,
+            data: {
+              'success': true,
+              'data': {
+                'instrumentId': id,
+                'articles': [
+                  {
+                    'id': 'news:1',
+                    'title': 'The United States is bracing for a winter storm that will impact the energy sector.',
+                    'summary': 'Major energy producers are adjusting operations as the storm approaches the Gulf Coast...',
+                    'source': {'name': 'Reuters', 'id': 'reuters', 'logoUrl': 'https://picsum.photos/seed/reuters/100'},
+                    'publishedAt': '2024-03-25T13:45:00.000Z',
+                    'imageUrl': 'https://picsum.photos/seed/storm/400/300',
+                    'url': 'https://www.reuters.com',
+                    'tickers': 'UST -0.47% ENRG -0.22',
+                    'commentCount': 0,
+                  },
+                  {
+                    'id': 'news:2',
+                    'title': "Apple Reports Record Services Revenue in Q1 2025",
+                    'summary': "Apple's services division posted a record 23.1 billion in revenue...",
+                    'source': {'name': 'Bloomberg', 'id': 'bloomberg', 'logoUrl': 'https://picsum.photos/seed/bloomberg/100'},
+                    'publishedAt': '2024-03-25T11:20:00.000Z',
+                    'imageUrl': 'https://picsum.photos/seed/apple2/400/300',
+                    'url': 'https://www.bloomberg.com',
+                    'tickers': 'ATCOa -0.47% ATLCY -0.22',
+                    'commentCount': 2,
+                  },
+                ]
+              }
+            },
+            statusCode: 200,
+          ),
+        );
+      }
+      
+      // Default: instrument details
       return handler.resolve(
          Response(
           requestOptions: options,
@@ -226,6 +216,8 @@ class MockInterceptor extends Interceptor {
         ),
       );
     }
+
+    // --- Watchlist and Subscriptions continue ---
 
     // --- Add to Watchlist ---
     if (path.contains('watchlists/') && path.endsWith('/instruments') && options.method == 'POST') {

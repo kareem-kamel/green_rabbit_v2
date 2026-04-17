@@ -14,7 +14,7 @@ class AppConstants {
     return url.endsWith('/') ? url : '$url/';
   }
   
-  static bool get useMockApi => dotenv.get('USE_MOCK_API', fallback: 'false') == 'true';
+  static bool get useMockApi => false; // Explicitly disabled for live testing
   static String? get apiToken => dotenv.get('API_TOKEN', fallback: '');
   
   // Storage Keys
