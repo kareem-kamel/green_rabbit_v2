@@ -5,16 +5,11 @@ class AppConstants {
 
   static const String appName = 'Green Rabbit';
   
-  static String get apiBaseUrl {
-    String url = dotenv.get('API_BASE_URL', fallback: 'https://virtuous-cooperation-production-6420.up.railway.app/api');
-    // Ensure the URL ends with /api/
-    if (!url.contains('/api')) {
-      url = url.endsWith('/') ? '${url}api' : '$url/api';
-    }
-    return url.endsWith('/') ? url : '$url/';
-  }
+  static const String baseUrl = 'https://virtuous-cooperation-production-6420.up.railway.app/api/';
   
-  static bool get useMockApi => false; // Explicitly disabled for live testing
+  static String get apiBaseUrl => baseUrl;
+  
+  static bool get useMockApi => false;
   static String? get apiToken => dotenv.get('API_TOKEN', fallback: '');
   
   // Storage Keys
@@ -23,10 +18,36 @@ class AppConstants {
   static const String keyUserStatus = 'user_status';
   static const String keyThemeMode = 'theme_mode';
   
-  // Routes
+  // API Endpoints
+  // Auth
   static const String register = "auth/register";
   static const String verifyEmail = "auth/verify-email";
   static const String login = "auth/login";
+
+  // Market
+  static String marketOverview(String type) => "market/overview/$type";
+  static const String marketTrending = "market/trending";
+  static String instrumentDetails(String id) => "market/instruments/$id";
+  static const String marketStream = "market/stream";
+  // Sub-endpoints for instruments
+  static String instrumentChart(String id) => "market/instruments/$id/chart";
+  static String instrumentStats(String id) => "market/instruments/$id/stats";
+  static String instrumentNews(String id) => "market/instruments/$id/news";
+  static const String marketNews = "market/news";
+
+  // Profile / User
+  static const String userMe = "users/me";
+  static const String userAvatar = "users/me/avatar";
+  static const String userPreferences = "users/me/preferences";
+  static const String userOnboarding = "users/me/onboarding";
+  static const String userFcmToken = "users/me/fcm-token";
+
+  // Watchlist
+  static const String watchlists = "watchlists";
+  static String watchlistDetail(String id) => "watchlists/$id";
+  static String watchlistInstruments(String id) => "watchlists/$id/instruments";
+  static String watchlistRemoveInstrument(String wlId, String instId) => "watchlists/$wlId/instruments/$instId";
+  static String watchlistReorder(String id) => "watchlists/$id/reorder";
 
   // Animation Durations
   static const Duration splashDelay = Duration(seconds: 3);

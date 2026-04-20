@@ -1,0 +1,1 @@
+{"success":true,"data":{"type":"crypto","instruments":[{"id":"inst_btcusd","symbol":"BTC/USD","name":"Bitcoin","type":"crypto","exchange":"Binance","sector":null,"logoUrl":null,"price":74777.74,"change":-959.08,"changePercent":-1.26633,"volume":null,"sparkline7d":[]}]},"meta":{"page":1,"limit":20,"totalItems":1,"totalPages":1,"hasNext":false,"hasPrev":false}}

@@ -42,38 +42,72 @@ class MarketInstrumentDetail {
     this.contracts,
     this.comments,
   });
+
   factory MarketInstrumentDetail.fromJson(Map<String, dynamic> json) {
-    final priceJson = json['price'] as Map<String, dynamic>?;
-    final statsJson = json['stats'] as Map<String, dynamic>?;
-    final summaryJson = statsJson?['summary'] as Map<String, dynamic>?;
+    dynamic findValue(List<String> keys) {
+      for (final key in keys) {
+        if (json.containsKey(key) && json[key] != null) return json[key];
+        for (final parent in ['stats', 'quote', 'instrument', 'details']) {
+          if (json.containsKey(parent) && json[parent] is Map) {
+            final parentVal = json[parent];
+            if (parentVal != null) {
+              final Map<String, dynamic> parentMap = Map<String, dynamic>.from(parentVal as Map);
+              if (parentMap.containsKey(key) && parentMap[key] != null) return parentMap[key];
+            }
+          }
+        }
+      }
+      return null;
+    }
 
     return MarketInstrumentDetail(
-      id: json['id'].toString(),
-      symbol: json['symbol'].toString(),
-      name: json['name'].toString(),
-      type: json['type'].toString(),
-      exchange: json['exchange']?.toString() ?? summaryJson?['exchange']?.toString(),
-      sector: json['sector']?.toString(),
-      industry: json['industry']?.toString(),
-      currency: json['currency']?.toString(),
-      description: json['description']?.toString(),
-      website: json['website']?.toString(),
-      logoUrl: json['logoUrl']?.toString(),
-      country: json['country']?.toString(),
-      price: PriceInfo.fromNestedJson(priceJson, summaryJson),
-      volume: VolumeInfo.fromNestedJson(json['volume'] as Map<String, dynamic>?, summaryJson),
-      fundamentals: FundamentalsInfo.fromNestedJson(json['fundamentals'] as Map<String, dynamic>?, summaryJson),
-      marketStatus: json['marketStatus']?.toString(),
-      tradingHours: json['tradingHours'] != null ? TradingHoursInfo.fromJson(json['tradingHours'] as Map<String, dynamic>) : null,
-      relatedInstruments: (json['relatedInstruments'] as List?)
-          ?.map((e) => RelatedInstrument.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      contracts: (json['contracts'] as List?)
-          ?.map((e) => InstrumentContract.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      comments: (json['comments'] as List?)
-          ?.map((e) => InstrumentComment.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      id: (findValue(['id', 'instrumentId', 'uuid']) ?? '').toString(),
+      symbol: (findValue(['symbol', 'symbolName', 'ticker']) ?? '').toString(),
+      name: (findValue(['name', 'displayName', 'shortName', 'longName']) ?? '').toString(),
+      type: (json['type'] ?? json['instrumentType'] ?? findValue(['type', 'assetClass']))?.toString() ?? '',
+      exchange: findValue(['exchange', 'exchangeName', 'primaryExchange'])?.toString(),
+      sector: findValue(['sector', 'sectorName', 'category'])?.toString(),
+      industry: findValue(['industry'])?.toString(),
+      currency: findValue(['currency', 'currencyCode', 'quoteCurrency'])?.toString(),
+      description: findValue(['description', 'summary'])?.toString(),
+      website: findValue(['website'])?.toString(),
+      logoUrl: findValue(['logoUrl', 'imageUrl', 'icon'])?.toString(),
+      country: findValue(['country'])?.toString(),
+      price: PriceInfo.fromJson(
+        json['price'] is Map 
+          ? Map<String, dynamic>.from(json['price'] as Map)
+          : (json['quote'] is Map ? Map<String, dynamic>.from(json['quote'] as Map) : json)
+      ),
+      volume: VolumeInfo.fromJson(
+        json['volume'] is Map 
+          ? Map<String, dynamic>.from(json['volume'] as Map)
+          : {}
+      ),
+      fundamentals: json['fundamentals'] is Map 
+          ? FundamentalsInfo.fromJson(Map<String, dynamic>.from(json['fundamentals'] as Map))
+          : null,
+      marketStatus: findValue(['marketStatus', 'status'])?.toString(),
+      tradingHours: json['tradingHours'] is Map 
+          ? TradingHoursInfo.fromJson(Map<String, dynamic>.from(json['tradingHours'] as Map)) 
+          : null,
+      relatedInstruments: json['relatedInstruments'] is List
+          ? (json['relatedInstruments'] as List)
+              .whereType<Map>()
+              .map((e) => RelatedInstrument.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
+          : [],
+      contracts: json['contracts'] is List
+          ? (json['contracts'] as List)
+              .whereType<Map>()
+              .map((e) => InstrumentContract.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
+          : [],
+      comments: json['comments'] is List
+          ? (json['comments'] as List)
+              .whereType<Map>()
+              .map((e) => InstrumentComment.fromJson(Map<String, dynamic>.from(e)))
+              .toList()
+          : [],
     );
   }
 }
@@ -104,26 +138,25 @@ class PriceInfo {
   });
 
   factory PriceInfo.fromJson(Map<String, dynamic> json) {
+    double? toDouble(dynamic val) {
+      if (val == null) return null;
+      if (val is num) return val.toDouble();
+      if (val is String) return double.tryParse(val.replaceAll(',', ''));
+      return null;
+    }
+
     return PriceInfo(
-      current: (json['current'] as num?)?.toDouble(),
-      previousClose: (json['previousClose'] as num?)?.toDouble() ?? (json['prevClose'] as num?)?.toDouble(),
-      open: (json['open'] as num?)?.toDouble(),
-      dayHigh: (json['dayHigh'] as num?)?.toDouble() ?? (json['high'] as num?)?.toDouble(),
-      dayLow: (json['dayLow'] as num?)?.toDouble() ?? (json['low'] as num?)?.toDouble(),
-      week52High: (json['week52High'] as num?)?.toDouble() ?? (json['52WeekHigh'] as num?)?.toDouble(),
-      week52Low: (json['week52Low'] as num?)?.toDouble() ?? (json['52WeekLow'] as num?)?.toDouble(),
-      change: (json['change'] as num?)?.toDouble(),
-      changePercent: (json['changePercent'] as num?)?.toDouble(),
+      current: toDouble(json['current'] ?? json['price'] ?? json['last'] ?? json['close']),
+      previousClose: toDouble(json['previousClose'] ?? json['prevClose'] ?? json['regularMarketPreviousClose']),
+      open: toDouble(json['open'] ?? json['regularMarketOpen']),
+      dayHigh: toDouble(json['dayHigh'] ?? json['high'] ?? json['day_high'] ?? json['regularMarketDayHigh']),
+      dayLow: toDouble(json['dayLow'] ?? json['low'] ?? json['day_low'] ?? json['regularMarketDayLow']),
+      week52High: toDouble(json['week52High'] ?? json['fiftyTwoWeekHigh']),
+      week52Low: toDouble(json['week52Low'] ?? json['fiftyTwoWeekLow']),
+      change: toDouble(json['change'] ?? json['dayChange'] ?? json['priceChange']),
+      changePercent: toDouble(json['changePercent'] ?? json['percentChange'] ?? json['dayChangePercent'] ?? json['change_percent']),
       lastUpdatedAt: json['lastUpdatedAt']?.toString(),
     );
-  }
-
-  factory PriceInfo.fromNestedJson(Map<String, dynamic>? priceJson, Map<String, dynamic>? summaryJson) {
-    final merged = {
-      if (priceJson != null) ...priceJson,
-      if (summaryJson != null) ...summaryJson,
-    };
-    return PriceInfo.fromJson(merged);
   }
 }
 
@@ -136,18 +169,10 @@ class VolumeInfo {
 
   factory VolumeInfo.fromJson(Map<String, dynamic> json) {
     return VolumeInfo(
-      current: json['current'] as num? ?? json['volume'] as num?,
-      average10d: json['average10d'] as num? ?? json['avgVolume'] as num?,
+      current: json['current'] as num?,
+      average10d: json['average10d'] as num?,
       average3m: json['average3m'] as num?,
     );
-  }
-
-  factory VolumeInfo.fromNestedJson(Map<String, dynamic>? volJson, Map<String, dynamic>? summaryJson) {
-    final merged = {
-      if (volJson != null) ...volJson,
-      if (summaryJson != null) ...summaryJson,
-    };
-    return VolumeInfo.fromJson(merged);
   }
 }
 
@@ -220,15 +245,6 @@ class FundamentalsInfo {
       exDividendDate: json['exDividendDate']?.toString(),
     );
   }
-
-  factory FundamentalsInfo.fromNestedJson(Map<String, dynamic>? fundJson, Map<String, dynamic>? summaryJson) {
-    if (fundJson == null && summaryJson == null) return FundamentalsInfo();
-    final merged = {
-      if (fundJson != null) ...fundJson,
-      if (summaryJson != null) ...summaryJson,
-    };
-    return FundamentalsInfo.fromJson(merged);
-  }
 }
 
 class TradingHoursInfo {
@@ -299,14 +315,17 @@ class MarketInstrumentStats {
 
   factory MarketInstrumentStats.fromJson(Map<String, dynamic> json) {
     return MarketInstrumentStats(
-      performance: PerformanceInfo.fromJson((json['performance'] ?? {}) as Map<String, dynamic>),
-      volatility: VolatilityInfo.fromJson((json['volatility'] ?? {}) as Map<String, dynamic>),
-      technicals: TechnicalsInfo.fromJson((json['technical'] ?? json['technicals'] ?? {}) as Map<String, dynamic>),
-      analystRatings: json['analystRatings'] != null ? AnalystRatings.fromJson(json['analystRatings'] as Map<String, dynamic>) : null,
-      dividends: json['dividends'] != null ? DividendsInfo.fromJson(json['dividends'] as Map<String, dynamic>) : null,
-      earningsHistory: (json['earningsHistory'] as List?)
-          ?.map((e) => EarningsResult.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      performance: PerformanceInfo.fromJson((json['performance'] is Map ? json['performance'] : {}) as Map<String, dynamic>),
+      volatility: VolatilityInfo.fromJson((json['volatility'] is Map ? json['volatility'] : {}) as Map<String, dynamic>),
+      technicals: TechnicalsInfo.fromJson((json['technicals'] is Map ? json['technicals'] : {}) as Map<String, dynamic>),
+      analystRatings: json['analystRatings'] is Map ? AnalystRatings.fromJson(json['analystRatings'] as Map<String, dynamic>) : null,
+      dividends: json['dividends'] is Map ? DividendsInfo.fromJson(json['dividends'] as Map<String, dynamic>) : null,
+      earningsHistory: json['earningsHistory'] is List
+          ? (json['earningsHistory'] as List)
+              .whereType<Map<String, dynamic>>()
+              .map((e) => EarningsResult.fromJson(e))
+              .toList()
+          : [],
     );
   }
 }
@@ -371,12 +390,16 @@ class VolatilityInfo {
 
 class TechnicalsInfo {
   final String? overallSignal;
+  final String? interval;
+  final String? maSummarySignal;
   final Map<String, dynamic>? pivotPoints;
   final List<dynamic>? movingAverages;
   final List<dynamic>? indicators;
 
   TechnicalsInfo({
     this.overallSignal,
+    this.interval,
+    this.maSummarySignal,
     this.pivotPoints,
     this.movingAverages,
     this.indicators,
@@ -385,6 +408,8 @@ class TechnicalsInfo {
   factory TechnicalsInfo.fromJson(Map<String, dynamic> json) {
     return TechnicalsInfo(
       overallSignal: json['marketBias']?['overallSignal']?.toString(),
+      interval: json['interval']?.toString(),
+      maSummarySignal: json['movingAverages']?['summarySignal']?.toString(),
       pivotPoints: json['pivotPoints'] as Map<String, dynamic>?,
       movingAverages: json['movingAverages']?['data'] as List?,
       indicators: json['indicators'] as List?,
@@ -481,6 +506,38 @@ class InstrumentComment {
       avatar: json['avatar']?.toString(),
       time: json['time']?.toString() ?? 'Just now',
       text: json['text']?.toString() ?? '',
+    );
+  }
+}
+
+class MarketNewsArticle {
+  final String title;
+  final String? content;
+  final String? url;
+  final String? imageUrl;
+  final String? source;
+  final String? publishedAt;
+  final String? sentiment;
+
+  MarketNewsArticle({
+    required this.title,
+    this.content,
+    this.url,
+    this.imageUrl,
+    this.source,
+    this.publishedAt,
+    this.sentiment,
+  });
+
+  factory MarketNewsArticle.fromJson(Map<String, dynamic> json) {
+    return MarketNewsArticle(
+      title: json['title']?.toString() ?? '',
+      content: json['content']?.toString(),
+      url: json['url']?.toString(),
+      imageUrl: json['imageUrl']?.toString(),
+      source: json['source']?.toString(),
+      publishedAt: json['publishedAt']?.toString(),
+      sentiment: json['sentiment']?.toString(),
     );
   }
 }

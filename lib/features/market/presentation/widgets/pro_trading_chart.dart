@@ -6,18 +6,49 @@ import 'package:intl/intl.dart' hide TextDirection;
 
 enum ProChartMode { area, candle, indicators }
 
+/// Tier-safe period ↔ interval pairs confirmed working via API testing.
+/// Only 1M+1h is confirmed to work for free/classic accounts.
+/// Others return 503 "market data unavailable" from the server.
+const Map<String, String> kTierSafeIntervals = {
+  '1D': '15m',   // 503 on free/classic; kept for pro tier
+  '1W': '1h',   // 503 on free/classic; kept for pro tier
+  '1M': '1h',   // ✅ CONFIRMED WORKING
+  '3M': '1d',   // Classic+
+  '6M': '1d',   // Classic+
+  '1Y': '1d',   // Classic+
+  '5Y': '1w',   // Pro only
+  'ALL': '1M',  // Pro only
+};
+
+/// Returns the best available interval for a given period based on tier restrictions.
+String getIntervalForPeriod(String period) {
+  return kTierSafeIntervals[period] ?? '1h';
+}
+
 class ProTradingChart extends StatefulWidget {
   final List<CandleData> candles;
   final bool showMovingAverages;
   final ProChartMode mode;
-  final String timeframe;
+  final String period;         // e.g. '1M', '1W'
+  final String interval;       // e.g. '1h', '1d'
+  final String symbolName;     // e.g. 'Apple Inc. (AAPL)'
+  final String currency;       // e.g. 'USD'
+  final bool isLoading;
+  final String? errorMessage;
+  final VoidCallback? onRetry;
 
   const ProTradingChart({
     super.key,
     required this.candles,
     this.showMovingAverages = true,
-    this.mode = ProChartMode.area, 
-    this.timeframe = '15',
+    this.mode = ProChartMode.area,
+    this.period = '1M',
+    this.interval = '1h',
+    this.symbolName = '',
+    this.currency = 'USD',
+    this.isLoading = false,
+    this.errorMessage,
+    this.onRetry,
   });
 
   @override
@@ -25,51 +56,100 @@ class ProTradingChart extends StatefulWidget {
 }
 
 class _ProTradingChartState extends State<ProTradingChart> {
-  double _scrollOffset = 0.0;
-  final double _zoomLevel = 1.0;
-  
+  double _scrollOffset = -1.0; // -1 indicates "needs initialization"
+  double _zoomLevel = 1.0;
+  double _baseZoomLevel = 1.0;
+
+  @override
+  void didUpdateWidget(ProTradingChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Reset scroll when data changes (period/interval switch)
+    if (oldWidget.period != widget.period || oldWidget.interval != widget.interval || (oldWidget.candles.isEmpty && widget.candles.isNotEmpty)) {
+      _scrollOffset = -1.0;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (widget.candles.isEmpty) return const Center(child: CircularProgressIndicator());
+    // --- Error state ---
+    if (widget.errorMessage != null) {
+      return _buildErrorState(widget.errorMessage!);
+    }
+
+    // --- Loading state ---
+    if (widget.isLoading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.unlockBlue));
+    }
+
+    // --- Empty state ---
+    if (widget.candles.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    // Last candle for live legend values
+    final last = widget.candles.last;
+    final first = widget.candles.first;
 
     return Column(
       children: [
-        // Legend Header
+        // ── Legend Header ──────────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16),
-          child: widget.mode == ProChartMode.indicators 
-            ? _buildIndicatorsLegend()
-            : SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    const Icon(Icons.remove_circle_outline, color: AppColors.textMuted, size: 14),
-                    const SizedBox(width: 8),
-                    Text('Silver Futures , ${widget.timeframe} , (CFD)', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 13, fontWeight: FontWeight.bold)),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.settings_outlined, color: AppColors.textMuted, size: 14),
-                    const SizedBox(width: 8),
-                    const Icon(Icons.visibility_outlined, color: AppColors.textMuted, size: 14),
-                    const SizedBox(width: 12),
-                    _buildLegendValue('O', '112.320'),
-                    _buildLegendValue('H', '112.493'),
-                    _buildLegendValue('L', '111.955'),
-                    _buildLegendValue('C', '112.482'),
-                  ],
+          padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 16),
+          child: widget.mode == ProChartMode.indicators
+              ? _buildIndicatorsLegend()
+              : SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      const Icon(Icons.remove_circle_outline, color: AppColors.textMuted, size: 14),
+                      const SizedBox(width: 8),
+                      Text(
+                        widget.symbolName.isNotEmpty
+                            ? '${widget.symbolName} , ${widget.interval} , (${widget.currency})'
+                            : '${widget.interval}',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.85),
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.settings_outlined, color: AppColors.textMuted, size: 14),
+                      const SizedBox(width: 12),
+                      _buildLegendValue('O', last.open?.toStringAsFixed(2) ?? '--'),
+                      _buildLegendValue('H', last.high?.toStringAsFixed(2) ?? '--'),
+                      _buildLegendValue('L', last.low?.toStringAsFixed(2) ?? '--'),
+                      _buildLegendValue('C', last.close?.toStringAsFixed(2) ?? '--'),
+                    ],
+                  ),
                 ),
-              ),
         ),
-        
-        // Main Chart Area
+
+        // ── Chart ─────────────────────────────────────────────────────
         Expanded(
           child: LayoutBuilder(
             builder: (context, constraints) {
+              final double totalCandleWidth = (8.0 + 4.0) * _zoomLevel;
+              final double maxScroll = max(0.0, widget.candles.length * totalCandleWidth - (constraints.maxWidth - 80));
+
+              if (_scrollOffset == -1.0) {
+                _scrollOffset = maxScroll;
+              }
+
               return GestureDetector(
-                onHorizontalDragUpdate: (details) {
+                onScaleStart: (details) {
+                  _baseZoomLevel = _zoomLevel;
+                },
+                onScaleUpdate: (details) {
                   setState(() {
-                    _scrollOffset -= details.delta.dx;
-                    _scrollOffset = _scrollOffset.clamp(0.0, max(0.0, widget.candles.length * 12.0 - (constraints.maxWidth - 80)));
+                    if (details.scale != 1.0) {
+                      _zoomLevel = (_baseZoomLevel * details.scale).clamp(0.2, 5.0);
+                    }
+                    _scrollOffset -= details.focalPointDelta.dx;
+                    final double currentTotalWidth = (8.0 + 4.0) * _zoomLevel;
+                    final double currentMaxScroll = max(0.0, widget.candles.length * currentTotalWidth - (constraints.maxWidth - 80));
+                    _scrollOffset = _scrollOffset.clamp(0.0, currentMaxScroll);
                   });
                 },
                 child: CustomPaint(
@@ -79,24 +159,35 @@ class _ProTradingChartState extends State<ProTradingChart> {
                     scrollOffset: _scrollOffset,
                     zoomLevel: _zoomLevel,
                     mode: widget.mode,
-                    timeframe: widget.timeframe,
+                    period: widget.period,
+                    interval: widget.interval,
                   ),
                 ),
               );
             },
           ),
         ),
-        
-        // Bottom Labels (Image 2 style)
+
+        // ── Bottom Stat Bar ───────────────────────────────────────────
         Container(
           height: 30,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              ...['5y', '3y', '1y', '1m', '1d'].map((label) => Padding(
-                padding: const EdgeInsets.only(right: 20),
-                child: Text(label, style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w500)),
-              )),
+              Text(
+                '${widget.candles.length} candles',
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                _formatTimestamp(first.timestamp),
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+              ),
+              const Text(' → ', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+              Text(
+                _formatTimestamp(last.timestamp),
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+              ),
               const Spacer(),
               Text('%', style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
               const SizedBox(width: 12),
@@ -110,12 +201,85 @@ class _ProTradingChartState extends State<ProTradingChart> {
     );
   }
 
+  // ── Error State ──────────────────────────────────────────────────────
+  Widget _buildErrorState(String message) {
+    // Detect tier/503 errors specifically
+    final bool isTierError = message.toLowerCase().contains('503') ||
+        message.toLowerCase().contains('unavailable') ||
+        message.toLowerCase().contains('tier');
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isTierError ? Icons.lock_outline : Icons.cloud_off_outlined,
+              color: isTierError ? AppColors.premiumGold : AppColors.textMuted,
+              size: 48,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isTierError
+                  ? 'Subscription Required for ${widget.period} / ${widget.interval}'
+                  : 'Chart Unavailable',
+              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isTierError
+                  ? 'This period/interval combination requires a higher subscription tier.\nTry 1M with 1h interval.'
+                  : message,
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            if (widget.onRetry != null) ...[
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: widget.onRetry,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Retry'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.unlockBlue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Empty State ──────────────────────────────────────────────────────
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.bar_chart_outlined, color: AppColors.textMuted, size: 48),
+          const SizedBox(height: 12),
+          const Text('No chart data available', style: TextStyle(color: AppColors.textMuted, fontSize: 15)),
+          const SizedBox(height: 6),
+          Text(
+            'Period: ${widget.period} · Interval: ${widget.interval}',
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Indicators Legend Row ─────────────────────────────────────────────
   Widget _buildIndicatorsLegend() {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _buildLegendItem('Daily K', Colors.red, isRect: true),
+          _buildLegendItem('Candles', Colors.red, isRect: true),
           const SizedBox(width: 12),
           _buildLegendItem('MA5', const Color(0xFF4A90E2)),
           const SizedBox(width: 12),
@@ -155,27 +319,41 @@ class _ProTradingChartState extends State<ProTradingChart> {
         text: TextSpan(
           children: [
             TextSpan(text: '$label ', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13, fontWeight: FontWeight.w500)),
-            TextSpan(text: value, style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+            TextSpan(text: value, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
     );
   }
+
+  String _formatTimestamp(int ms) {
+    try {
+      final dt = DateTime.fromMillisecondsSinceEpoch(ms);
+      return DateFormat('MMM d, yy').format(dt);
+    } catch (_) {
+      return '';
+    }
+  }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// Custom Painter
+// ═══════════════════════════════════════════════════════════════════════════════
 class _ChartPainter extends CustomPainter {
   final List<CandleData> candles;
   final double scrollOffset;
   final double zoomLevel;
   final ProChartMode mode;
-  final String timeframe;
+  final String period;
+  final String interval;
 
   _ChartPainter({
     required this.candles,
     required this.scrollOffset,
     required this.zoomLevel,
     required this.mode,
-    required this.timeframe,
+    required this.period,
+    required this.interval,
   });
 
   @override
@@ -184,14 +362,14 @@ class _ChartPainter extends CustomPainter {
     const xAxisHeight = 45.0;
     final chartWidth = size.width - labelWidth;
     final chartHeight = size.height - xAxisHeight;
-    
+
     final candleWidth = 8.0 * zoomLevel;
     final candleSpacing = 4.0 * zoomLevel;
     final totalCandleWidth = candleWidth + candleSpacing;
-    
+
     final firstVisibleIdx = (scrollOffset / totalCandleWidth).floor().clamp(0, candles.length - 1);
     final lastVisibleIdx = ((scrollOffset + chartWidth) / totalCandleWidth).floor().clamp(0, candles.length - 1);
-    
+
     final visibleCandles = candles.sublist(firstVisibleIdx, lastVisibleIdx + 1);
     if (visibleCandles.isEmpty) return;
 
@@ -203,25 +381,28 @@ class _ChartPainter extends CustomPainter {
       if (low < minPrice) minPrice = low;
       if (high > maxPrice) maxPrice = high;
     }
-    
-    minPrice *= 0.98;
-    maxPrice *= 1.02;
-    
+
+    minPrice *= 0.998;
+    maxPrice *= 1.002;
+
     final priceRange = maxPrice - minPrice;
     final scaleY = chartHeight / (priceRange == 0 ? 1 : priceRange);
 
     double getY(double price) => chartHeight - (price - minPrice) * scaleY;
 
-    // Grid Lines
-    final gridPaint = Paint()..color = Colors.white.withOpacity(0.1)..strokeWidth = 0.8;
+    // ── Grid Lines ────────────────────────────────────────────────────
+    final gridPaint = Paint()
+      ..color = Colors.white.withOpacity(0.07)
+      ..strokeWidth = 0.8;
     for (int i = 0; i <= 5; i++) {
       final y = chartHeight * (i / 5);
       canvas.drawLine(Offset(0, y), Offset(chartWidth, y), gridPaint);
-      
+
       final price = maxPrice - (i / 5) * priceRange;
-      _drawText(canvas, Offset(chartWidth + 8, y - 8), price.toStringAsFixed(3), Colors.white.withOpacity(0.7));
+      _drawText(canvas, Offset(chartWidth + 8, y - 8), price.toStringAsFixed(2), Colors.white.withOpacity(0.6));
     }
 
+    // ── Chart Body ────────────────────────────────────────────────────
     if (mode == ProChartMode.area) {
       _drawAreaChart(canvas, chartHeight, getY, firstVisibleIdx, lastVisibleIdx, totalCandleWidth);
     } else if (mode == ProChartMode.candle) {
@@ -230,51 +411,66 @@ class _ChartPainter extends CustomPainter {
       _drawIndicatorsChart(canvas, getY, firstVisibleIdx, lastVisibleIdx, totalCandleWidth);
     }
 
-    // X-Axis (Dates)
-    for (int i = firstVisibleIdx; i <= lastVisibleIdx; i += 10) {
+    // ── X-Axis Labels ─────────────────────────────────────────────────
+    // Determine step to keep labels readable (at most ~8 labels)
+    final visibleCount = lastVisibleIdx - firstVisibleIdx + 1;
+    final step = max(1, (visibleCount / 8).ceil());
+
+    for (int i = firstVisibleIdx; i <= lastVisibleIdx; i += step) {
       final x = (i * totalCandleWidth) - scrollOffset + totalCandleWidth / 2;
       if (x < 0 || x > chartWidth) continue;
-      
+
       final candle = candles[i];
       final date = DateTime.fromMillisecondsSinceEpoch(candle.timestamp);
-      
+
       String topText;
       String bottomText;
-      
-      if (timeframe == '1M') {
+
+      // Interval-aware label format
+      if (interval == '1d' || interval == '1w' || interval == '1M') {
         topText = DateFormat('yyyy').format(date);
-        bottomText = DateFormat('MMM').format(date);
-      } else if (timeframe == '1D') {
-        topText = DateFormat('yyyy-MM').format(date);
-        bottomText = DateFormat('dd').format(date);
+        bottomText = DateFormat('MMM dd').format(date);
+      } else if (interval == '1h' || interval == '15m' || interval == '5m') {
+        topText = DateFormat('MMM dd').format(date);
+        bottomText = DateFormat('HH:mm').format(date);
       } else {
-        // Multi-line style like user image
-        topText = DateFormat('yyyy-MM-dd').format(date);
-        bottomText = DateFormat('HH:mm:ss').format(date);
+        topText = DateFormat('MM/dd').format(date);
+        bottomText = DateFormat('HH:mm').format(date);
       }
-      
-      _drawText(canvas, Offset(x - 35, chartHeight + 6), topText, Colors.white.withOpacity(0.5));
-      _drawText(canvas, Offset(x - 30, chartHeight + 22), bottomText, Colors.white.withOpacity(0.5));
+
+      _drawText(canvas, Offset(x - 30, chartHeight + 6), topText, Colors.white.withOpacity(0.45), fontSize: 11);
+      _drawText(canvas, Offset(x - 22, chartHeight + 20), bottomText, Colors.white.withOpacity(0.45), fontSize: 11);
     }
 
-    // Current Price Indicator
+    // ── Current Price Indicator ───────────────────────────────────────
     final lastPrice = candles.last.close ?? 0;
     final lastPriceY = getY(lastPrice);
-    final dashPaint = Paint()
-      ..color = AppColors.unlockBlue.withOpacity(0.5)
-      ..strokeWidth = 1
-      ..style = PaintingStyle.stroke;
+    final isInView = lastPriceY >= 0 && lastPriceY <= chartHeight;
 
-    for (double x = 0; x < chartWidth; x += 10) {
-      canvas.drawLine(Offset(x, lastPriceY), Offset(x + 5, lastPriceY), dashPaint);
+    if (isInView) {
+      final dashPaint = Paint()
+        ..color = AppColors.unlockBlue.withOpacity(0.6)
+        ..strokeWidth = 1
+        ..style = PaintingStyle.stroke;
+
+      for (double x = 0; x < chartWidth; x += 10) {
+        canvas.drawLine(Offset(x, lastPriceY), Offset(x + 5, lastPriceY), dashPaint);
+      }
+
+      final rect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(chartWidth, lastPriceY - 14, labelWidth, 28),
+        const Radius.circular(4),
+      );
+      canvas.drawRRect(rect, Paint()..color = AppColors.unlockBlue);
+      _drawText(
+        canvas,
+        Offset(chartWidth + 6, lastPriceY - 8),
+        lastPrice.toStringAsFixed(2),
+        Colors.white,
+        isBold: true,
+        fontSize: 12,
+      );
     }
-
-    final rect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(chartWidth, lastPriceY - 14, labelWidth, 28),
-      const Radius.circular(4),
-    );
-    canvas.drawRRect(rect, Paint()..color = Colors.white);
-    _drawText(canvas, Offset(chartWidth + 10, lastPriceY - 8), lastPrice.toStringAsFixed(0), Colors.black, isBold: true);
   }
 
   void _drawAreaChart(Canvas canvas, double height, Function(double) getY, int start, int end, double stepX) {
@@ -299,14 +495,18 @@ class _ChartPainter extends CustomPainter {
     fillPath.lineTo((end * stepX) - scrollOffset, height);
     fillPath.close();
 
-    final fillPaint = Paint()..shader = LinearGradient(
-      colors: [AppColors.unlockBlue.withOpacity(0.3), AppColors.unlockBlue.withOpacity(0.0)],
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-    ).createShader(Rect.fromLTWH(0, 0, 1000, height));
-    
+    final fillPaint = Paint()
+      ..shader = LinearGradient(
+        colors: [AppColors.unlockBlue.withOpacity(0.25), AppColors.unlockBlue.withOpacity(0.0)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(0, 0, 1000, height));
+
     canvas.drawPath(fillPath, fillPaint);
-    canvas.drawPath(path, Paint()..color = AppColors.unlockBlue..strokeWidth = 3..style = PaintingStyle.stroke);
+    canvas.drawPath(path, Paint()
+      ..color = AppColors.unlockBlue
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke);
   }
 
   void _drawCandles(Canvas canvas, Function(double) getY, int start, int end, double stepX) {
@@ -314,16 +514,20 @@ class _ChartPainter extends CustomPainter {
     for (int i = start; i <= end; i++) {
       final candle = candles[i];
       final x = (i * stepX) - scrollOffset + (stepX - candleWidth) / 2;
-      
+
       final open = candle.open ?? 0;
       final close = candle.close ?? 0;
       final high = candle.high ?? 0;
       final low = candle.low ?? 0;
-      
+
       final isBull = close >= open;
       final paint = Paint()..color = isBull ? AppColors.success : AppColors.error;
-      
-      canvas.drawLine(Offset(x + candleWidth / 2, getY(high)), Offset(x + candleWidth / 2, getY(low)), paint..strokeWidth = 1.5);
+
+      canvas.drawLine(
+        Offset(x + candleWidth / 2, getY(high)),
+        Offset(x + candleWidth / 2, getY(low)),
+        paint..strokeWidth = 1.5,
+      );
       final top = getY(isBull ? close : open);
       final bottom = getY(isBull ? open : close);
       canvas.drawRect(Rect.fromLTWH(x, top, candleWidth, max(1.0, (bottom - top).abs())), paint);
@@ -336,10 +540,6 @@ class _ChartPainter extends CustomPainter {
     _drawMALine(canvas, getY, start, end, stepX, 10, const Color(0xFF50E3C2));
     _drawMALine(canvas, getY, start, end, stepX, 20, const Color(0xFFF8E71C));
     _drawMALine(canvas, getY, start, end, stepX, 30, const Color(0xFFE34F4F));
-
-    _drawPriceBalloon(canvas, getY, start, end, stepX, 2334, isTop: true, color: Colors.red);
-    _drawPriceBalloon(canvas, getY, start, end, stepX, 2300, isTop: true, color: Colors.blueGrey);
-    _drawPriceBalloon(canvas, getY, start, end, stepX, 2126, isTop: false, color: Colors.red);
   }
 
   void _drawMALine(Canvas canvas, Function(double) getY, int start, int end, double stepX, int period, Color color) {
@@ -353,36 +553,46 @@ class _ChartPainter extends CustomPainter {
       }
       final x = (i * stepX) - scrollOffset + stepX / 2;
       final y = getY(sum / period);
-      if (first) { path.moveTo(x, y); first = false; } else { path.lineTo(x, y); }
+      if (first) {
+        path.moveTo(x, y);
+        first = false;
+      } else {
+        path.lineTo(x, y);
+      }
       canvas.drawCircle(Offset(x, y), 1.5, Paint()..color = color);
     }
-    canvas.drawPath(path, Paint()..color = color.withOpacity(0.8)..strokeWidth = 1.2..style = PaintingStyle.stroke);
+    canvas.drawPath(path, Paint()
+      ..color = color.withOpacity(0.85)
+      ..strokeWidth = 1.2
+      ..style = PaintingStyle.stroke);
   }
 
-  void _drawPriceBalloon(Canvas canvas, Function(double) getY, int start, int end, double stepX, double price, {required bool isTop, required Color color}) {
-    final index = (start + (end - start) * (isTop ? 0.7 : 0.9)).floor().clamp(start, end);
-    final x = (index * stepX) - scrollOffset + stepX / 2;
-    final y = getY(price);
-    final path = Path();
-    if (isTop) {
-      path.moveTo(x, y); path.lineTo(x - 12, y - 12);
-      path.arcToPoint(Offset(x + 12, y - 12), radius: const Radius.circular(12), clockwise: true);
-    } else {
-      path.moveTo(x, y); path.lineTo(x - 12, y + 12);
-      path.arcToPoint(Offset(x + 12, y + 12), radius: const Radius.circular(12), clockwise: false);
-    }
-    path.close();
-    canvas.drawPath(path, Paint()..color = color);
-    _drawText(canvas, Offset(x - 10, isTop ? y - 24 : y + 12), price.toStringAsFixed(0), Colors.white, isBold: true);
-  }
-
-  void _drawText(Canvas canvas, Offset offset, String text, Color color, {bool isBold = false}) {
-    final span = TextSpan(style: TextStyle(color: color, fontSize: 13, fontWeight: isBold ? FontWeight.bold : FontWeight.normal), text: text);
+  void _drawText(
+    Canvas canvas,
+    Offset offset,
+    String text,
+    Color color, {
+    bool isBold = false,
+    double fontSize = 13,
+  }) {
+    final span = TextSpan(
+      style: TextStyle(
+        color: color,
+        fontSize: fontSize,
+        fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+      ),
+      text: text,
+    );
     final tp = TextPainter(text: span, textDirection: TextDirection.ltr);
     tp.layout();
     tp.paint(canvas, offset);
   }
 
   @override
-  bool shouldRepaint(covariant _ChartPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _ChartPainter oldDelegate) =>
+      oldDelegate.scrollOffset != scrollOffset ||
+      oldDelegate.mode != mode ||
+      oldDelegate.candles != candles ||
+      oldDelegate.period != period ||
+      oldDelegate.interval != interval;
 }

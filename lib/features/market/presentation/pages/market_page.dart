@@ -33,6 +33,11 @@ class _MarketPageState extends ConsumerState<MarketPage> {
     super.initState();
     _searchController = TextEditingController();
     _searchController.addListener(_onSearchChanged);
+    
+    // Ensure profile data is loaded
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProfileCubit>().getProfile();
+    });
   }
 
   void _onSearchChanged() {
@@ -129,49 +134,51 @@ class _MarketPageState extends ConsumerState<MarketPage> {
         String userName = 'User';
         String avatarUrl = 'https://i.pravatar.cc/150?u=green_rabbit';
         
-        if (state is ProfileLoaded) {
-          userName = state.user.fullName;
+        if (state is ProfileLoaded && state.user.fullName.isNotEmpty) {
+          userName = state.user.fullName.split(' ').first;
           avatarUrl = state.user.avatarUrl ?? avatarUrl;
         }
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 380;
-            return GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
-                );
-              },
-              child: Row(
+        return GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            );
+          },
+          child: Row(
                 children: [
                   CircleAvatar(
                     radius: 20,
                     backgroundImage: NetworkImage(avatarUrl),
                   ),
                   const SizedBox(width: 12),
-                  if (!isNarrow)
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Welcome,',
-                            style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 11),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Welcome,',
+                          style: TextStyle(
+                            color: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
                           ),
-                          Text(
-                            userName,
-                            style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14, fontWeight: FontWeight.bold),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          userName,
+                          style: TextStyle(
+                            color: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white, 
+                            fontSize: 16, 
+                            fontWeight: FontWeight.bold,
                           ),
-                        ],
-                      ),
-                    )
-                  else
-                    const Spacer(),
-                  if (isNarrow) const SizedBox(width: 8),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   GestureDetector(
                     onTap: () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage()));
@@ -194,8 +201,6 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                 ],
               ),
             );
-          }
-        );
       },
     );
   }

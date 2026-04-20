@@ -15,6 +15,8 @@ import '../network/api_client.dart';
 import '../../features/profile/data/sources/profile_remote_data_source.dart';
 import '../../features/profile/data/repositories/profile_repository_impl.dart';
 import '../../features/profile/presentation/cubit/profile_cubit.dart';
+import '../../features/news/data/repositories/news_repository.dart';
+import '../../features/news/presentation/cubit/news_cubit.dart';
 // import '../../features/auth/data/api/auth_api.dart'; // You don't need this anymore!
 
 final sl = GetIt.instance;
@@ -54,6 +56,7 @@ Future<void> init() async {
   sl.registerLazySingleton<ProfileRepository>(
     () => ProfileRepositoryImpl(remoteDataSource: sl()),
   );
+  sl.registerLazySingleton<NewsRepository>(() => NewsRepository(sl()));
 
   // Auth
   sl.registerLazySingleton<AuthRepository>(
@@ -78,5 +81,9 @@ Future<void> init() async {
 
   sl.registerFactory<ProfileCubit>(
     () => ProfileCubit(repository: sl<ProfileRepository>()),
+  );
+
+  sl.registerFactory<NewsCubit>(
+    () => NewsCubit(sl<NewsRepository>()),
   );
 }

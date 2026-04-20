@@ -25,6 +25,9 @@ class ApiClient {
     _dio.options.connectTimeout = const Duration(seconds: 30);
     _dio.options.receiveTimeout = const Duration(seconds: 30);
     _dio.options.headers['Content-Type'] = 'application/json';
+    _dio.options.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    _dio.options.headers['Accept'] = '*/*';
+    _dio.options.headers['Connection'] = 'keep-alive';
 
     // Mock Interceptor for local development
     if (AppConstants.useMockApi) {

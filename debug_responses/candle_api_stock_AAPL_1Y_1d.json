@@ -1,0 +1,12 @@
+Status Code: 404
+
+{
+    "success": false,
+    "error": {
+        "code": "INSTRUMENT_NOT_FOUND",
+        "message": "No instrument found with the ID 'stock:AAPL'.",
+        "details": {
+            "instrumentId": "stock:AAPL"
+        }
+    }
+}

@@ -1,0 +1,1 @@
+{"success":true,"data":{"type":"forex","instruments":[{"id":"inst_eurusd","symbol":"EUR/USD","name":"Euro / US Dollar","type":"forex","exchange":"FOREX","sector":null,"logoUrl":null,"price":1.17449,"change":-0.00278,"changePercent":-0.23613954,"volume":null,"sparkline7d":[]}]},"meta":{"page":1,"limit":20,"totalItems":1,"totalPages":1,"hasNext":false,"hasPrev":false}}

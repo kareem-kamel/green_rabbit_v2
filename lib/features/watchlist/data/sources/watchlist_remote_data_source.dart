@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../models/watchlist_model.dart';
 
 abstract class WatchlistRemoteDataSource {
@@ -19,7 +20,7 @@ class WatchlistRemoteDataSourceImpl implements WatchlistRemoteDataSource {
 
   @override
   Future<List<WatchlistModel>> getWatchlists() async {
-    final response = await _apiClient.dio.get('watchlists');
+    final response = await _apiClient.dio.get(AppConstants.watchlists);
     final List<dynamic> watchlists = response.data['data']['watchlists'] ?? [];
     return watchlists.map((json) => WatchlistModel.fromJson(json)).toList();
   }
@@ -27,7 +28,7 @@ class WatchlistRemoteDataSourceImpl implements WatchlistRemoteDataSource {
   @override
   Future<WatchlistModel> createWatchlist(String name) async {
     final response = await _apiClient.dio.post(
-      'watchlists',
+      AppConstants.watchlists,
       data: {'name': name},
     );
     return WatchlistModel.fromJson(response.data['data']['watchlist']);
@@ -36,7 +37,7 @@ class WatchlistRemoteDataSourceImpl implements WatchlistRemoteDataSource {
   @override
   Future<WatchlistModel> updateWatchlist(String id, String name) async {
     final response = await _apiClient.dio.put(
-      'watchlists/$id',
+      AppConstants.watchlistDetail(id),
       data: {'name': name},
     );
     return WatchlistModel.fromJson(response.data['data']['watchlist']);
@@ -44,26 +45,26 @@ class WatchlistRemoteDataSourceImpl implements WatchlistRemoteDataSource {
 
   @override
   Future<void> deleteWatchlist(String id) async {
-    await _apiClient.dio.delete('watchlists/$id');
+    await _apiClient.dio.delete(AppConstants.watchlistDetail(id));
   }
 
   @override
   Future<void> addInstrumentToWatchlist(String watchlistId, String instrumentId) async {
     await _apiClient.dio.post(
-      'watchlists/$watchlistId/instruments',
+      AppConstants.watchlistInstruments(watchlistId),
       data: {'instrumentId': instrumentId},
     );
   }
 
   @override
   Future<void> removeInstrumentFromWatchlist(String watchlistId, String instrumentId) async {
-    await _apiClient.dio.delete('watchlists/$watchlistId/instruments/$instrumentId');
+    await _apiClient.dio.delete(AppConstants.watchlistRemoveInstrument(watchlistId, instrumentId));
   }
 
   @override
   Future<void> reorderInstruments(String watchlistId, List<String> instrumentIds) async {
     await _apiClient.dio.put(
-      'watchlists/$watchlistId/reorder',
+      AppConstants.watchlistReorder(watchlistId),
       data: {'instrumentIds': instrumentIds},
     );
   }

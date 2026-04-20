@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../models/user_profile_model.dart';
 
 abstract class ProfileRemoteDataSource {
@@ -32,14 +33,14 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
   @override
   Future<UserProfileModel> getProfile() async {
-    final response = await apiClient.dio.get('users/me');
+    final response = await apiClient.dio.get(AppConstants.userMe);
     return UserProfileModel.fromJson(response.data['data']['user']);
   }
 
   @override
   Future<UserProfileModel> updateProfile({String? fullName, String? country, String? phone}) async {
     final response = await apiClient.dio.put(
-      'users/me',
+      AppConstants.userMe,
       data: {
         if (fullName != null) 'fullName': fullName,
         if (country != null) 'country': country,
@@ -57,7 +58,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
         filename: 'avatar.webp',
       ),
     });
-    final response = await apiClient.dio.put('users/me/avatar', data: formData);
+    final response = await apiClient.dio.put(AppConstants.userAvatar, data: formData);
     return response.data['data']['avatarUrl'];
   }
 
@@ -69,7 +70,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     Map<String, bool>? notifications,
   }) async {
     final response = await apiClient.dio.put(
-      'users/me/preferences',
+      AppConstants.userPreferences,
       data: {
         if (language != null) 'language': language,
         if (theme != null) 'theme': theme,
@@ -83,7 +84,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   @override
   Future<void> submitOnboarding({required String experienceLevel, String? interestedIn}) async {
     await apiClient.dio.post(
-      'users/me/onboarding',
+      AppConstants.userOnboarding,
       data: {
         'experienceLevel': experienceLevel,
         if (interestedIn != null) 'interestedIn': interestedIn,
@@ -94,7 +95,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   @override
   Future<void> deleteAccount({required String password, required String reason, String? feedback}) async {
     await apiClient.dio.delete(
-      'users/me',
+      AppConstants.userMe,
       data: {
         'password': password,
         'reason': reason,
@@ -113,7 +114,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     String? osVersion,
   }) async {
     await apiClient.dio.post(
-      'users/me/fcm-token',
+      AppConstants.userFcmToken,
       data: {
         'fcmToken': fcmToken,
         'deviceType': deviceType,

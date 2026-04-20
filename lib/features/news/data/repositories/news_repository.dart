@@ -1,22 +1,23 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../../../../core/network/api_client.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../models/news_model.dart';
 
 class NewsRepository {
-  // Use a placeholder if you don't have the link yet, so it doesn't crash
-  final String _url = "https://jsonplaceholder.typicode.com/posts"; 
+  final ApiClient _apiClient;
 
-  // THIS NAME MUST MATCH THE CUBIT CALL
+  NewsRepository(this._apiClient);
+
   Future<List<NewsArticle>> fetchNewsFeed() async {
     try {
-      final response = await http.get(Uri.parse(_url));
+      final response = await _apiClient.dio.get(AppConstants.marketNews);
 
       if (response.statusCode == 200) {
-        final Map<String, dynamic> decodedData = json.decode(response.body);
+        final Map<String, dynamic> decodedData = response.data;
         
-        // This part depends on your APIdog JSON structure
+        // Structure based on standard market API: { success: true, data: { news: { articles: [...] } } }
         if (decodedData.containsKey('data')) {
-           final List articlesJson = decodedData['data']['news']['articles'];
+           final newsData = decodedData['data']['news'] ?? decodedData['data'];
+           final List articlesJson = newsData['articles'] ?? [];
            return articlesJson.map((json) => NewsArticle.fromJson(json)).toList();
         }
         return [];
