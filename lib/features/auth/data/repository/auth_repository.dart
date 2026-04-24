@@ -106,7 +106,7 @@ class AuthRepository {
       // Clear all secure storage (tokens, user status, etc.)
       await storage.deleteAll();
       // Optional: If your backend has a /logout endpoint to invalidate the token, call it here:
-      // await apiClient.dio.post('/auth/logout');
+      await apiClient.dio.post(AppConstants.logout);
     } catch (e) {
       throw Exception("Failed to logout securely.");
     }

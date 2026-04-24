@@ -16,6 +16,8 @@ class MarketInstrument {
   final num? marketCap;
   final String? logoUrl;
   final List<double>? sparkline7d;
+  final int? displayOrder;
+  final String? addedAt;
 
   const MarketInstrument({
     required this.id,
@@ -35,22 +37,21 @@ class MarketInstrument {
     this.marketCap,
     this.logoUrl,
     this.sparkline7d,
+    this.displayOrder,
+    this.addedAt,
   });
 
   factory MarketInstrument.fromJson(Map<String, dynamic> json) {
     dynamic findValue(List<String> keys) {
       for (final key in keys) {
-        // Check root
+        // 1. Check root
         if (json.containsKey(key) && json[key] != null) return json[key];
         
-        // Check nested parents
-        for (final parent in ['stats', 'quote', 'instrument', 'price', 'volume']) {
+        // 2. Check common nested parents (often APIs wrap data in these)
+        for (final parent in ['stats', 'quote', 'instrument', 'price', 'volume', 'info', 'data', 'details', 'summary', 'item']) {
           if (json.containsKey(parent) && json[parent] is Map) {
-            final parentVal = json[parent];
-            if (parentVal != null) {
-              final Map<String, dynamic> parentMap = Map<String, dynamic>.from(parentVal as Map);
-              if (parentMap.containsKey(key) && parentMap[key] != null) return parentMap[key];
-            }
+            final parentMap = json[parent] as Map<String, dynamic>;
+            if (parentMap.containsKey(key) && parentMap[key] != null) return parentMap[key];
           }
         }
       }
@@ -61,12 +62,14 @@ class MarketInstrument {
       if (val == null) return null;
       if (val is num) return val.toDouble();
       if (val is String) {
-        final cleaned = val.replaceAll(',', '');
+        // Aggressively clean: remove everything except digits, dots, and minus sign
+        // This handles cases like "$1,234.56" or "1 234.56"
+        final cleaned = val.replaceAll(RegExp(r'[^0-9.-]'), '');
         return double.tryParse(cleaned);
       }
       if (val is Map) {
         // If we accidentally got a map (like 'price' object itself), try to find a value inside it
-        return toDouble(val['current'] ?? val['price'] ?? val['value'] ?? val['last'] ?? val['close']);
+        return toDouble(val['current'] ?? val['price'] ?? val['value'] ?? val['last'] ?? val['close'] ?? val['amount'] ?? val['rate']);
       }
       return null;
     }
@@ -75,11 +78,11 @@ class MarketInstrument {
       if (val == null) return null;
       if (val is num) return val;
       if (val is String) {
-        final cleaned = val.replaceAll(',', '');
+        final cleaned = val.replaceAll(RegExp(r'[^0-9.-]'), '');
         return num.tryParse(cleaned);
       }
       if (val is Map) {
-        return toNum(val['current'] ?? val['volume'] ?? val['value'] ?? val['vol'] ?? val['24hVolume']);
+        return toNum(val['current'] ?? val['volume'] ?? val['value'] ?? val['vol'] ?? val['24hVolume'] ?? val['total'] ?? val['amount']);
       }
       return null;
     }
@@ -92,16 +95,18 @@ class MarketInstrument {
       exchange: findValue(['exchange', 'exchangeName', 'primaryExchange'])?.toString(),
       sector: findValue(['sector', 'sectorName', 'category'])?.toString(),
       currency: findValue(['currency', 'currencyCode', 'quoteCurrency'])?.toString(),
-      price: toDouble(findValue(['price', 'currentPrice', 'lastPrice', 'last', 'close', 'current'])),
-      previousClose: toDouble(findValue(['previousClose', 'prevClose', 'regularMarketPreviousClose'])),
-      change: toDouble(findValue(['change', 'dayChange', 'priceChange', 'absoluteChange'])),
-      changePercent: toDouble(findValue(['changePercent', 'percentChange', 'dayChangePercent', 'change_percent'])),
-      dayHigh: toDouble(findValue(['dayHigh', 'high', 'day_high', 'regularMarketDayHigh'])),
-      dayLow: toDouble(findValue(['dayLow', 'low', 'day_low', 'regularMarketDayLow'])),
-      volume: toNum(findValue(['volume', 'vol', '24hVolume', 'regularMarketVolume'])),
-      marketCap: toNum(findValue(['marketCap', 'mktCap', 'market_cap', 'marketCap'])),
+      price: toDouble(findValue(['price', 'currentPrice', 'lastPrice', 'last', 'close', 'current', 'rate', 'priceUsd'])),
+      previousClose: toDouble(findValue(['previousClose', 'prevClose', 'regularMarketPreviousClose', 'close', 'lastClose'])),
+      change: toDouble(findValue(['change', 'dayChange', 'priceChange', 'absoluteChange', 'diff'])),
+      changePercent: toDouble(findValue(['changePercent', 'percentChange', 'dayChangePercent', 'change_percent', 'percent_change'])),
+      dayHigh: toDouble(findValue(['dayHigh', 'high', 'day_high', 'regularMarketDayHigh', 'h'])),
+      dayLow: toDouble(findValue(['dayLow', 'low', 'day_low', 'regularMarketDayLow', 'l'])),
+      volume: toNum(findValue(['volume', 'vol', '24hVolume', 'regularMarketVolume', 'v', 'totalVolume'])),
+      marketCap: toNum(findValue(['marketCap', 'mktCap', 'market_cap', 'market_cap_usd', 'cap'])),
       logoUrl: (json['logoUrl'] ?? json['logo_url'] ?? json['iconUrl'] ?? json['image'])?.toString(),
       sparkline7d: _parseSparkline(findValue(['sparkline7d', 'sparkline', 'chartData', 'history', 'sparkline_7d'])),
+      displayOrder: json['displayOrder'] as int?,
+      addedAt: json['addedAt'] as String?,
     );
   }
 
@@ -134,6 +139,8 @@ class MarketInstrument {
       'marketCap': marketCap,
       'logoUrl': logoUrl,
       'sparkline7d': sparkline7d,
+      'displayOrder': displayOrder,
+      'addedAt': addedAt,
     };
   }
 }

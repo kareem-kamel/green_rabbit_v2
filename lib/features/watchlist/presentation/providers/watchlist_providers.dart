@@ -75,9 +75,22 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
     }
   }
 
-  Future<void> toggleInstrument(MarketInstrument instrument) async {
+  Future<bool> toggleInstrument(MarketInstrument instrument) async {
+    // Ensure we have a watchlist to work with
+    if (state.watchlists.isEmpty) {
+      try {
+        final newWatchlist = await _repository.createWatchlist('My Watchlist');
+        state = state.copyWith(
+          watchlists: [newWatchlist],
+          selectedWatchlist: newWatchlist,
+        );
+      } catch (e) {
+        return false;
+      }
+    }
+
     final selected = state.selectedWatchlist;
-    if (selected == null) return;
+    if (selected == null) return false;
 
     final isAdded = selected.instruments.any((i) => i.id == instrument.id);
     
@@ -96,6 +109,7 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
           updatedAt: DateTime.now(),
         );
         _updateLocalWatchlist(updatedWatchlist);
+        return false;
       } else {
         await _repository.addToWatchlist(selected.id, instrument.id);
         
@@ -110,10 +124,12 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
           updatedAt: DateTime.now(),
         );
         _updateLocalWatchlist(updatedWatchlist);
+        return true;
       }
     } catch (e) {
       // Rollback or show error
       loadWatchlists(); // Full refresh on error
+      return isAdded; // Return original state
     }
   }
 

@@ -23,6 +23,7 @@ class AppConstants {
   static const String register = "auth/register";
   static const String verifyEmail = "auth/verify-email";
   static const String login = "auth/login";
+  static const String logout = "auth/logout";
 
   // Market
   static String marketOverview(String type) => "market/overview/$type";
@@ -48,6 +49,9 @@ class AppConstants {
   static String watchlistInstruments(String id) => "watchlists/$id/instruments";
   static String watchlistRemoveInstrument(String wlId, String instId) => "watchlists/$wlId/instruments/$instId";
   static String watchlistReorder(String id) => "watchlists/$id/reorder";
+
+  // AI Chat
+  static const String aiChat = "https://api.apidog.com/v1/chat";
 
   // Animation Durations
   static const Duration splashDelay = Duration(seconds: 3);

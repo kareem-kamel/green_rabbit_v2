@@ -57,19 +57,23 @@ class WatchlistPage extends ConsumerWidget {
   Widget _buildHeader(BuildContext context, WidgetRef ref, WatchlistState state) {
     return Row(
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Watchlist',
-              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            if (state.selectedWatchlist != null)
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text(
-                state.selectedWatchlist!.name,
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                'Watchlist',
+                style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
               ),
-          ],
+              if (state.selectedWatchlist != null)
+                Text(
+                  state.selectedWatchlist!.name,
+                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+            ],
+          ),
         ),
         const Spacer(),
         if (state.watchlists.length > 1)
@@ -131,11 +135,15 @@ class WatchlistPage extends ConsumerWidget {
                     Text(
                       'AI Watchlist Summarize',
                       style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     SizedBox(height: 6),
                     Text(
                       'Smart insights based on today\'s market news',
                       style: TextStyle(color: Color(0xB3FFFFFF), fontSize: 13, height: 1.3),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -195,42 +203,66 @@ class WatchlistPage extends ConsumerWidget {
         if (instruments.isEmpty)
           _buildEmptyState(context, ref),
         if (instruments.isNotEmpty)
-          ...instruments.map((instrument) => Padding(
-            padding: const EdgeInsets.only(bottom: 12.0),
-            child: Dismissible(
-              key: Key('${state.selectedWatchlist!.id}_${instrument.id}'),
-              direction: DismissDirection.endToStart,
-              onDismissed: (_) {
-                ref.read(watchlistProvider.notifier).toggleInstrument(instrument);
-              },
-              background: Container(
-                alignment: Alignment.centerRight,
-                padding: const EdgeInsets.only(right: 20),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(Icons.delete_outline, color: AppColors.error),
-              ),
-              child: _stockItem(
-                context,
-                instrument.name,
-                instrument.symbol,
-                instrument.price?.toStringAsFixed(2) ?? 'N/A',
-                '${(instrument.change ?? 0) >= 0 ? '+' : ''}${instrument.change?.toStringAsFixed(2) ?? '0.00'} (${instrument.changePercent?.toStringAsFixed(2) ?? '0.00'}%)',
-                (instrument.change ?? 0) >= 0,
-                logoUrl: instrument.logoUrl,
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => InstrumentDetailPage(instrumentId: instrument.id),
+          ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: instruments.length,
+            onReorder: (oldIndex, newIndex) {
+              if (newIndex > oldIndex) newIndex--;
+              final item = instruments.removeAt(oldIndex);
+              instruments.insert(newIndex, item);
+              
+              final instrumentIds = instruments.map((i) => i.id).toList();
+              ref.read(watchlistProvider.notifier).reorder(state.selectedWatchlist!.id, instrumentIds);
+            },
+            itemBuilder: (context, index) {
+              final instrument = instruments[index];
+              return Padding(
+                key: ValueKey(instrument.id),
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: Dismissible(
+                  key: Key('dismiss_${state.selectedWatchlist!.id}_${instrument.id}'),
+                  direction: DismissDirection.endToStart,
+                  onDismissed: (_) {
+                    ref.read(watchlistProvider.notifier).toggleInstrument(instrument);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${instrument.symbol} removed from watchlist'),
+                        backgroundColor: AppColors.error.withOpacity(0.8),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  background: Container(
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 20),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                  );
-                },
-              ),
-            ),
-          )),
+                    child: const Icon(Icons.delete_outline, color: AppColors.error),
+                  ),
+                  child: _stockItem(
+                    context,
+                    instrument.name,
+                    instrument.symbol,
+                    instrument.price?.toStringAsFixed(2) ?? 'N/A',
+                    '${(instrument.change ?? 0) >= 0 ? '+' : ''}${instrument.change?.toStringAsFixed(2) ?? '0.00'} (${instrument.changePercent?.toStringAsFixed(2) ?? '0.00'}%)',
+                    (instrument.change ?? 0) >= 0,
+                    logoUrl: instrument.logoUrl,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => InstrumentDetailPage(instrumentId: instrument.id),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
+          ),
       ],
     );
   }
@@ -372,13 +404,25 @@ class WatchlistPage extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(
+                  name, 
+                  style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
                     const Icon(Icons.access_time, color: AppColors.textMuted, size: 14),
                     const SizedBox(width: 4),
-                    Text('$ticker | 23/01', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                    Expanded(
+                      child: Text(
+                        '$ticker | 23/01', 
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -417,9 +461,13 @@ class WatchlistPage extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              'Watchlist News',
-              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+            Expanded(
+              child: Text(
+                'Watchlist News',
+                style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             TextButton(
               onPressed: () {},
@@ -466,7 +514,14 @@ class WatchlistPage extends ConsumerWidget {
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        Text('$source . 3 hours ago', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                        Expanded(
+                          child: Text(
+                            '$source . 3 hours ago', 
+                            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                         const Spacer(),
                         const Icon(Icons.mode_comment_outlined, color: AppColors.textMuted, size: 14),
                         const SizedBox(width: 4),

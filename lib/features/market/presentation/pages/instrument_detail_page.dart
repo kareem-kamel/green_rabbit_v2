@@ -114,8 +114,8 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         _buildAppBarIcon(
           isFavorite ? Icons.star : Icons.star_border,
           color: isFavorite ? Colors.amber : (Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87),
-          onPressed: () {
-            detailAsync.whenData((detail) {
+          onPressed: () async {
+            detailAsync.whenData((detail) async {
               final instrument = MarketInstrument(
                 id: detail.id,
                 symbol: detail.symbol,
@@ -128,14 +128,20 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                 sparkline7d: [], 
               );
               
-              ref.read(watchlistProvider.notifier).toggleInstrument(instrument);
+              final result = await ref.read(watchlistProvider.notifier).toggleInstrument(instrument);
               
-              if (!isFavorite) {
-                _showSuccessSnackBar(context, instrument);
+              if (result) {
+                if (mounted) _showSuccessSnackBar(context, instrument);
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${instrument.symbol} removed from watchlist')),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('${instrument.symbol} removed from watchlist'),
+                      backgroundColor: AppColors.error.withOpacity(0.8),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                }
               }
             });
           },
