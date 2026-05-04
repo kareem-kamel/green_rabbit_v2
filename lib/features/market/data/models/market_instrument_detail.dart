@@ -512,32 +512,50 @@ class InstrumentComment {
 
 class MarketNewsArticle {
   final String title;
-  final String? content;
+  final String? summary;
   final String? url;
   final String? imageUrl;
-  final String? source;
+  final String? source;        // Extracted from source.name object
+  final String? sourceLogoUrl; // Extracted from source.logoUrl object
+  final String? author;
   final String? publishedAt;
   final String? sentiment;
+  final int? readTimeMinutes;
 
   MarketNewsArticle({
     required this.title,
-    this.content,
+    this.summary,
     this.url,
     this.imageUrl,
     this.source,
+    this.sourceLogoUrl,
+    this.author,
     this.publishedAt,
     this.sentiment,
+    this.readTimeMinutes,
   });
 
   factory MarketNewsArticle.fromJson(Map<String, dynamic> json) {
+    // source is an object: { name, id, logoUrl }
+    final sourceObj = json['source'];
+    final String? sourceName = sourceObj is Map
+        ? sourceObj['name']?.toString()
+        : sourceObj?.toString();
+    final String? sourceLogoUrl = sourceObj is Map
+        ? sourceObj['logoUrl']?.toString()
+        : null;
+
     return MarketNewsArticle(
       title: json['title']?.toString() ?? '',
-      content: json['content']?.toString(),
+      summary: json['summary']?.toString(),
       url: json['url']?.toString(),
       imageUrl: json['imageUrl']?.toString(),
-      source: json['source']?.toString(),
+      source: sourceName,
+      sourceLogoUrl: sourceLogoUrl,
+      author: json['author']?.toString(),
       publishedAt: json['publishedAt']?.toString(),
       sentiment: json['sentiment']?.toString(),
+      readTimeMinutes: json['readTimeMinutes'] as int?,
     );
   }
 }

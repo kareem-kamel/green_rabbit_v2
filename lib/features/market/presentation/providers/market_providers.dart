@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../data/models/market_instrument.dart';
@@ -25,6 +26,7 @@ final trendingInstrumentsProvider = FutureProvider.autoDispose<List<MarketInstru
 });
 
 final instrumentNewsProvider = FutureProvider.autoDispose.family<List<MarketNewsArticle>, String>((ref, id) async {
+  debugPrint('📰 [DEBUG] Riverpod instrumentNewsProvider called with ID: $id');
   return ref.watch(marketRepositoryProvider).getInstrumentNews(id);
 });
 

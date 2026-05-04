@@ -201,23 +201,51 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
 
   @override
   Future<List<MarketNewsArticle>> getInstrumentNews(String id) async {
-    final url = AppConstants.instrumentNews(id);
+    // API Documentation explicitly requires a "Namespaced instrument ID" (e.g., stock:AAPL)
+    final String namespacedId = id.contains(':') ? id : 'stock:$id';
+    final url = AppConstants.instrumentNews(namespacedId);
+    
     debugPrint('\n--- [MARKET API REQUEST] ---');
     debugPrint('URL: $url');
 
-    final response = await _apiClient.dio.get(url);
+    try {
+      final response = await _apiClient.dio.get(url);
 
-    debugPrint('--- [MARKET API RESPONSE] ---');
-    debugPrint('Status: ${response.statusCode}');
-    debugPrint('Body: ${jsonEncode(response.data)}');
-    debugPrint('-----------------------------\n');
+      debugPrint('--- [MARKET API RESPONSE] ---');
+      debugPrint('Status: ${response.statusCode}');
+      // debugPrint('Body: ${jsonEncode(response.data)}'); // Avoid large JSON dumps if possible
+      debugPrint('-----------------------------\n');
 
-    final data = response.data['data'];
-    if (data == null || data['articles'] == null) {
+      final responseData = response.data;
+      if (responseData is! Map) {
+        debugPrint('⚠️ [DEBUG] Raw response is not a Map');
+        return [];
+      }
+
+      final data = responseData['data'];
+      if (data == null) {
+        debugPrint('⚠️ [DEBUG] "data" is null in response');
+        return [];
+      }
+
+      final articlesJson = data['articles'];
+      if (articlesJson == null || articlesJson is! List) {
+        debugPrint('⚠️ [DEBUG] "articles" is missing or not a List');
+        return [];
+      }
+
+      final List<dynamic> list = articlesJson;
+      debugPrint('ℹ️ [DEBUG] Total articles parsed: ${list.length}');
+      return list.map((json) => MarketNewsArticle.fromJson(Map<String, dynamic>.from(json as Map))).toList();
+    } catch (e) {
+      if (e is DioException) {
+        debugPrint('❌ [DEBUG] News endpoint failed with status: ${e.response?.statusCode}');
+        debugPrint('❌ [DEBUG] Response data: ${e.response?.data}');
+      } else {
+        debugPrint('❌ [DEBUG] Error fetching news: $e');
+      }
       return [];
     }
-    final List<dynamic> list = data['articles'];
-    return list.map((json) => MarketNewsArticle.fromJson(json as Map<String, dynamic>)).toList();
   }
 
   @override
@@ -253,9 +281,16 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
       debugPrint('⚠️ Warning: Trending instruments returned no data');
       return [];
     }
-    
+
+    // Each trending item is: { rank, instrument: {...}, trendingReason, trendingScore }
+    // Extract the nested instrument object before parsing.
     return list.where((item) => item is Map).map((item) {
-      return MarketInstrument.fromJson(Map<String, dynamic>.from(item as Map));
+      final Map<String, dynamic> itemMap = Map<String, dynamic>.from(item as Map);
+      final inner = itemMap['instrument'];
+      final instrumentMap = inner is Map
+          ? Map<String, dynamic>.from(inner)
+          : itemMap;
+      return MarketInstrument.fromJson(instrumentMap);
     }).toList();
   }
 

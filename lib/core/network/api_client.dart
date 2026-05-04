@@ -61,11 +61,11 @@ class ApiClient {
     );
 
     // Logging Interceptor (added after Auth for request visibility, but runs before for error/response)
-    _dio.interceptors.add(LogInterceptor(
-      requestBody: true,
-      responseBody: true,
-      logPrint: (obj) => _logger.d(obj),
-    ));
+    // _dio.interceptors.add(LogInterceptor(
+    //   requestBody: true,
+    //   responseBody: true,
+    //   logPrint: (obj) => _logger.d(obj),
+    // ));
   }
 
   Dio get dio => _dio;

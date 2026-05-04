@@ -38,7 +38,21 @@ class SparklineChart extends StatelessWidget {
             padding: const EdgeInsets.only(top: 10, left: 40, right: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: labelsX!.map((l) => Text(l, style: const TextStyle(color: AppColors.textSecondary, fontSize: 10))).toList(),
+              children: labelsX!.asMap().entries.map((entry) {
+                final index = entry.key;
+                final text = entry.value;
+                return Expanded(
+                  child: Text(
+                    text,
+                    textAlign: index == 0 
+                        ? TextAlign.left 
+                        : (index == labelsX!.length - 1 ? TextAlign.right : TextAlign.center),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                  ),
+                );
+              }).toList(),
             ),
           ),
       ],

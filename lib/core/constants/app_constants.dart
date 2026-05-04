@@ -28,6 +28,7 @@ class AppConstants {
   // Market
   static String marketOverview(String type) => "market/overview/$type";
   static const String marketTrending = "market/trending";
+  static const String marketState = "market/state";
   static String instrumentDetails(String id) => "market/instruments/$id";
   static const String marketStream = "market/stream";
   // Sub-endpoints for instruments
@@ -49,9 +50,6 @@ class AppConstants {
   static String watchlistInstruments(String id) => "watchlists/$id/instruments";
   static String watchlistRemoveInstrument(String wlId, String instId) => "watchlists/$wlId/instruments/$instId";
   static String watchlistReorder(String id) => "watchlists/$id/reorder";
-
-  // AI Chat
-  static const String aiChat = "https://api.apidog.com/v1/chat";
 
   // Animation Durations
   static const Duration splashDelay = Duration(seconds: 3);

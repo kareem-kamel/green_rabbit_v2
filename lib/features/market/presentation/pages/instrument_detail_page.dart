@@ -181,6 +181,8 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   Widget _buildContent(MarketInstrumentDetail detail) {
+    // Preload news provider immediately to ensure the request starts right away
+    ref.watch(instrumentNewsProvider(widget.instrumentId));
     return Column(
       children: [
         _buildHeader(detail),
@@ -515,15 +517,26 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
 
   Widget _buildNewsTab(MarketInstrumentDetail detail) {
     final newsAsync = ref.watch(instrumentNewsProvider(widget.instrumentId));
+    debugPrint('📰 [DEBUG] _buildNewsTab building, state: $newsAsync');
     return newsAsync.when(
-      data: (articles) => ListView.builder(
-        padding: const EdgeInsets.all(20),
-        itemCount: articles.length,
-        itemBuilder: (context, index) {
-          final article = articles[index];
-          return _buildNewsItem(article, index);
-        },
-      ),
+      data: (articles) {
+        if (articles.isEmpty) {
+          return const Center(
+            child: Text(
+              'No recent news available.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+            ),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(20),
+          itemCount: articles.length,
+          itemBuilder: (context, index) {
+            final article = articles[index];
+            return _buildNewsItem(article, index);
+          },
+        );
+      },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.textPrimary))),
     );
@@ -532,14 +545,24 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   Widget _buildAnalysisTab(MarketInstrumentDetail detail) {
     final newsAsync = ref.watch(instrumentNewsProvider(widget.instrumentId));
     return newsAsync.when(
-      data: (articles) => ListView.builder(
-        padding: const EdgeInsets.all(20),
-        itemCount: articles.length,
-        itemBuilder: (context, index) {
-          final article = articles[index];
-          return _buildAnalysisItem(article, index);
-        },
-      ),
+      data: (articles) {
+        if (articles.isEmpty) {
+          return const Center(
+            child: Text(
+              'No analysis available.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+            ),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.all(20),
+          itemCount: articles.length,
+          itemBuilder: (context, index) {
+            final article = articles[index];
+            return _buildAnalysisItem(article, index);
+          },
+        );
+      },
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.textPrimary))),
     );
@@ -972,43 +995,49 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           const SizedBox(height: 16),
           Row(
             children: [
-              // Only show tier-safe periods that the server actually supports.
-              // '1M' (→1h) is confirmed working. Others are shown but may return 503
-              // depending on subscription tier.
-              ...['1D', '1W', '1M', '3M', '1Y', '5Y'].map((t) {
-                // 1D and 1W return 503 on free/classic – show with a subtle lock hint
-                final bool mightBeLocked = (t == '1D' || t == '1W' || t == '3M' || t == '1Y' || t == '5Y');
-                return Padding(
-                  padding: const EdgeInsets.only(right: 20),
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() { _selectedPeriod = t; });
-                    },
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          t,
-                          style: TextStyle(
-                            color: t == _selectedPeriod ? AppColors.textPrimary : AppColors.textSecondary,
-                            fontSize: 13,
-                            fontWeight: t == _selectedPeriod ? FontWeight.bold : FontWeight.normal,
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      ...['1D', '1W', '1M', '3M', '1Y', '5Y'].map((t) {
+                        // 1D and 1W return 503 on free/classic – show with a subtle lock hint
+                        final bool mightBeLocked = (t == '1D' || t == '1W' || t == '3M' || t == '1Y' || t == '5Y');
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 16),
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() { _selectedPeriod = t; });
+                            },
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  t,
+                                  style: TextStyle(
+                                    color: t == _selectedPeriod ? AppColors.textPrimary : AppColors.textSecondary,
+                                    fontSize: 13,
+                                    fontWeight: t == _selectedPeriod ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                                if (mightBeLocked)
+                                  const SizedBox(height: 2),
+                                if (mightBeLocked)
+                                  Icon(
+                                    Icons.lock_outline,
+                                    size: 8,
+                                    color: t == _selectedPeriod ? AppColors.premiumGold : AppColors.textMuted,
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
-                        if (mightBeLocked)
-                          const SizedBox(height: 2),
-                        if (mightBeLocked)
-                          Icon(
-                            Icons.lock_outline,
-                            size: 8,
-                            color: t == _selectedPeriod ? AppColors.premiumGold : AppColors.textMuted,
-                          ),
-                      ],
-                    ),
+                        );
+                      }),
+                    ],
                   ),
-                );
-              }),
-              const Spacer(),
+                ),
+              ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
@@ -1238,6 +1267,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
 
   Widget _buildNewsDashboardTab(MarketInstrumentDetail detail) {
     final newsAsync = ref.watch(instrumentNewsProvider(widget.instrumentId));
+    debugPrint('📰 [DEBUG] _buildNewsDashboardTab building, state: $newsAsync');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1256,6 +1286,17 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         ),
         newsAsync.when(
           data: (articles) {
+            if (articles.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 32.0, horizontal: AppTheme.paddingM),
+                child: Center(
+                  child: Text(
+                    'No recent news available.',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                  ),
+                ),
+              );
+            }
             final displayArticles = articles.length > 3 ? articles.sublist(0, 3) : articles;
             return Column(
               children: displayArticles.asMap().entries.map((entry) {
@@ -1263,7 +1304,10 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
               }).toList(),
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
+          loading: () => const Padding(
+            padding: EdgeInsets.all(32.0),
+            child: Center(child: CircularProgressIndicator()),
+          ),
           error: (err, stack) => const SizedBox(),
         ),
       ],
@@ -1550,10 +1594,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       children: [
         Row(
           children: [
-            _buildTimeframeItem('1 Min.', interval: '1m', isPremium: true, stats: stats),
-            _buildTimeframeItem('5 Min.', interval: '5m', isPremium: true, stats: stats),
             _buildTimeframeItem('15 Min.', interval: '15m', isPremium: true, stats: stats),
-            _buildTimeframeItem('30 Min.', interval: '30m', stats: stats),
           ],
         ),
         const SizedBox(height: 12),
@@ -1561,8 +1602,6 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           children: [
             _buildTimeframeItem('Hourly', interval: '1h', stats: stats),
             _buildTimeframeItem('Daily', interval: '1d', stats: stats),
-            _buildTimeframeItem('Weekly', interval: '1w', stats: stats),
-            _buildTimeframeItem('Monthly', interval: '1M', stats: stats),
           ],
         ),
       ],
@@ -1577,7 +1616,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     final bool isLoading = specificStatsAsync.isLoading;
     final String? signal = isPremium 
         ? null 
-        : (specificStatsAsync.value?.technicals.overallSignal ?? (isSelected ? stats.technicals.overallSignal : null));
+        : (specificStatsAsync.valueOrNull?.technicals.overallSignal ?? (isSelected ? stats.technicals.overallSignal : null));
     
     // In a real app, isLocked would depend on user tier and backend status
     // For now, mirroring the reference image design
