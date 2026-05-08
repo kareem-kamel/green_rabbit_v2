@@ -5,7 +5,7 @@ import '../../data/repositories/news_repository.dart';
 class NewsCubit extends Cubit<NewsState> {
   final NewsRepository repository;
 
-  NewsCubit(this.repository) : super(NewsInitial());
+  NewsCubit({required this.repository}) : super(NewsInitial());
 
   // THIS NAME MUST MATCH WHAT YOU TYPE IN MAIN.DART
   Future<void> fetchNewsFeed() async {

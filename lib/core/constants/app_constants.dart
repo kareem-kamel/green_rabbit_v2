@@ -4,20 +4,25 @@ class AppConstants {
   AppConstants._();
 
   static const String appName = 'Green Rabbit';
-  
   static const String baseUrl = 'https://virtuous-cooperation-production-6420.up.railway.app/api/';
   
   static String get apiBaseUrl => baseUrl;
   
   static bool get useMockApi => false;
-  static String? get apiToken => dotenv.get('API_TOKEN', fallback: '');
-  
+  static String? get apiToken => dotenv.get('API_TOKEN', fallback: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4N2Y3MDI4MC0wNWQzLTQwOTAtOTRmZS00MjVjNGIyOGY5Y2UiLCJlbWFpbCI6ImFobWVkNDExMTQ0QGdtYWlsLmNvbSIsInRpZXIiOiJmcmVlIiwibGFuZyI6ImVuIiwidHYiOjEsImlhdCI6MTc3NjIxMjE4MiwiZXhwIjoxNzc2MjE1NzgyfQ.2TYV_VMZ9yZeMfT5KHKHtkhUZRqp4lQFU9hHsK7mUWo');
+
+  // Endpoints
+  static const String newsEndpoint = '/news';
+  static const String relatedNewsEndpoint = '/news/related';
+  static const String aiSummarizeEndpoint = '/ai/summarize';
+  static const String aiUsageEndpoint = '/ai/usage';
+  static const String aiChatConversationsEndpoint = '/ai/chat/conversations';
+  static const String alertsEndpoint = '/alerts';
   // Storage Keys
   static const String keyAccessToken = 'access_token';
   static const String keyRefreshToken = 'refresh_token';
   static const String keyUserStatus = 'user_status';
   static const String keyThemeMode = 'theme_mode';
-  
   // API Endpoints
   // Auth
   static const String register = "auth/register";

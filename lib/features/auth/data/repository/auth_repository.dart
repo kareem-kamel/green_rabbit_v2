@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:green_rabbit/core/constants/app_constants.dart';
 import 'package:green_rabbit/core/network/api_client.dart';
@@ -46,6 +47,31 @@ class AuthRepository {
     }
   }
 
+  // --- VERIFY OTP ---
+  Future<void> verifyEmailCode({
+    required String email,
+    required String code,
+  }) async {
+    try {
+      final response = await apiClient.dio.post(
+        AppConstants
+            .verifyEmail, // You will need to add this to AppConstants! (e.g., '/api/auth/verify-email')
+        data: {"email": email, "otp": code},
+      );
+
+      // If the API returns a success message, we are good!
+      if (response.data['success'] != true) {
+        throw Exception("Invalid code. Please try again.");
+      }
+    } on DioException catch (e) {
+      final errorMessage =
+          e.response?.data['message'] ?? 'Invalid code. Try again.';
+      throw Exception(errorMessage);
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
   // --- LOGIN ---
   Future<void> login({
     required String email,
@@ -73,6 +99,7 @@ class AuthRepository {
           key: AppConstants.keyAccessToken,
           value: accessToken,
         );
+        await storage.write(key: 'rememberMe', value: rememberMe.toString());
 
         if (refreshToken != null) {
           await storage.write(
@@ -100,15 +127,47 @@ class AuthRepository {
     }
   }
 
-  // --- LOGOUT ---
+  // --- CHECK AUTH STATUS ---
+  Future<bool> checkAuthStatus() async {
+    // 1. Did the user check "Remember Me"?
+    final rememberMeStr = await storage.read(key: 'rememberMe');
+
+    // If they explicitly unchecked it, we don't remember them on next app start.
+    if (rememberMeStr == 'false') {
+      await storage.delete(key: AppConstants.keyAccessToken);
+      return false;
+    }
+
+    // 2. Check if the token exists
+    final token = await storage.read(key: AppConstants.keyAccessToken);
+    return token != null; // Returns true if logged in, false if not
+  }
+
+ // --- LOGOUT ---
   Future<void> logout() async {
     try {
-      // Clear all secure storage (tokens, user status, etc.)
-      await storage.deleteAll();
-      // Optional: If your backend has a /logout endpoint to invalidate the token, call it here:
-      await apiClient.dio.post(AppConstants.logout);
+      // 1. Get the refresh token from storage
+      // (Make sure to use the exact key you used when saving it during Login!)
+      final refreshToken = await storage.read(key: 'refreshToken'); 
+
+      if (refreshToken != null) {
+        // 2. Tell the backend to destroy the session
+        await apiClient.dio.post(
+          '/api/auth/logout', // Add this to your AppConstants!
+          data: {
+            "refreshToken": refreshToken, // Exactly what your Postman screenshot shows
+          },
+        );
+      }
     } catch (e) {
-      throw Exception("Failed to logout securely.");
+      // If the backend fails (e.g., no internet, or token already expired),
+      // we DON'T throw an error. We just want to force the user out locally anyway!
+      debugPrint('Backend logout failed, proceeding with local wipe: $e');
+    } finally {
+      // 3. 🧹 WIPE EVERYTHING LOCALLY (This runs no matter what)
+      await storage.delete(key: AppConstants.keyAccessToken);
+      await storage.delete(key: 'refreshToken'); 
+      await storage.delete(key: 'rememberMe');
     }
   }
 }

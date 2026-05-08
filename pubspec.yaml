@@ -61,6 +61,7 @@ dependencies:
   pinput: ^6.0.2
   flutter_dotenv: ^5.2.1
   image_picker: ^1.2.1
+  flutter_markdown: ^0.7.7+1
 
 dev_dependencies:
   flutter_test:
@@ -73,6 +74,7 @@ dev_dependencies:
   freezed: ^2.5.7
   json_serializable: ^6.9.3
   retrofit_generator: ^9.1.7
+  rename: ^3.1.0
 
 
   # The "flutter_lints" package below contains a set of recommended lints to
@@ -112,6 +114,7 @@ flutter:
     - assets/icons/editchat.png
     - assets/icons/allchat.png
     - assets/images/
+    # - .env
 
   # To add assets to your application, add an assets section, like this:
 

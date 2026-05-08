@@ -15,67 +15,64 @@ class CreateAlertSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => AlertCubit(),
-      child: BlocBuilder<AlertCubit, AlertState>(
-        builder: (context, state) {
-          final cubit = context.read<AlertCubit>();
+    return BlocBuilder<AlertCubit, AlertState>(
+      builder: (context, state) {
+        final cubit = context.read<AlertCubit>();
 
-          String currentConditionLabel = state.selectedTab == "Price"
-              ? state.priceCondition
-              : (state.selectedTab == "Charge %" ? state.gainCondition : state.volumeCondition);
+        String currentConditionLabel = state.selectedTab == "Price"
+            ? state.priceCondition
+            : (state.selectedTab == "Charge %" ? state.gainCondition : state.volumeCondition);
 
-          return Container(
-            padding: EdgeInsets.only(
-              left: 20, right: 20, top: 20,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-            ),
-            decoration: const BoxDecoration(
-              color: Color(0xFF131517),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+        return Container(
+          padding: EdgeInsets.only(
+            left: 20, right: 20, top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          decoration: const BoxDecoration(
+            color: Color(0xFF131517),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+              ),
+              const SizedBox(height: 20),
+              const Center(child: Text("Create Alert", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
+              const SizedBox(height: 24),
+              Text(assetName, style: const TextStyle(color: Colors.white, fontSize: 16)),
+              Text(state.selectedTab == "Price" ? "Last Price $lastPrice" : "Last Change", 
+                   style: const TextStyle(color: Colors.grey, fontSize: 13)),
+              const SizedBox(height: 20),
+              _buildTabPicker(cubit, state.selectedTab),
+              const SizedBox(height: 24),
+              GestureDetector(
+                onTap: () => _showConditionPicker(context, cubit, state),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(currentConditionLabel, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+                    const Icon(Icons.filter_list, color: Color(0xFF8B5CF6), size: 20),
+                  ],
                 ),
-                const SizedBox(height: 20),
-                const Center(child: Text("Create Alert", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
-                const SizedBox(height: 24),
-                Text(assetName, style: const TextStyle(color: Colors.white, fontSize: 16)),
-                Text(state.selectedTab == "Price" ? "Last Price $lastPrice" : "Last Change", 
-                     style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                const SizedBox(height: 20),
-                _buildTabPicker(cubit, state.selectedTab),
-                const SizedBox(height: 24),
-                GestureDetector(
-                  onTap: () => _showConditionPicker(context, cubit, state),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(currentConditionLabel, style: const TextStyle(color: Colors.white70, fontSize: 14)),
-                      const Icon(Icons.filter_list, color: Color(0xFF8B5CF6), size: 20),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _buildInputArea(state.selectedTab, lastPrice),
-                const SizedBox(height: 16),
-                if (state.selectedTab == "Volume") ...[
-                  _buildCustomToggle("Recurring Alert", state.recurringAlert, cubit.toggleRecurring),
-                  _buildCustomToggle("Send me a reminder 1 trading day before", state.tradingReminder, cubit.toggleReminder),
-                ] else ...[
-                  _buildCustomToggle("Send an email notification", state.emailNotification, cubit.toggleEmail),
-                ],
-                const SizedBox(height: 32),
-                _buildCreateButton(context),
+              ),
+              const SizedBox(height: 8),
+              _buildInputArea(state.selectedTab, lastPrice),
+              const SizedBox(height: 16),
+              if (state.selectedTab == "Volume") ...[
+                _buildCustomToggle("Recurring Alert", state.recurringAlert, cubit.toggleRecurring),
+                _buildCustomToggle("Send me a reminder 1 trading day before", state.tradingReminder, cubit.toggleReminder),
+              ] else ...[
+                _buildCustomToggle("Send an email notification", state.emailNotification, cubit.toggleEmail),
               ],
-            ),
-          );
-        },
-      ),
+              const SizedBox(height: 32),
+              _buildCreateButton(context, cubit),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -177,7 +174,7 @@ class CreateAlertSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildCreateButton(BuildContext context) {
+  Widget _buildCreateButton(BuildContext context, AlertCubit cubit) {
     return Container(
       width: double.infinity,
       height: 55,
@@ -186,7 +183,10 @@ class CreateAlertSheet extends StatelessWidget {
         gradient: const LinearGradient(colors: [Color(0xFF4C3BB1), Color(0xFF3B2E8A)]),
       ),
       child: ElevatedButton(
-        onPressed: () => Navigator.pop(context),
+        onPressed: () {
+          cubit.createAlert(assetName, lastPrice);
+          Navigator.pop(context);
+        },
         style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
         child: const Text("Create", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
       ),

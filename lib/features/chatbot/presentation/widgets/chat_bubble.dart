@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class ChatBubble extends StatelessWidget {
@@ -13,7 +14,7 @@ class ChatBubble extends StatelessWidget {
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 8),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         decoration: BoxDecoration(
           color: isUser ? AppColors.primaryPurple : AppColors.cardBg,
@@ -32,12 +33,24 @@ class ChatBubble extends StatelessWidget {
             )
           ] : null,
         ),
-        child: Text(
-          message,
-          style: TextStyle(
-            color: isUser ? Colors.white : Colors.white.withOpacity(0.9),
-            fontSize: 15,
-            height: 1.4,
+        child: MarkdownBody(
+          data: message,
+          selectable: true,
+          styleSheet: MarkdownStyleSheet(
+            p: TextStyle(
+              color: isUser ? Colors.white : Colors.white.withOpacity(0.9),
+              fontSize: 15,
+              height: 1.4,
+            ),
+            strong: TextStyle(
+              color: isUser ? Colors.white : Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+            ),
+            h1: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+            h2: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            h3: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            listBullet: const TextStyle(color: Colors.white70),
           ),
         ),
       ),

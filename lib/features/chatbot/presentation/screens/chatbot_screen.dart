@@ -1,12 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import '../widgets/typing_indicator.dart';
 import '../../../../core/theme/app_colors.dart';
+import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 import '../cubit/chat_cubit.dart';
 import '../cubit/chat_state.dart';
 
 class ChatBotScreen extends StatefulWidget {
   final bool startEmpty;
-  const ChatBotScreen({super.key, this.startEmpty = false});
+  final String? initialPrompt;
+
+  const ChatBotScreen({
+    super.key, 
+    this.startEmpty = false,
+    this.initialPrompt,
+  });
 
   @override
   State<ChatBotScreen> createState() => _ChatBotScreenState();
@@ -17,50 +27,104 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _clearedOnOpen = false;
+  bool _initialPromptSent = false;
+  bool _autoScroll = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_scrollListener);
+  }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_scrollListener);
     _textController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
+  void _scrollListener() {
+    if (!_scrollController.hasClients) return;
+    
+    final pos = _scrollController.position;
+    
+    // Use a slightly larger buffer (50px) to detect if the user is NOT at the bottom.
+    // Also check if the user is currently touching the screen.
+    final atBottom = pos.pixels >= (pos.maxScrollExtent - 50);
+    
+    if (_autoScroll != atBottom) {
+      setState(() {
+        _autoScroll = atBottom;
+      });
+    }
+  }
+
   void _scrollToBottom() {
+    if (!_autoScroll) return;
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
       }
     });
   }
 
+  void _showDeleteConfirmation(BuildContext context, String chatId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.cardBg,
+        title: const Text('Delete Chat', style: TextStyle(color: Colors.white)),
+        content: const Text('Are you sure you want to delete this chat?', style: TextStyle(color: Colors.grey)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              this.context.read<ChatCubit>().deleteConversation(chatId);
+              Navigator.pop(context);
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // --- THE FIX: Wrap the screen in a BlocProvider ---
-    return BlocProvider(
-      create: (context) => ChatCubit(),
-      child: BlocConsumer<ChatCubit, ChatState>(
-        listener: (context, state) {
-          if (state.messages.isNotEmpty) {
-            _scrollToBottom();
-          }
-        },
-        builder: (context, state) {
-          final cubit = context.read<ChatCubit>();
+    return BlocConsumer<ChatCubit, ChatState>(
+      listener: (context, state) {
+        if (state.messages.isNotEmpty) {
+          _scrollToBottom();
+        }
+      },
+      builder: (context, state) {
+        final cubit = context.read<ChatCubit>();
 
-          if (widget.startEmpty && !_clearedOnOpen) {
-            // Ensure empty suggestion state only once on entry
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (!mounted) return;
-              _clearedOnOpen = true;
-              cubit.startNewChat();
-            });
-          }
+        // Always clear state if startEmpty is requested on a new screen entry
+        if (widget.startEmpty && !_clearedOnOpen && !state.isGenerating) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _clearedOnOpen = true;
+            cubit.startNewChat();
+          });
+        }
 
-          return Scaffold(
+        if (widget.initialPrompt != null && !_initialPromptSent) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _initialPromptSent = true;
+            cubit.sendMessage(widget.initialPrompt!);
+          });
+        }
+
+        return GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: Scaffold(
             key: _scaffoldKey,
             backgroundColor: AppColors.scaffoldBg,
             drawer: _buildSidebar(context, state),
@@ -70,16 +134,18 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 Expanded(
                   child: state.isVoiceMode
                       ? _buildVoiceInterface(context, cubit)
-                      : (state.messages.isNotEmpty
-                          ? _buildChatHistory(state)
-                          : _buildEmptyState(cubit)),
+                      : (state.isGenerating && state.messages.isEmpty
+                          ? const Center(child: CircularProgressIndicator())
+                          : (state.messages.isNotEmpty
+                              ? _buildChatHistory(state)
+                              : _buildEmptyState(cubit))),
                 ),
                 _buildInputArea(context, cubit, state),
               ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -170,23 +236,44 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 itemCount: state.history.length,
                 itemBuilder: (context, index) {
                   final chat = state.history[index];
+                  final isActive = state.activeConversationId == chat.id;
                   return Container(
                     margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
                     decoration: BoxDecoration(
-                      color: chat.isActive ? Colors.white.withOpacity(0.1) : Colors.transparent,
+                      color: isActive ? Colors.white.withOpacity(0.1) : Colors.transparent,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: ListTile(
                       title: Text(chat.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: chat.isActive ? Colors.white : Colors.grey,
+                            color: isActive ? Colors.white : Colors.grey,
                             fontSize: 14,
                           )),
-                      trailing: chat.isActive
-                          ? const Icon(Icons.more_horiz, color: Colors.grey, size: 18)
-                          : null,
+                      trailing: PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_horiz, color: Colors.grey, size: 18),
+                        onSelected: (value) {
+                          if (value == 'delete') {
+                            _showDeleteConfirmation(context, chat.id);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                                SizedBox(width: 8),
+                                Text('Delete', style: TextStyle(color: Colors.redAccent)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                       onTap: () {
                         Navigator.pop(context);
+                        context.read<ChatCubit>().selectConversation(chat.id);
                       },
                     ),
                   );
@@ -289,7 +376,10 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             runSpacing: 10,
             alignment: WrapAlignment.center,
             children: suggestions.map((s) => GestureDetector(
-              onTap: () => _textController.text = s,
+              onTap: () {
+                cubit.sendMessage(s);
+                _textController.clear();
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
@@ -313,18 +403,51 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      itemCount: state.messages.length + 1,
+      itemCount: state.messages.length + (state.isGenerating ? 2 : 1),
       itemBuilder: (context, index) {
-        if (index == state.messages.length) {
+        if (index == state.messages.length + (state.isGenerating ? 1 : 0)) {
           return _buildCreditsRow(state);
         }
+        if (state.isGenerating && index == state.messages.length) {
+          // Only show a separate typing bubble if the last message is from the user
+          // (meaning the assistant placeholder hasn't been added or is still being prepared)
+          final lastMsg = state.messages.last;
+          if (lastMsg.isUser) {
+            return _buildTypingIndicatorBubble();
+          }
+          return const SizedBox.shrink();
+        }
+        
         final msg = state.messages[index];
-        return _buildMessageBubble(context, msg);
+        return _buildMessageBubble(context, msg, state.isGenerating && index == state.messages.length - 1);
       },
     );
   }
 
-  Widget _buildMessageBubble(BuildContext context, ChatMessage msg) {
+  Widget _buildTypingIndicatorBubble() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12, right: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.07),
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(4),
+            topRight: Radius.circular(16),
+            bottomLeft: Radius.circular(16),
+            bottomRight: Radius.circular(16),
+          ),
+        ),
+        child: const SizedBox(
+          width: 40,
+          child: TypingIndicator(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageBubble(BuildContext context, ChatMessage msg, bool isLastGenerating) {
     if (msg.isUser) {
       return Align(
         alignment: Alignment.centerRight,
@@ -340,7 +463,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               bottomRight: Radius.circular(4),
             ),
           ),
-          child: Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 14)),
+          child: MarkdownBody(
+            data: msg.content,
+            selectable: true,
+            styleSheet: MarkdownStyleSheet(
+              p: const TextStyle(color: Colors.white, fontSize: 14),
+              strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+          ),
         ),
       );
     }
@@ -362,7 +492,20 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 bottomRight: Radius.circular(16),
               ),
             ),
-            child: Text(msg.text, style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5)),
+            child: msg.content.isEmpty && isLastGenerating
+                ? const SizedBox(width: 40, child: TypingIndicator())
+                : MarkdownBody(
+                    data: msg.content,
+                    selectable: true,
+                    styleSheet: MarkdownStyleSheet(
+                      p: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5),
+                      strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      h1: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      h2: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      h3: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                      listBullet: const TextStyle(color: Colors.white70),
+                    ),
+                  ),
           ),
           if (msg.hasChart) ...[
             const SizedBox(height: 8),

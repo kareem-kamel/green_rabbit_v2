@@ -16,6 +16,7 @@ import '../../data/models/market_instrument.dart';
 import '../../../watchlist/presentation/providers/watchlist_providers.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
 import 'package:green_rabbit/features/market/presentation/pages/search_page.dart';
+import 'package:green_rabbit/core/widgets/ai_service_carousel.dart';
 
 class MarketPage extends ConsumerStatefulWidget {
   const MarketPage({super.key});

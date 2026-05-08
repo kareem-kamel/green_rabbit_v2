@@ -51,15 +51,33 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  // Call this when the app first starts!
+  Future<void> checkAuth() async {
+    emit(AuthLoading()); // Show splash screen or spinner
+    
+    try {
+      final isLoggedIn = await repository.checkAuthStatus();
+      
+      if (isLoggedIn) {
+        // User has a token and wanted to be remembered!
+        emit(AuthSuccess()); 
+      } else {
+        // No token, or "Remember Me" was false
+        emit(AuthInitial()); 
+      }
+    } catch (e) {
+      emit(AuthInitial());
+    }
+  }
+
   // --- LOGOUT ---
   Future<void> logout() async {
-    try {
-      await repository.logout();
-      emit(AuthInitial());
-    } catch (e) {
-      debugPrint("Logout Error: $e");
-      // Even if deleting the token fails locally, we usually want to force the user back to the login screen
-      emit(AuthInitial()); 
-    }
+    // 1. Call the repository to do the heavy lifting
+    await repository.logout();
+    
+    // 2. Tell the app the user is gone!
+    // Because your main.dart is listening to this Cubit, emitting AuthInitial 
+    // will instantly snap the app back to the Onboarding/Login screen!
+    emit(AuthInitial()); 
   }
 }

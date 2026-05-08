@@ -28,6 +28,7 @@ class ApiClient {
     _dio.options.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
     _dio.options.headers['Accept'] = '*/*';
     _dio.options.headers['Connection'] = 'keep-alive';
+    _dio.options.headers['X-Pinggy-No-Screen'] = 'true';
 
     // Mock Interceptor for local development
     if (AppConstants.useMockApi) {
@@ -38,13 +39,24 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final token = await _storage.read(key: AppConstants.keyAccessToken);
-          final isAuthRequest = options.path.contains('auth/login') ||
-              options.path.contains('auth/register') ||
-              options.path.contains('auth/verify-email');
+          try {
+            final isAuthRequest = options.path.contains('auth/login') ||
+                options.path.contains('auth/register') ||
+                options.path.contains('auth/verify-email');
 
-          if (token != null && !isAuthRequest) {
-            options.headers['Authorization'] = 'Bearer $token';
+            // Priority: Check storage first for a dynamic login token
+            String? token = await _storage.read(key: AppConstants.keyAccessToken);
+            
+            // If storage is empty, fall back to the hardcoded AppConstants.apiToken
+            if (token == null || token.isEmpty) {
+              token = AppConstants.apiToken;
+            }
+
+            if (token != null && token.isNotEmpty && !isAuthRequest) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+          } catch (e) {
+            _logger.e('Error reading token: $e');
           }
           _logger.d('Proceeding with actual request to: ${options.uri}');
           return handler.next(options);
