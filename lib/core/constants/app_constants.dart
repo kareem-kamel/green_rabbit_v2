@@ -26,6 +26,9 @@ class AppConstants {
   static const String register = "/auth/register";
   static const String verifyEmail = "/auth/verify-email";
   static const String login = "/auth/login";
+  static const String forgotPassword = "/auth/forget-password";
+  static const String resetPassword = "/auth/reset-password";
+  static const String changePassword = "/auth/change-password";
 
   // Storage Keys
   static const String keyAccessToken = 'access_token';

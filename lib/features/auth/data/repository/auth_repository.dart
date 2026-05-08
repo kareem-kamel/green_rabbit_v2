@@ -1,15 +1,27 @@
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:green_rabbit/core/constants/app_constants.dart';
 import 'package:green_rabbit/core/network/api_client.dart';
-// Adjust path based on your folder structure
 
 class AuthRepository {
   final ApiClient apiClient;
   final FlutterSecureStorage storage;
 
   AuthRepository({required this.apiClient, required this.storage});
+
+  // --- NEW: ONBOARDING HELPERS ---
+  
+  /// Marks that the user has seen the onboarding slides
+  Future<void> setOnboardingComplete() async {
+    await storage.write(key: 'isFirstTime', value: 'false');
+  }
+
+  /// Checks if this is the very first time the app is being opened
+  Future<bool> isFirstTime() async {
+    final value = await storage.read(key: 'isFirstTime');
+    return value == null; // If null, they haven't finished onboarding yet
+  }
 
   // --- REGISTER ---
   Future<void> register({
@@ -21,15 +33,14 @@ class AuthRepository {
       final response = await apiClient.dio.post(
         AppConstants.register,
         data: {
-          "fullName": "kareem kamel",
+          "fullName": "User Name", // Consider passing this as a parameter later
           "email": email.trim(),
           "password": password,
           "passwordConfirm": confirmPassword,
           "country": "AE",
           "phone": "+971501234567",
           "acceptTerms": true,
-          "acceptPrivacy":
-              true, // Make sure this matches your backend's exact key!
+          "acceptPrivacy": true,
         },
       );
 
@@ -37,10 +48,7 @@ class AuthRepository {
         throw Exception("Registration failed.");
       }
     } on DioException catch (e) {
-      // Extract the exact error message the backend team sends (e.g., "Email already in use")
-      final errorMessage =
-          e.response?.data['message'] ??
-          'An error occurred during registration.';
+      final errorMessage = e.response?.data['message'] ?? 'An error occurred during registration.';
       throw Exception(errorMessage);
     } catch (e) {
       throw Exception(e.toString());
@@ -54,18 +62,15 @@ class AuthRepository {
   }) async {
     try {
       final response = await apiClient.dio.post(
-        AppConstants
-            .verifyEmail, // You will need to add this to AppConstants! (e.g., '/api/auth/verify-email')
+        AppConstants.verifyEmail, 
         data: {"email": email, "otp": code},
       );
 
-      // If the API returns a success message, we are good!
       if (response.data['success'] != true) {
         throw Exception("Invalid code. Please try again.");
       }
     } on DioException catch (e) {
-      final errorMessage =
-          e.response?.data['message'] ?? 'Invalid code. Try again.';
+      final errorMessage = e.response?.data['message'] ?? 'Invalid code. Try again.';
       throw Exception(errorMessage);
     } catch (e) {
       throw Exception(e.toString());
@@ -84,43 +89,30 @@ class AuthRepository {
         data: {"email": email.trim(), "password": password},
       );
 
-      // Grab the 'data' object from the response
       final responseData = response.data['data'];
 
       if (responseData != null && responseData['accessToken'] != null) {
         final accessToken = responseData['accessToken'];
-        final refreshToken =
-            responseData['refreshToken']; // Good to grab this now!
-        final userStatus =
-            responseData['user']['status']; // e.g., "pending_onboarding"
+        final refreshToken = responseData['refreshToken'];
 
-        // Save the tokens securely!
-        await storage.write(
-          key: AppConstants.keyAccessToken,
-          value: accessToken,
-        );
+        // Save Token
+        await storage.write(key: AppConstants.keyAccessToken, value: accessToken);
+        
+        // Save Remember Me choice
         await storage.write(key: 'rememberMe', value: rememberMe.toString());
 
         if (refreshToken != null) {
-          await storage.write(
-            key: AppConstants.keyRefreshToken,
-            value: refreshToken,
-          );
+          await storage.write(key: AppConstants.keyRefreshToken, value: refreshToken);
         }
-
-        // Optional: Save user status to storage so your app knows where to route them on startup
-        if (userStatus != null) {
-          await storage.write(
-            key: AppConstants.keyUserStatus,
-            value: userStatus,
-          );
-        }
+        
+        // Mark onboarding as complete once they successfully log in
+        await setOnboardingComplete();
+        
       } else {
         throw Exception("Login successful, but no access token was found.");
       }
     } on DioException catch (e) {
-      final errorMessage =
-          e.response?.data['message'] ?? 'Invalid email or password.';
+      final errorMessage = e.response?.data['message'] ?? 'Invalid email or password.';
       throw Exception(errorMessage);
     } catch (e) {
       throw Exception(e.toString());
@@ -129,44 +121,35 @@ class AuthRepository {
 
   // --- CHECK AUTH STATUS ---
   Future<bool> checkAuthStatus() async {
-    // 1. Did the user check "Remember Me"?
     final rememberMeStr = await storage.read(key: 'rememberMe');
+    final token = await storage.read(key: AppConstants.keyAccessToken);
 
-    // If they explicitly unchecked it, we don't remember them on next app start.
-    if (rememberMeStr == 'false') {
+    // If they didn't want to be remembered, wipe the token and return false
+    if (rememberMeStr != 'true') {
       await storage.delete(key: AppConstants.keyAccessToken);
       return false;
     }
 
-    // 2. Check if the token exists
-    final token = await storage.read(key: AppConstants.keyAccessToken);
-    return token != null; // Returns true if logged in, false if not
+    return token != null && token.isNotEmpty;
   }
 
- // --- LOGOUT ---
+  // --- LOGOUT ---
   Future<void> logout() async {
     try {
-      // 1. Get the refresh token from storage
-      // (Make sure to use the exact key you used when saving it during Login!)
-      final refreshToken = await storage.read(key: 'refreshToken'); 
+      final refreshToken = await storage.read(key: AppConstants.keyRefreshToken); 
 
       if (refreshToken != null) {
-        // 2. Tell the backend to destroy the session
         await apiClient.dio.post(
-          '/api/auth/logout', // Add this to your AppConstants!
-          data: {
-            "refreshToken": refreshToken, // Exactly what your Postman screenshot shows
-          },
+          '/api/auth/logout', 
+          data: {"refreshToken": refreshToken},
         );
       }
     } catch (e) {
-      // If the backend fails (e.g., no internet, or token already expired),
-      // we DON'T throw an error. We just want to force the user out locally anyway!
-      debugPrint('Backend logout failed, proceeding with local wipe: $e');
+      debugPrint('Logout error: $e');
     } finally {
-      // 3. 🧹 WIPE EVERYTHING LOCALLY (This runs no matter what)
+      // Wipe sensitive data, but KEEP 'isFirstTime' so they don't see Onboarding again
       await storage.delete(key: AppConstants.keyAccessToken);
-      await storage.delete(key: 'refreshToken'); 
+      await storage.delete(key: AppConstants.keyRefreshToken); 
       await storage.delete(key: 'rememberMe');
     }
   }
