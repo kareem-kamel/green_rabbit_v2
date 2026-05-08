@@ -11,9 +11,12 @@ import 'package:green_rabbit/features/news/presentation/cubit/related_news_cubit
 import 'package:green_rabbit/features/chatbot/presentation/cubit/chat_cubit.dart';
 import 'package:green_rabbit/features/alerts/presentation/cubit/alert_cubit.dart';
 import 'package:green_rabbit/features/news/presentation/screens/deep_link_article_handler.dart';
+import 'package:green_rabbit/shared/widgets/global_calculator_overlay.dart';
 
 import 'package:green_rabbit/features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'core/di/injection_container.dart' as di;
+
+final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,12 +65,21 @@ class GreenRabbitApp extends StatelessWidget {
       child: BlocBuilder<SettingsCubit, SettingsState>(
         builder: (context, state) {
           return MaterialApp(
+            navigatorKey: globalNavigatorKey,
             title: 'Green Rabbit News',
             debugShowCheckedModeBanner: false,
             themeMode: state.lightModeEnabled ? ThemeMode.light : ThemeMode.dark,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             home: const OnboardingScreen(),
+            builder: (context, child) {
+              return Stack(
+                children: [
+                  if (child != null) child,
+                  const GlobalCalculatorOverlay(),
+                ],
+              );
+            },
             onGenerateRoute: (settings) {
               if (settings.name != null && settings.name!.startsWith('/article')) {
                 final uri = Uri.parse(settings.name!);

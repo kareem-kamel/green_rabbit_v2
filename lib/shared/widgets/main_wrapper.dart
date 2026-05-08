@@ -5,15 +5,36 @@ import 'package:green_rabbit/features/chatbot/presentation/screens/chatbot_scree
 import 'package:green_rabbit/features/news/presentation/screens/news_screen.dart';
 import '../../features/market/presentation/pages/market_page.dart';
 import '../../features/watchlist/presentation/pages/watchlist_page.dart';
+import '../widgets/global_calculator_overlay.dart';
 
 // Provider to manage the current bottom nav index
 final navigationIndexProvider = StateProvider<int>((ref) => 0);
 
-class MainWrapper extends ConsumerWidget {
+class MainWrapper extends ConsumerStatefulWidget {
   const MainWrapper({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MainWrapper> createState() => _MainWrapperState();
+}
+
+class _MainWrapperState extends ConsumerState<MainWrapper> {
+  
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showGlobalCalculator.value = true;
+    });
+  }
+
+  @override
+  void dispose() {
+    showGlobalCalculator.value = false;
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final selectedIndex = ref.watch(navigationIndexProvider);
 
     final pages = [

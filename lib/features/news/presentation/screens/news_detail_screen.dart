@@ -7,6 +7,7 @@ import '../../../../core/widgets/ask_ai_badge.dart';
 import '../../data/models/news_model.dart';
 import '../../data/repositories/news_repository.dart';
 import '../cubit/related_news_cubit.dart';
+import '../cubit/news_cubit.dart';
 import '../../../chatbot/presentation/screens/chatbot_screen.dart';
 import '../../../../core/di/injection_container.dart' as di;
 import 'package:share_plus/share_plus.dart';
@@ -81,6 +82,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
       !_isFavorited,
     );
     if (success) {
+      context.read<NewsCubit>().toggleFavoriteLocally(widget.article.id, !_isFavorited);
       setState(() {
         _isFavorited = !_isFavorited;
       });

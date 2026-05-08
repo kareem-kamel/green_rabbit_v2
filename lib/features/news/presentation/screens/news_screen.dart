@@ -446,6 +446,7 @@ class _NewsScreenState extends State<NewsScreen> {
                               !isFavorited,
                             );
                             if (success) {
+                              context.read<NewsCubit>().toggleFavoriteLocally(article.id, !isFavorited);
                               setStateLocal(() {
                                 isFavorited = !isFavorited;
                               });
