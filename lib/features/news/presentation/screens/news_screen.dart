@@ -9,6 +9,9 @@ import '../../../../core/widgets/ai_service_carousel.dart';
 import '../cubit/news_cubit.dart';
 import '../cubit/news_state.dart';
 import '../../data/models/news_model.dart';
+import '../../data/repositories/news_repository.dart';
+import '../../../../core/di/injection_container.dart' as di;
+import 'package:share_plus/share_plus.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -20,6 +23,16 @@ class NewsScreen extends StatefulWidget {
 class _NewsScreenState extends State<NewsScreen> {
   String selectedCategory = "Featured";
   bool _showAllNews = false;
+  
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   // --- OPEN THE ALERT MENU ---
   void _openAlertMenu(BuildContext context) {
@@ -53,18 +66,44 @@ class _NewsScreenState extends State<NewsScreen> {
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         centerTitle: false,
-        title: Text(
-          "News",
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black,
-          ),
-        ),
+        title: _isSearching 
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 16),
+                decoration: InputDecoration(
+                  hintText: "Search news...",
+                  hintStyle: TextStyle(color: Colors.grey.withOpacity(0.8)),
+                  border: InputBorder.none,
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              )
+            : Text(
+                "News",
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
+              ),
         actions: [
           _buildAppBarIcon(
-            icon: Icons.search,
-            onTap: () {},
+            icon: _isSearching ? Icons.close : Icons.search,
+            onTap: () {
+              setState(() {
+                if (_isSearching) {
+                  _isSearching = false;
+                  _searchController.clear();
+                  _searchQuery = "";
+                } else {
+                  _isSearching = true;
+                }
+              });
+            },
           ),
           const SizedBox(width: 12),
           _buildAppBarIcon(
@@ -88,6 +127,31 @@ class _NewsScreenState extends State<NewsScreen> {
             );
           } else if (state is NewsLoaded) {
             final articles = state.articles;
+            
+            if (_isSearching) {
+              final filteredArticles = _searchQuery.isEmpty 
+                  ? articles 
+                  : articles.where((a) => 
+                      a.title.toLowerCase().contains(_searchQuery.toLowerCase()) || 
+                      a.snippet.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                      (a.relatedSymbols.isNotEmpty && a.relatedSymbols.first.symbol.toLowerCase().contains(_searchQuery.toLowerCase()))
+                    ).toList();
+                    
+              if (filteredArticles.isEmpty) {
+                return Center(
+                  child: Text("No results found for '$_searchQuery'", style: const TextStyle(color: AppColors.textGrey)),
+                );
+              }
+              
+              return ListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemCount: filteredArticles.length,
+                itemBuilder: (context, index) {
+                  return _buildSmallArticle(context, filteredArticles[index]);
+                },
+              );
+            }
+
             final featuredArticle = articles.isNotEmpty ? articles.first : null;
             
             // Show only the first 4 small articles initially (total 5 with featured)
@@ -368,12 +432,46 @@ class _NewsScreenState extends State<NewsScreen> {
               Positioned(
                 top: 12,
                 right: 12,
-                child: Row(
-                  children: [
-                    _buildCircleIcon('assets/icons/star.png'),
-                    const SizedBox(width: 8),
-                    _buildCircleIcon('assets/icons/share.png'),
-                  ],
+                child: StatefulBuilder(
+                  builder: (context, setStateLocal) {
+                    bool isFavorited = article.isBookmarked;
+                    return Row(
+                      children: [
+                        _buildCircleIcon(
+                          'assets/icons/star.png',
+                          color: isFavorited ? AppColors.primaryPurple : Colors.black.withOpacity(0.3),
+                          onTap: () async {
+                            final success = await di.sl<NewsRepository>().toggleFavorite(
+                              article.id,
+                              !isFavorited,
+                            );
+                            if (success) {
+                              setStateLocal(() {
+                                isFavorited = !isFavorited;
+                              });
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(isFavorited ? 'Added to favorites' : 'Removed from favorites'),
+                                  duration: const Duration(seconds: 1),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _buildCircleIcon(
+                          'assets/icons/share.png',
+                          onTap: () {
+                            final String deepLink = "https://greenrabbit.com/article?id=${article.id}";
+                            final String shareText = article.url.isNotEmpty 
+                                ? "${article.title}\n\nRead more: ${article.url}\n\nOpen in Green Rabbit App: $deepLink" 
+                                : "${article.title}\n\nOpen in Green Rabbit App: $deepLink";
+                            Share.share(shareText);
+                          },
+                        ),
+                      ],
+                    );
+                  }
                 ),
               ),
             ],
@@ -416,18 +514,21 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
-  Widget _buildCircleIcon(String assetPath) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
-        shape: BoxShape.circle,
-      ),
-      child: Image.asset(
-        assetPath,
-        width: 20,
-        height: 20,
-        color: Colors.white,
+  Widget _buildCircleIcon(String assetPath, {VoidCallback? onTap, Color? color}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color ?? Colors.black.withOpacity(0.3),
+          shape: BoxShape.circle,
+        ),
+        child: Image.asset(
+          assetPath,
+          width: 20,
+          height: 20,
+          color: Colors.white,
+        ),
       ),
     );
   }

@@ -10,6 +10,7 @@ import 'package:green_rabbit/features/news/presentation/cubit/news_cubit.dart';
 import 'package:green_rabbit/features/news/presentation/cubit/related_news_cubit.dart';
 import 'package:green_rabbit/features/chatbot/presentation/cubit/chat_cubit.dart';
 import 'package:green_rabbit/features/alerts/presentation/cubit/alert_cubit.dart';
+import 'package:green_rabbit/features/news/presentation/screens/deep_link_article_handler.dart';
 
 import 'package:green_rabbit/features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'core/di/injection_container.dart' as di;
@@ -67,6 +68,18 @@ class GreenRabbitApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             home: const OnboardingScreen(),
+            onGenerateRoute: (settings) {
+              if (settings.name != null && settings.name!.startsWith('/article')) {
+                final uri = Uri.parse(settings.name!);
+                final id = uri.queryParameters['id'];
+                if (id != null) {
+                  return MaterialPageRoute(
+                    builder: (context) => DeepLinkArticleHandler(articleId: id),
+                  );
+                }
+              }
+              return null;
+            },
           );
         },
       ),
