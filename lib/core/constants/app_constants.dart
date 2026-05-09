@@ -18,6 +18,15 @@ class AppConstants {
   static const String aiUsageEndpoint = '/ai/usage';
   static const String aiChatConversationsEndpoint = '/ai/chat/conversations';
   static const String alertsEndpoint = '/alerts';
+
+  // Auth Endpoints
+  static const String register = "/auth/register";
+  static const String verifyEmail = "/auth/verify-email";
+  static const String login = "/auth/login";
+  static const String forgotPassword = "/auth/forget-password";
+  static const String resetPassword = "/auth/reset-password";
+  static const String changePassword = "/auth/change-password";
+
   // Storage Keys
   static const String keyAccessToken = 'access_token';
   static const String keyRefreshToken = 'refresh_token';

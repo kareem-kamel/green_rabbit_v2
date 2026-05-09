@@ -11,6 +11,7 @@ class NewsArticle {
   final String timeAgo;
   final int commentCount;
   final bool isBookmarked;
+  final String url;
   final List<RelatedSymbol> relatedSymbols;
   final List<RelatedAnalysis> relatedAnalysis;
 
@@ -27,6 +28,7 @@ class NewsArticle {
     required this.timeAgo,
     required this.commentCount,
     required this.isBookmarked,
+    required this.url,
     required this.relatedSymbols,
     required this.relatedAnalysis,
   });
@@ -45,12 +47,49 @@ class NewsArticle {
       timeAgo: json['time_ago']?.toString() ?? '',
       commentCount: json['comment_count'] ?? 0,
       isBookmarked: json['is_bookmarked'] ?? json['is_favorited'] ?? false,
+      url: json['url']?.toString() ?? json['link']?.toString() ?? '',
       relatedSymbols: (json['related_symbols'] as List? ?? [])
           .map((s) => RelatedSymbol.fromJson(s))
           .toList(),
       relatedAnalysis: (json['related_analysis'] as List? ?? [])
           .map((a) => RelatedAnalysis.fromJson(a))
           .toList(),
+    );
+  }
+
+  NewsArticle copyWith({
+    String? id,
+    String? title,
+    String? snippet,
+    String? thumbImage,
+    String? smallImage,
+    String? largeImage,
+    String? sourceName,
+    String? sourceLogo,
+    String? publishedAt,
+    String? timeAgo,
+    int? commentCount,
+    bool? isBookmarked,
+    String? url,
+    List<RelatedSymbol>? relatedSymbols,
+    List<RelatedAnalysis>? relatedAnalysis,
+  }) {
+    return NewsArticle(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      snippet: snippet ?? this.snippet,
+      thumbImage: thumbImage ?? this.thumbImage,
+      smallImage: smallImage ?? this.smallImage,
+      largeImage: largeImage ?? this.largeImage,
+      sourceName: sourceName ?? this.sourceName,
+      sourceLogo: sourceLogo ?? this.sourceLogo,
+      publishedAt: publishedAt ?? this.publishedAt,
+      timeAgo: timeAgo ?? this.timeAgo,
+      commentCount: commentCount ?? this.commentCount,
+      isBookmarked: isBookmarked ?? this.isBookmarked,
+      url: url ?? this.url,
+      relatedSymbols: relatedSymbols ?? this.relatedSymbols,
+      relatedAnalysis: relatedAnalysis ?? this.relatedAnalysis,
     );
   }
 }
