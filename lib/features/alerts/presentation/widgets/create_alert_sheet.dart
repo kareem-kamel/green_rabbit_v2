@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/alert_cubit.dart';
 import '../cubit/alert_state.dart';
 
-class CreateAlertSheet extends StatelessWidget {
+class CreateAlertSheet extends StatefulWidget {
   final String assetName;
   final double lastPrice;
 
@@ -12,6 +12,25 @@ class CreateAlertSheet extends StatelessWidget {
     required this.assetName,
     required this.lastPrice,
   });
+
+  @override
+  State<CreateAlertSheet> createState() => _CreateAlertSheetState();
+}
+
+class _CreateAlertSheetState extends State<CreateAlertSheet> {
+  late TextEditingController _priceController;
+
+  @override
+  void initState() {
+    super.initState();
+    _priceController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _priceController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,8 +61,8 @@ class CreateAlertSheet extends StatelessWidget {
               const SizedBox(height: 20),
               const Center(child: Text("Create Alert", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
               const SizedBox(height: 24),
-              Text(assetName, style: const TextStyle(color: Colors.white, fontSize: 16)),
-              Text(state.selectedTab == "Price" ? "Last Price $lastPrice" : "Last Change", 
+              Text(widget.assetName, style: const TextStyle(color: Colors.white, fontSize: 16)),
+              Text(state.selectedTab == "Price" ? "Last Price ${widget.lastPrice}" : "Last Change", 
                    style: const TextStyle(color: Colors.grey, fontSize: 13)),
               const SizedBox(height: 20),
               _buildTabPicker(cubit, state.selectedTab),
@@ -59,7 +78,7 @@ class CreateAlertSheet extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              _buildInputArea(state.selectedTab, lastPrice),
+              _buildInputArea(state.selectedTab, widget.lastPrice),
               const SizedBox(height: 16),
               if (state.selectedTab == "Volume") ...[
                 _buildCustomToggle("Recurring Alert", state.recurringAlert, cubit.toggleRecurring),
@@ -68,7 +87,7 @@ class CreateAlertSheet extends StatelessWidget {
                 _buildCustomToggle("Send an email notification", state.emailNotification, cubit.toggleEmail),
               ],
               const SizedBox(height: 32),
-              _buildCreateButton(context, cubit),
+              _buildCreateButton(context, cubit, state),
             ],
           ),
         );
@@ -146,13 +165,14 @@ class CreateAlertSheet extends StatelessWidget {
 
   Widget _buildInputArea(String selectedTab, double lastPrice) {
     return TextField(
+      controller: _priceController,
       style: const TextStyle(color: Colors.white),
-      keyboardType: TextInputType.number,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(
         filled: true,
         fillColor: Colors.white.withOpacity(0.05),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        hintText: selectedTab == "Charge %" ? "13%" : lastPrice.toString(),
+        hintText: selectedTab == "Charge %" ? "13" : lastPrice.toString(),
         hintStyle: const TextStyle(color: Colors.white38),
       ),
     );
@@ -174,7 +194,7 @@ class CreateAlertSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildCreateButton(BuildContext context, AlertCubit cubit) {
+  Widget _buildCreateButton(BuildContext context, AlertCubit cubit, AlertState state) {
     return Container(
       width: double.infinity,
       height: 55,
@@ -184,7 +204,21 @@ class CreateAlertSheet extends StatelessWidget {
       ),
       child: ElevatedButton(
         onPressed: () {
-          cubit.createAlert(assetName, lastPrice);
+          double? targetPrice = double.tryParse(_priceController.text);
+          if (targetPrice == null) return;
+          
+          String type = "price_above";
+          if (state.selectedTab == "Price") {
+            type = state.priceCondition == "Move Below" ? "price_below" : "price_above";
+          } else if (state.selectedTab == "Charge %") {
+             type = state.gainCondition == "Loses" ? "percent_down" : "percent_up";
+          } else {
+             type = state.volumeCondition == "Below" ? "volume_below" : "volume_above";
+          }
+          
+          DateTime expiresAt = DateTime.now().add(const Duration(days: 30));
+          
+          cubit.createAlert(widget.assetName, targetPrice, type, expiresAt: expiresAt);
           Navigator.pop(context);
         },
         style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),

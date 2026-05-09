@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../data/models/alert_model.dart';
 
 class AlertState extends Equatable {
   final String selectedTab;
@@ -8,6 +9,9 @@ class AlertState extends Equatable {
   final bool emailNotification;
   final bool recurringAlert;
   final bool tradingReminder;
+  final List<AlertModel> alerts;
+  final bool isLoading;
+  final String? error;
 
   const AlertState({
     this.selectedTab = "Price",
@@ -17,6 +21,9 @@ class AlertState extends Equatable {
     this.emailNotification = true,
     this.recurringAlert = false,
     this.tradingReminder = false,
+    this.alerts = const [],
+    this.isLoading = false,
+    this.error,
   });
 
   AlertState copyWith({
@@ -27,6 +34,9 @@ class AlertState extends Equatable {
     bool? emailNotification,
     bool? recurringAlert,
     bool? tradingReminder,
+    List<AlertModel>? alerts,
+    bool? isLoading,
+    String? error,
   }) {
     return AlertState(
       selectedTab: selectedTab ?? this.selectedTab,
@@ -36,6 +46,9 @@ class AlertState extends Equatable {
       emailNotification: emailNotification ?? this.emailNotification,
       recurringAlert: recurringAlert ?? this.recurringAlert,
       tradingReminder: tradingReminder ?? this.tradingReminder,
+      alerts: alerts ?? this.alerts,
+      isLoading: isLoading ?? this.isLoading,
+      error: error ?? this.error,
     );
   }
 
@@ -48,5 +61,8 @@ class AlertState extends Equatable {
         emailNotification,
         recurringAlert,
         tradingReminder,
+        alerts,
+        isLoading,
+        error ?? '',
       ];
 }
