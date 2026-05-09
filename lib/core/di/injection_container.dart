@@ -16,6 +16,9 @@ import '../../features/news/presentation/cubit/news_cubit.dart';
 import '../../features/news/presentation/cubit/related_news_cubit.dart';
 import '../../features/news/presentation/cubit/news_summary_cubit.dart';
 import '../network/api_client.dart';
+import '../../features/profile/data/sources/profile_remote_data_source.dart';
+import '../../features/profile/data/repositories/profile_repository_impl.dart';
+import '../../features/profile/presentation/cubit/profile_cubit.dart';
 import '../../features/auth/data/api/auth_api.dart';
 import '../../features/chatbot/data/repository/chatbot_repository.dart';
 import '../../features/chatbot/data/services/ai_service.dart';
@@ -48,12 +51,19 @@ Future<void> init() async {
   sl.registerLazySingleton<WatchlistRemoteDataSource>(
     () => WatchlistRemoteDataSourceImpl(sl()),
   );
+  sl.registerLazySingleton<ProfileRemoteDataSource>(
+    () => ProfileRemoteDataSourceImpl(apiClient: sl()),
+  );
 
   // Repositories
   sl.registerLazySingleton<MarketRepository>(() => MarketRepositoryImpl(sl()));
   sl.registerLazySingleton<WatchlistRepository>(
     () => WatchlistRepositoryImpl(sl()),
   );
+  sl.registerLazySingleton<ProfileRepository>(
+    () => ProfileRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerLazySingleton<NewsRepository>(() => NewsRepository(sl()));
 
   // Auth
   sl.registerLazySingleton<AuthRepository>(
@@ -69,10 +79,17 @@ Future<void> init() async {
 
   // Subscriptions
   sl.registerLazySingleton(() => SubscriptionRepository());
-  sl.registerFactory(() => SubscriptionCubit(repository: sl()));
+  sl.registerFactory<SubscriptionCubit>(
+    () => SubscriptionCubit(repository: sl<SubscriptionRepository>()),
+  );
+
+  // Profile
+  sl.registerFactory<ProfileCubit>(
+    () => ProfileCubit(repository: sl<ProfileRepository>()),
+  );
 
   // News
-  sl.registerLazySingleton(() => NewsRepository(sl<ApiClient>()));
+  // NewsRepository is already registered above as a lazy singleton
   sl.registerFactory(() => NewsCubit(repository: sl()));
   sl.registerFactory(() => RelatedNewsCubit(repository: sl()));
   sl.registerFactory(() => NewsSummaryCubit(sl()));

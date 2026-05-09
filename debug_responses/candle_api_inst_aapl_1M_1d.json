@@ -1,0 +1,12 @@
+Status Code: 503
+
+{
+    "success": false,
+    "error": {
+        "code": "MARKET_DATA_UNAVAILABLE",
+        "message": "Market data is temporarily unavailable. Please try again shortly.",
+        "details": {
+            "retryAfter": 30
+        }
+    }
+}
