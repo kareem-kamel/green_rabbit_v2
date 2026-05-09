@@ -20,7 +20,8 @@ import 'package:green_rabbit/features/onboarding/presentation/screens/onboarding
 import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
 import 'core/di/injection_container.dart' as di;
 
-final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> globalNavigatorKey =
+    GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -62,6 +63,14 @@ class GreenRabbitApp extends StatelessWidget {
                 : ThemeMode.dark,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
+            builder: (context, child) {
+              return Stack(
+                children: [
+                  if (child != null) child,
+                  const GlobalCalculatorOverlay(),
+                ],
+              );
+            },
 
             // 👇 Use a BlocBuilder here to decide the home page
             home: BlocBuilder<AuthCubit, AuthState>(
@@ -84,6 +93,21 @@ class GreenRabbitApp extends StatelessWidget {
                 return const LoginScreen();
               },
             ),
+            onGenerateRoute: (settings) {
+              if (settings.name != null &&
+                  settings.name!.startsWith('/article')) {
+                final uri = Uri.parse(settings.name!);
+                final id = uri.queryParameters['id'];
+
+                if (id != null) {
+                  return MaterialPageRoute(
+                    builder: (context) => DeepLinkArticleHandler(articleId: id),
+                  );
+                }
+              }
+
+              return null;
+            },
           );
         },
       ),
