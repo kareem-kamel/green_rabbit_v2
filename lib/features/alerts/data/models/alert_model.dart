@@ -13,6 +13,7 @@ class AlertModel {
   final double? triggeredPrice;
   final double? priceDifference;
   final double? priceDifferencePercent;
+  final DateTime? expiresAt;
 
   AlertModel({
     required this.id,
@@ -27,6 +28,7 @@ class AlertModel {
     this.triggeredPrice,
     this.priceDifference,
     this.priceDifferencePercent,
+    this.expiresAt,
   });
 
   factory AlertModel.fromJson(Map<String, dynamic> json) {
@@ -43,6 +45,7 @@ class AlertModel {
       triggeredPrice: (json['triggeredPrice'] as num?)?.toDouble(),
       priceDifference: (json['priceDifference'] as num?)?.toDouble(),
       priceDifferencePercent: (json['priceDifferencePercent'] as num?)?.toDouble(),
+      expiresAt: json['expiresAt'] != null ? DateTime.parse(json['expiresAt'] as String) : null,
     );
   }
 
@@ -60,6 +63,7 @@ class AlertModel {
       'triggeredPrice': triggeredPrice,
       'priceDifference': priceDifference,
       'priceDifferencePercent': priceDifferencePercent,
+      'expiresAt': expiresAt?.toIso8601String(),
     };
   }
 }
@@ -68,11 +72,13 @@ class AlertsSummary {
   final int total;
   final int active;
   final int triggered;
+  final int expired;
 
   AlertsSummary({
     required this.total,
     required this.active,
     required this.triggered,
+    required this.expired,
   });
 
   factory AlertsSummary.fromJson(Map<String, dynamic> json) {
@@ -80,6 +86,7 @@ class AlertsSummary {
       total: json['total'] as int,
       active: json['active'] as int,
       triggered: json['triggered'] as int,
+      expired: json['expired'] as int? ?? 0,
     );
   }
 }

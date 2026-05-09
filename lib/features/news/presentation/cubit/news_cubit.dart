@@ -17,4 +17,17 @@ class NewsCubit extends Cubit<NewsState> {
       emit(NewsError("Error: ${e.toString()}"));
     }
   }
+
+  void toggleFavoriteLocally(String articleId, bool isBookmarked) {
+    if (state is NewsLoaded) {
+      final currentState = state as NewsLoaded;
+      final updatedArticles = currentState.articles.map((article) {
+        if (article.id == articleId) {
+          return article.copyWith(isBookmarked: isBookmarked);
+        }
+        return article;
+      }).toList();
+      emit(NewsLoaded(updatedArticles));
+    }
+  }
 }

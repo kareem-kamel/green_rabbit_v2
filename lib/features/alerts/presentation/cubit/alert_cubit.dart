@@ -21,9 +21,56 @@ class AlertCubit extends Cubit<AlertState> {
   void toggleRecurring(bool value) => emit(state.copyWith(recurringAlert: value));
   void toggleReminder(bool value) => emit(state.copyWith(tradingReminder: value));
 
-  Future<void> createAlert(String assetName, double price) async {
-    // Basic implementation for now - this would use the real model
-    // final alert = AlertModel(...);
-    // await repository.createAlert(alert);
+  Future<void> fetchAlerts() async {
+    emit(state.copyWith(isLoading: true, error: null));
+    try {
+      final alerts = await repository.fetchAlerts();
+      emit(state.copyWith(isLoading: false, alerts: alerts));
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: e.toString()));
+    }
+  }
+
+  Future<void> createAlert(String instrumentId, double targetPrice, String type, {DateTime? expiresAt}) async {
+    emit(state.copyWith(isLoading: true, error: null));
+    try {
+      final alertData = {
+        "instrumentId": instrumentId,
+        "targetPrice": targetPrice,
+        "type": type,
+      };
+      if (expiresAt != null) {
+        alertData["expiresAt"] = expiresAt.toIso8601String();
+      }
+      
+      final newAlert = await repository.createAlert(alertData);
+      if (newAlert != null) {
+        emit(state.copyWith(
+          isLoading: false,
+          alerts: [newAlert, ...state.alerts],
+        ));
+      } else {
+        emit(state.copyWith(isLoading: false, error: 'Failed to create alert'));
+      }
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: e.toString()));
+    }
+  }
+
+  Future<void> deleteAlert(String id) async {
+    emit(state.copyWith(isLoading: true, error: null));
+    try {
+      final success = await repository.deleteAlert(id);
+      if (success) {
+        emit(state.copyWith(
+          isLoading: false,
+          alerts: state.alerts.where((a) => a.id != id).toList(),
+        ));
+      } else {
+        emit(state.copyWith(isLoading: false, error: 'Failed to delete alert'));
+      }
+    } catch (e) {
+      emit(state.copyWith(isLoading: false, error: e.toString()));
+    }
   }
 }

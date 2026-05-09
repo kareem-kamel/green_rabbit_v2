@@ -7,8 +7,10 @@ import '../../../../core/widgets/ask_ai_badge.dart';
 import '../../data/models/news_model.dart';
 import '../../data/repositories/news_repository.dart';
 import '../cubit/related_news_cubit.dart';
+import '../cubit/news_cubit.dart';
 import '../../../chatbot/presentation/screens/chatbot_screen.dart';
 import '../../../../core/di/injection_container.dart' as di;
+import 'package:share_plus/share_plus.dart';
 
 // ─────────────────────────────────────────────
 //  MODEL
@@ -80,6 +82,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
       !_isFavorited,
     );
     if (success) {
+      context.read<NewsCubit>().toggleFavoriteLocally(widget.article.id, !_isFavorited);
       setState(() {
         _isFavorited = !_isFavorited;
       });
@@ -120,7 +123,13 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
           IconButton(
             icon: Icon(Icons.share_outlined,
                 color: isDark ? Colors.white : Colors.black),
-            onPressed: () {},
+            onPressed: () {
+              final String deepLink = "https://greenrabbit.com/article?id=${widget.article.id}";
+              final String shareText = widget.article.url.isNotEmpty 
+                  ? "${widget.article.title}\n\nRead more: ${widget.article.url}\n\nOpen in Green Rabbit App: $deepLink" 
+                  : "${widget.article.title}\n\nOpen in Green Rabbit App: $deepLink";
+              Share.share(shareText);
+            },
           ),
           IconButton(
             icon: Icon(
