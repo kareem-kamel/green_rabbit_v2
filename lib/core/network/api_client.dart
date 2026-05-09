@@ -21,28 +21,29 @@ class ApiClient {
   }
 
   void _setupInterceptors() {
-    _dio.options.baseUrl = AppConstants.baseUrl;
+    _dio.options.baseUrl = AppConstants.apiBaseUrl;
     _dio.options.connectTimeout = const Duration(seconds: 30);
     _dio.options.receiveTimeout = const Duration(seconds: 30);
     _dio.options.headers['Content-Type'] = 'application/json';
+    _dio.options.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    _dio.options.headers['Accept'] = '*/*';
+    _dio.options.headers['Connection'] = 'keep-alive';
     _dio.options.headers['X-Pinggy-No-Screen'] = 'true';
 
     // Mock Interceptor for local development
-    // TODO: REMOVE THIS LINE TO REVERT TO LIVE API
-    // _dio.interceptors.add(MockInterceptor());
+    if (AppConstants.useMockApi) {
+      _dio.interceptors.add(MockInterceptor());
+    }
 
-    // Logging Interceptor
-    _dio.interceptors.add(LogInterceptor(
-      requestBody: true,
-      responseBody: true,
-      logPrint: (obj) => _logger.d(obj),
-    ));
-
-    // Request-response Interceptor for Tokens and Errors
+    // Request-response Interceptor for Auth and Errors
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           try {
+            final isAuthRequest = options.path.contains('auth/login') ||
+                options.path.contains('auth/register') ||
+                options.path.contains('auth/verify-email');
+
             // Priority: Check storage first for a dynamic login token
             String? token = await _storage.read(key: AppConstants.keyAccessToken);
             
@@ -51,18 +52,18 @@ class ApiClient {
               token = AppConstants.apiToken;
             }
 
-            if (token != null && token.isNotEmpty) {
+            if (token != null && token.isNotEmpty && !isAuthRequest) {
               options.headers['Authorization'] = 'Bearer $token';
             }
           } catch (e) {
             _logger.e('Error reading token: $e');
           }
-          
           _logger.d('Proceeding with actual request to: ${options.uri}');
           return handler.next(options);
         },
         onError: (DioException e, handler) async {
-          _logger.e('API Error [${e.response?.statusCode}] for ${e.requestOptions.uri}: ${e.message}');
+          _logger.e(
+              'API Error [${e.response?.statusCode}] for ${e.requestOptions.uri}: ${e.message}');
           if (e.response?.statusCode == 401) {
             _logger.w('Unauthorized: 401 Error');
           }
@@ -70,6 +71,13 @@ class ApiClient {
         },
       ),
     );
+
+    // Logging Interceptor (added after Auth for request visibility, but runs before for error/response)
+    // _dio.interceptors.add(LogInterceptor(
+    //   requestBody: true,
+    //   responseBody: true,
+    //   logPrint: (obj) => _logger.d(obj),
+    // ));
   }
 
   Dio get dio => _dio;

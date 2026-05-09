@@ -8,6 +8,53 @@ class AuthCubit extends Cubit<AuthState> {
 
   AuthCubit({required this.repository}) : super(AuthInitial());
 
+  // --- CHECK AUTH (THE GATEKEEPER) ---
+  // Call this when the app first starts!
+  Future<void> checkAuth() async {
+    emit(AuthLoading()); 
+
+    try {
+      // 1. Check if it's the first install/opening
+      final isFirstTime = await repository.isFirstTime();
+      if (isFirstTime) {
+        emit(AuthFirstTime()); // Show Onboarding
+        return;
+      }
+
+      // 2. If not first time, check if they are already logged in
+      final isLoggedIn = await repository.checkAuthStatus();
+      
+      if (isLoggedIn) {
+        emit(AuthSuccess()); // Go to Dashboard
+      } else {
+        emit(AuthInitial()); // Go to Login
+      }
+    } catch (e) {
+      // If something crashes during the check, default to Login
+      emit(AuthInitial());
+    }
+  }
+
+  // --- LOGIN ---
+  Future<void> login({
+    required String email,
+    required String password,
+    required bool rememberMe,
+  }) async {
+    emit(AuthLoading());
+    try {
+      await repository.login(
+        email: email,
+        password: password,
+        rememberMe: rememberMe,
+      );
+      
+      emit(AuthSuccess());
+    } catch (e) {
+      emit(AuthFailure(errorMessage: e.toString().replaceAll('Exception: ', '')));
+    }
+  }
+
   // --- REGISTER ---
   Future<void> register({
     required String email,
@@ -22,62 +69,25 @@ class AuthCubit extends Cubit<AuthState> {
         confirmPassword: confirmPassword,
       );
       
-      emit(AuthSuccess());
-    } catch (e) {
-      // Remove 'Exception: ' from the string so the UI just shows the pure message
-      emit(AuthFailure(errorMessage: e.toString().replaceAll('Exception: ', '')));
-    }
-  }
-
-  // --- LOGIN ---
-  Future<void> login({
-    required String email,
-    required String password,
-    required bool rememberMe,
-  }) async {
-    emit(AuthLoading());
-    debugPrint('🚀 REAL API CALL: Logging in $email');
-
-    try {
-      await repository.login(
-        email: email,
-        password: password,
-        rememberMe: rememberMe,
-      );
-      
-      emit(AuthSuccess());
+      // Usually, after register, you show the OTP screen or Success state
+      emit(AuthSuccess()); 
     } catch (e) {
       emit(AuthFailure(errorMessage: e.toString().replaceAll('Exception: ', '')));
-    }
-  }
-
-  // Call this when the app first starts!
-  Future<void> checkAuth() async {
-    emit(AuthLoading()); // Show splash screen or spinner
-    
-    try {
-      final isLoggedIn = await repository.checkAuthStatus();
-      
-      if (isLoggedIn) {
-        // User has a token and wanted to be remembered!
-        emit(AuthSuccess()); 
-      } else {
-        // No token, or "Remember Me" was false
-        emit(AuthInitial()); 
-      }
-    } catch (e) {
-      emit(AuthInitial());
     }
   }
 
   // --- LOGOUT ---
   Future<void> logout() async {
-    // 1. Call the repository to do the heavy lifting
     await repository.logout();
     
-    // 2. Tell the app the user is gone!
-    // Because your main.dart is listening to this Cubit, emitting AuthInitial 
-    // will instantly snap the app back to the Onboarding/Login screen!
+    // After logout, we go to AuthInitial (Login), NOT AuthFirstTime (Onboarding)
     emit(AuthInitial()); 
+  }
+
+  // --- COMPLETE ONBOARDING ---
+  // Call this when the user clicks "Get Started" on your Onboarding screen
+  Future<void> completeOnboarding() async {
+    await repository.setOnboardingComplete();
+    emit(AuthInitial()); // Move them to the Login screen
   }
 }

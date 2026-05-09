@@ -15,7 +15,6 @@ class AppTheme {
   // Dark Theme
   static ThemeData get darkTheme {
     return FlexThemeData.dark(
-      // بنستخدم ألوان الـ main اللي أنت عرفتها
       scaffoldBackground: AppColors.scaffoldBg,
       surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
       blendLevel: 13,
@@ -30,38 +29,15 @@ class AppTheme {
       ),
       visualDensity: FlexColorScheme.comfortablePlatformDensity,
       useMaterial3: true,
-      // 1. الخط الأساسي من الـ main
       fontFamily: 'Urbanist', 
     ).copyWith(
-      // 2. دمج الـ TextTheme اللي أنت صممته في الـ main
       textTheme: const TextTheme(
-        bodyLarge: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textGrey,
-        ),
-        displayMedium: TextStyle(
-          fontSize: 24,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-        bodySmall: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w400,
-          color: Colors.white,
-        ),
-        bodyMedium: TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w400,
-          color: AppColors.textGrey,
-        ),
-        titleMedium: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-          color: AppColors.primaryPurple,
-        ),
+        bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textLight),
+        displayMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+        bodySmall: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: Colors.white),
+        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textGreyLight),
+        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primaryPurple),
       ),
-      // 3. الحفاظ على الـ Bottom Nav بتاع شربيني عشان الـ UI ميبوظش
       bottomNavigationBarTheme: const BottomNavigationBarThemeData(
         selectedItemColor: Colors.white,
         unselectedItemColor: Colors.grey,
@@ -73,8 +49,11 @@ class AppTheme {
   // Light Theme
   static ThemeData get lightTheme {
     return FlexThemeData.light(
-      surfaceMode: FlexSurfaceMode.levelSurfacesLowScaffold,
-      blendLevel: 7,
+      scheme: FlexScheme.material,
+      scaffoldBackground: AppColors.scaffoldBgLight,
+      surface: AppColors.cardBgLight,
+      surfaceMode: FlexSurfaceMode.highSurfaceLowScaffold,
+      blendLevel: 2,
       subThemesData: const FlexSubThemesData(
         blendOnLevel: 10,
         useTextTheme: true,
@@ -89,12 +68,14 @@ class AppTheme {
       fontFamily: 'Urbanist',
     ).copyWith(
       textTheme: const TextTheme(
-        bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
+        bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textDark),
         displayMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
         bodySmall: TextStyle(fontSize: 16, fontWeight: FontWeight.w400, color: Colors.black),
-        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: Colors.black54),
+        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400, color: AppColors.textGreyDark),
         titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primaryPurple),
       ),
+      dividerColor: AppColors.borderLight,
+      cardColor: AppColors.cardBgLight,
     );
   }
 }
