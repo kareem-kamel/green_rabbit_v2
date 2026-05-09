@@ -350,6 +350,7 @@ class _InvestmentCalculatorSheetState extends ConsumerState<_InvestmentCalculato
                           final option = options.elementAt(index);
                           return ListTile(
                             title: Text("${option.name} (${option.symbol})", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+                            subtitle: Text("\$${(option.price ?? 0.0).toStringAsFixed(2)}", style: const TextStyle(color: AppColors.primaryPurple)),
                             subtitle: Text("\$${option.price.toStringAsFixed(2)}", style: const TextStyle(color: AppColors.primaryPurple)),
                             onTap: () => onSelected(option),
                           );
@@ -379,6 +380,7 @@ class _InvestmentCalculatorSheetState extends ConsumerState<_InvestmentCalculato
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text("Current Price", style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)),
+                Text("\$${(_globalSelectedStock!.price ?? 0.0).toStringAsFixed(2)}", 
                 Text("\$${_globalSelectedStock!.price.toStringAsFixed(2)}", 
                     style: const TextStyle(color: AppColors.primaryPurple, fontWeight: FontWeight.bold, fontSize: 16)),
               ],
@@ -430,6 +432,7 @@ class _InvestmentCalculatorSheetState extends ConsumerState<_InvestmentCalculato
           const SizedBox(height: 16),
           Builder(
             builder: (context) {
+              double initialInvestment = _globalStockShares * (_globalSelectedStock!.price ?? 0.0);
               double initialInvestment = _globalStockShares * _globalSelectedStock!.price;
               double futureValue = initialInvestment * pow((1 + (_globalStockAnnualRate / 100)), _globalStockMonths / 12);
               double profit = futureValue - initialInvestment;

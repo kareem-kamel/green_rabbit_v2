@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:green_rabbit/features/chatbot/presentation/screens/chatbot_screen.dart';
 import 'package:green_rabbit/features/news/presentation/screens/news_screen.dart';
+import 'package:green_rabbit/features/calendar/presentation/screens/calendar_screen.dart';
 import '../../features/market/presentation/pages/market_page.dart';
 import '../../features/watchlist/presentation/pages/watchlist_page.dart';
 import '../widgets/global_calculator_overlay.dart';
@@ -42,7 +43,7 @@ class _MainWrapperState extends ConsumerState<MainWrapper> {
       const WatchlistPage(),
       const ChatBotScreen(), // Placeholder for FAB action
       const NewsScreen(),
-      const Center(child: Text('Calendar')),
+      const CalendarScreen(),
     ];
 
     return Scaffold(
@@ -109,7 +110,7 @@ class _MainWrapperState extends ConsumerState<MainWrapper> {
         child: Container(
           width: 60,
           height: 60,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: AppColors.primaryGradient,
           ),

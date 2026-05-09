@@ -34,9 +34,6 @@ class AppConstants {
   static const String keyThemeMode = 'theme_mode';
   // API Endpoints
   // Auth
-  static const String register = "auth/register";
-  static const String verifyEmail = "auth/verify-email";
-  static const String login = "auth/login";
   static const String logout = "auth/logout";
 
   // Market
@@ -64,6 +61,9 @@ class AppConstants {
   static String watchlistInstruments(String id) => "watchlists/$id/instruments";
   static String watchlistRemoveInstrument(String wlId, String instId) => "watchlists/$wlId/instruments/$instId";
   static String watchlistReorder(String id) => "watchlists/$id/reorder";
+
+  // Calendars
+  static String calendars(String category) => "calendars/$category";
 
   // Animation Durations
   static const Duration splashDelay = Duration(seconds: 3);

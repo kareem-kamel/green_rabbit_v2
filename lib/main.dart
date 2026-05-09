@@ -13,6 +13,7 @@ import 'package:green_rabbit/features/news/presentation/cubit/news_cubit.dart';
 import 'package:green_rabbit/features/news/presentation/cubit/related_news_cubit.dart';
 import 'package:green_rabbit/features/chatbot/presentation/cubit/chat_cubit.dart';
 import 'package:green_rabbit/features/alerts/presentation/cubit/alert_cubit.dart';
+import 'package:green_rabbit/features/calendar/presentation/cubit/calendar_cubit.dart';
 import 'package:green_rabbit/features/news/presentation/screens/deep_link_article_handler.dart';
 import 'package:green_rabbit/shared/widgets/global_calculator_overlay.dart';
 
@@ -40,6 +41,8 @@ class GreenRabbitApp extends StatelessWidget {
         BlocProvider<SubscriptionCubit>(
           create: (context) => di.sl<SubscriptionCubit>()..init(),
         ),
+        BlocProvider<ProfileCubit>(create: (context) => di.sl<ProfileCubit>()),
+        BlocProvider<SettingsCubit>(create: (context) => di.sl<SettingsCubit>()),
         BlocProvider<ProfileCubit>(create: (context) => ProfileCubit()),
         BlocProvider<SettingsCubit>(create: (context) => SettingsCubit()),
         BlocProvider<NewsCubit>(create: (context) => di.sl<NewsCubit>()),
@@ -48,6 +51,7 @@ class GreenRabbitApp extends StatelessWidget {
         ),
         BlocProvider<ChatCubit>(create: (context) => di.sl<ChatCubit>()),
         BlocProvider<AlertCubit>(create: (context) => di.sl<AlertCubit>()),
+        BlocProvider<CalendarCubit>(create: (context) => di.sl<CalendarCubit>()),
         BlocProvider(create: (context) => di.sl<AuthCubit>()..checkAuth()),
       ],
 
