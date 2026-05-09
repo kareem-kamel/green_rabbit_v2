@@ -63,6 +63,9 @@ class AppConstants {
   static String watchlistRemoveInstrument(String wlId, String instId) => "watchlists/$wlId/instruments/$instId";
   static String watchlistReorder(String id) => "watchlists/$id/reorder";
 
+  // Calendars
+  static String calendars(String category) => "calendars/$category";
+
   // Animation Durations
   static const Duration splashDelay = Duration(seconds: 3);
   static const Duration defaultAnimationDuration = Duration(milliseconds: 300);

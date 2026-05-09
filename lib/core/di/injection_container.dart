@@ -19,12 +19,16 @@ import '../network/api_client.dart';
 import '../../features/profile/data/sources/profile_remote_data_source.dart';
 import '../../features/profile/data/repositories/profile_repository_impl.dart';
 import '../../features/profile/presentation/cubit/profile_cubit.dart';
+import '../../features/profile/presentation/cubit/settings_cubit.dart';
 import '../../features/auth/data/api/auth_api.dart';
 import '../../features/chatbot/data/repository/chatbot_repository.dart';
 import '../../features/chatbot/data/services/ai_service.dart';
 import '../../features/chatbot/presentation/cubit/chat_cubit.dart';
 import '../../features/alerts/data/repository/alert_repository.dart';
 import '../../features/alerts/presentation/cubit/alert_cubit.dart';
+import '../../features/calendar/data/sources/calendar_remote_data_source.dart';
+import '../../features/calendar/data/repositories/calendar_repository_impl.dart';
+import '../../features/calendar/presentation/cubit/calendar_cubit.dart';
 
 final sl = GetIt.instance;
 
@@ -87,6 +91,7 @@ Future<void> init() async {
   sl.registerFactory<ProfileCubit>(
     () => ProfileCubit(repository: sl<ProfileRepository>()),
   );
+  sl.registerFactory<SettingsCubit>(() => SettingsCubit());
 
   // News
   // NewsRepository is already registered above as a lazy singleton
@@ -102,4 +107,13 @@ Future<void> init() async {
   // Alerts
   sl.registerLazySingleton(() => AlertRepository(sl<ApiClient>()));
   sl.registerFactory(() => AlertCubit(repository: sl()));
+
+  // Calendar
+  sl.registerLazySingleton<CalendarRemoteDataSource>(
+    () => CalendarRemoteDataSourceImpl(apiClient: sl()),
+  );
+  sl.registerLazySingleton<CalendarRepository>(
+    () => CalendarRepositoryImpl(remoteDataSource: sl()),
+  );
+  sl.registerFactory(() => CalendarCubit(repository: sl()));
 }
