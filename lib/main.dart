@@ -36,7 +36,7 @@ class GreenRabbitApp extends StatelessWidget {
         BlocProvider<SubscriptionCubit>(
           create: (context) => di.sl<SubscriptionCubit>()..init(),
         ),
-        BlocProvider<ProfileCubit>(create: (context) => ProfileCubit()),
+        BlocProvider<ProfileCubit>(create: (context) => di.sl<ProfileCubit>()),
         BlocProvider<SettingsCubit>(create: (context) => SettingsCubit()),
         BlocProvider<NewsCubit>(create: (context) => di.sl<NewsCubit>()),
         BlocProvider<RelatedNewsCubit>(
