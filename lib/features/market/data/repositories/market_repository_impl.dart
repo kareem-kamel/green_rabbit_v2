@@ -3,12 +3,13 @@ import '../models/market_instrument_detail.dart';
 import '../sources/market_remote_data_source.dart';
 
 abstract class MarketRepository {
-  Future<List<MarketInstrument>> getMarketOverview(String type);
+  Future<List<MarketInstrument>> getMarketOverview(String type, {String? search});
   Future<MarketInstrumentDetail> getInstrumentDetails(String id);
   Future<Map<String, dynamic>> getInstrumentChart(String id, {String? period, String? interval});
-  Future<Map<String, dynamic>> getInstrumentStats(String id);
-  Future<List<dynamic>> getInstrumentNews(String id);
+  Future<MarketInstrumentStats> getInstrumentStats(String id, {String? interval});
+  Future<List<MarketNewsArticle>> getInstrumentNews(String id);
   Future<List<MarketInstrument>> getTrendingInstruments();
+  Stream<Map<String, dynamic>> getMarketStream(List<String> instruments);
 }
 
 class MarketRepositoryImpl implements MarketRepository {
@@ -17,8 +18,8 @@ class MarketRepositoryImpl implements MarketRepository {
   MarketRepositoryImpl(this._remoteDataSource);
 
   @override
-  Future<List<MarketInstrument>> getMarketOverview(String type) async {
-    return _remoteDataSource.getMarketOverview(type);
+  Future<List<MarketInstrument>> getMarketOverview(String type, {String? search}) async {
+    return _remoteDataSource.getMarketOverview(type, search: search);
   }
 
   @override
@@ -32,17 +33,22 @@ class MarketRepositoryImpl implements MarketRepository {
   }
 
   @override
-  Future<Map<String, dynamic>> getInstrumentStats(String id) async {
-    return _remoteDataSource.getInstrumentStats(id);
+  Future<MarketInstrumentStats> getInstrumentStats(String id, {String? interval}) async {
+    return _remoteDataSource.getInstrumentStats(id, interval: interval);
   }
 
   @override
-  Future<List<dynamic>> getInstrumentNews(String id) async {
+  Future<List<MarketNewsArticle>> getInstrumentNews(String id) async {
     return _remoteDataSource.getInstrumentNews(id);
   }
 
   @override
   Future<List<MarketInstrument>> getTrendingInstruments() async {
     return _remoteDataSource.getTrendingInstruments();
+  }
+
+  @override
+  Stream<Map<String, dynamic>> getMarketStream(List<String> instruments) {
+    return _remoteDataSource.getMarketStream(instruments);
   }
 }

@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:green_rabbit/core/theme/app_theme.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:green_rabbit/features/auth/presentation/cubit/auth_state.dart';
+import 'package:green_rabbit/features/auth/presentation/screens/login_screen.dart';
 import 'package:green_rabbit/features/subscriptions/presentation/cubit/subscription_cubit.dart';
 import 'package:green_rabbit/features/profile/presentation/cubit/profile_cubit.dart';
 import 'package:green_rabbit/features/profile/presentation/cubit/settings_cubit.dart';
@@ -10,22 +13,22 @@ import 'package:green_rabbit/features/news/presentation/cubit/news_cubit.dart';
 import 'package:green_rabbit/features/news/presentation/cubit/related_news_cubit.dart';
 import 'package:green_rabbit/features/chatbot/presentation/cubit/chat_cubit.dart';
 import 'package:green_rabbit/features/alerts/presentation/cubit/alert_cubit.dart';
+import 'package:green_rabbit/features/calendar/presentation/cubit/calendar_cubit.dart';
 import 'package:green_rabbit/features/news/presentation/screens/deep_link_article_handler.dart';
 import 'package:green_rabbit/shared/widgets/global_calculator_overlay.dart';
 
 import 'package:green_rabbit/features/onboarding/presentation/screens/onboarding_screen.dart';
+import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
 import 'core/di/injection_container.dart' as di;
 
-final GlobalKey<NavigatorState> globalNavigatorKey = GlobalKey<NavigatorState>();
+final GlobalKey<NavigatorState> globalNavigatorKey =
+    GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(fileName: ".env");
   await di.init();
-  runApp(
-    const ProviderScope(
-      child: GreenRabbitApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: GreenRabbitApp()));
 }
 
 class GreenRabbitApp extends StatelessWidget {
@@ -35,43 +38,33 @@ class GreenRabbitApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<AuthCubit>(
-          create: (context) => di.sl<AuthCubit>(),
-        ),
+        BlocProvider<AuthCubit>(create: (context) => di.sl<AuthCubit>()),
         BlocProvider<SubscriptionCubit>(
           create: (context) => di.sl<SubscriptionCubit>()..init(),
         ),
-        BlocProvider<ProfileCubit>(
-          create: (context) => ProfileCubit(),
-        ),
-        BlocProvider<SettingsCubit>(
-          create: (context) => SettingsCubit(),
-        ),
-        BlocProvider<NewsCubit>(
-          create: (context) => di.sl<NewsCubit>(),
-        ),
+        BlocProvider<ProfileCubit>(create: (context) => di.sl<ProfileCubit>()),
+        BlocProvider<SettingsCubit>(create: (context) => SettingsCubit()),
+        BlocProvider<NewsCubit>(create: (context) => di.sl<NewsCubit>()),
         BlocProvider<RelatedNewsCubit>(
           create: (context) => di.sl<RelatedNewsCubit>(),
         ),
-        BlocProvider<ChatCubit>(
-          create: (context) => di.sl<ChatCubit>(),
-        ),
-        BlocProvider<AlertCubit>(
-          create: (context) => di.sl<AlertCubit>(),
-        ),
+        BlocProvider<ChatCubit>(create: (context) => di.sl<ChatCubit>()),
+        BlocProvider<AlertCubit>(create: (context) => di.sl<AlertCubit>()),
+        BlocProvider<CalendarCubit>(create: (context) => di.sl<CalendarCubit>()),
+        BlocProvider(create: (context) => di.sl<AuthCubit>()..checkAuth()),
       ],
 
-
       child: BlocBuilder<SettingsCubit, SettingsState>(
-        builder: (context, state) {
+        builder: (context, settingsState) {
           return MaterialApp(
             navigatorKey: globalNavigatorKey,
             title: 'Green Rabbit News',
             debugShowCheckedModeBanner: false,
-            themeMode: state.lightModeEnabled ? ThemeMode.light : ThemeMode.dark,
+            themeMode: settingsState.lightModeEnabled
+                ? ThemeMode.light
+                : ThemeMode.dark,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
-            home: const OnboardingScreen(),
             builder: (context, child) {
               return Stack(
                 children: [
@@ -80,22 +73,46 @@ class GreenRabbitApp extends StatelessWidget {
                 ],
               );
             },
+
+            // 👇 Use a BlocBuilder here to decide the home page
+            home: BlocBuilder<AuthCubit, AuthState>(
+              builder: (context, state) {
+                if (state is AuthLoading) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                if (state is AuthFirstTime) {
+                  return const OnboardingScreen(); // ONLY for first install
+                }
+
+                if (state is AuthSuccess) {
+                  return const MainWrapper(); // Directly to Dashboard
+                }
+
+                // Default case: show Login (not onboarding)
+                return const LoginScreen();
+              },
+            ),
             onGenerateRoute: (settings) {
-              if (settings.name != null && settings.name!.startsWith('/article')) {
+              if (settings.name != null &&
+                  settings.name!.startsWith('/article')) {
                 final uri = Uri.parse(settings.name!);
                 final id = uri.queryParameters['id'];
+
                 if (id != null) {
                   return MaterialPageRoute(
                     builder: (context) => DeepLinkArticleHandler(articleId: id),
                   );
                 }
               }
+
               return null;
             },
           );
         },
       ),
     );
-
   }
 }

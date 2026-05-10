@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 import '../cubit/profile_cubit.dart';
+import '../cubit/profile_state.dart';
 import 'country_selection_screen.dart';
 
 
@@ -25,6 +28,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _phoneController;
   
   late String _selectedCountryName;
+  late String _selectedCountryCode;
   late String _selectedCountryFlag;
   late String _avatarUrl;
 
@@ -41,13 +45,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    final profile = context.read<ProfileCubit>().state;
-    _nameController = TextEditingController(text: profile.name);
-    _emailController = TextEditingController(text: profile.email);
-    _phoneController = TextEditingController(text: profile.phone);
-    _selectedCountryName = profile.countryName;
-    _selectedCountryFlag = profile.countryFlag;
-    _avatarUrl = profile.avatarUrl;
+    final state = context.read<ProfileCubit>().state;
+    if (state is ProfileLoaded) {
+      final user = state.user;
+      _nameController = TextEditingController(text: user.fullName);
+      _emailController = TextEditingController(text: user.email);
+      _phoneController = TextEditingController(text: user.phone ?? '');
+      _selectedCountryName = user.country ?? 'Select Country';
+      _avatarUrl = user.avatarUrl ?? 'https://i.pravatar.cc/150?u=green_rabbit';
+      
+      // Find country mapping for flag/code if it exists (or keep default)
+      final countryMatch = _countries.firstWhere(
+        (c) => c.name.toLowerCase() == _selectedCountryName.toLowerCase() || c.code.toLowerCase() == _selectedCountryName.toLowerCase(),
+        orElse: () => _countries.first,
+      );
+      _selectedCountryFlag = countryMatch.flag;
+      _selectedCountryCode = countryMatch.code;
+      if (_selectedCountryName == 'Select Country' || _selectedCountryName.length == 2) {
+         _selectedCountryName = countryMatch.name;
+      }
+    } else {
+      _nameController = TextEditingController();
+      _emailController = TextEditingController();
+      _phoneController = TextEditingController();
+      _selectedCountryName = 'Select Country';
+      _selectedCountryCode = 'EG';
+      _selectedCountryFlag = '🇪🇬';
+      _avatarUrl = 'https://i.pravatar.cc/150?u=green_rabbit';
+    }
   }
 
 
@@ -85,37 +110,51 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 children: [
                   GestureDetector(
                     onTap: () => _showAvatarPicker(context),
-                    child: Stack(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(2),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
-                          ),
-                          child: CircleAvatar(
-                            radius: 52,
-                            backgroundImage: NetworkImage(_avatarUrl),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF4C3BC9), // specific indigo/blue from theme
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 3),
+                    child: BlocBuilder<ProfileCubit, ProfileState>(
+                      builder: (context, state) {
+                        String currentAvatar = _avatarUrl;
+                        bool isLoading = false;
+                        
+                        if (state is ProfileLoaded) {
+                          currentAvatar = state.user.avatarUrl ?? 'https://i.pravatar.cc/150?u=green_rabbit';
+                        } else if (state is ProfileLoading) {
+                          isLoading = true;
+                        }
+
+                        return Stack(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+                              ),
+                              child: CircleAvatar(
+                                radius: 52,
+                                backgroundImage: NetworkImage(currentAvatar),
+                                child: isLoading ? const CircularProgressIndicator(color: Colors.white) : null,
+                              ),
                             ),
-                            child: const Icon(
-                              Icons.edit_outlined,
-                              color: Colors.white,
-                              size: 18,
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF4C3BC9), // specific indigo/blue from theme
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 3),
+                                ),
+                                child: const Icon(
+                                  Icons.edit_outlined,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                      ],
+                          ],
+                        );
+                      },
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -199,40 +238,48 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             // --- Save Changes Button ---
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  // Update global state
-                  context.read<ProfileCubit>().updateProfile(
-                    name: _nameController.text,
-                    email: _emailController.text,
-                    phone: _phoneController.text,
-                    countryName: _selectedCountryName,
-                    countryFlag: _selectedCountryFlag,
-                    avatarUrl: _avatarUrl,
-                  );
-                  
-                  // Show custom styled success alert from image 1
-                  _showSuccessAlert(context, 'Profile updated successfully');
-                  
-                  Future.delayed(const Duration(seconds: 1), () {
-                    if (mounted) Navigator.pop(context);
-                  });
+              child: BlocConsumer<ProfileCubit, ProfileState>(
+                listener: (context, state) {
+                  if (state is ProfileLoaded) {
+                    _showSuccessAlert(context, 'Profile updated successfully');
+                    Future.delayed(const Duration(milliseconds: 500), () {
+                      if (mounted) Navigator.pop(context);
+                    });
+                  } else if (state is ProfileError) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+                    );
+                  }
                 },
-
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4C3BC9), // Primary brand color
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 0,
-                ),
-                child: const Text(
-                  'Save Changes',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                builder: (context, state) {
+                  return ElevatedButton(
+                    onPressed: state is ProfileLoading 
+                      ? null 
+                      : () {
+                        context.read<ProfileCubit>().updateProfile(
+                          fullName: _nameController.text,
+                          phone: _phoneController.text,
+                          country: _selectedCountryCode,
+                        );
+                      },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF4C3BC9),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    child: state is ProfileLoading
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text(
+                          'Save Changes',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                  );
+                },
               ),
             ),
             const SizedBox(height: 40),
@@ -309,23 +356,39 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
 
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 75,
+      );
+      
+      if (image != null && mounted) {
+        // Upload immediately
+        context.read<ProfileCubit>().updateAvatar(File(image.path));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick image: $e')),
+        );
+      }
+    }
+  }
+
   void _showAvatarPicker(BuildContext context) {
-    final avatars = [
-      'https://i.pravatar.cc/150?u=1',
-      'https://i.pravatar.cc/150?u=2',
-      'https://i.pravatar.cc/150?u=3',
-      'https://i.pravatar.cc/150?u=4',
-      'https://i.pravatar.cc/150?u=5',
-      'https://i.pravatar.cc/150?u=6',
-    ];
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
+        final bool isDark = Theme.of(context).brightness == Brightness.dark;
         return Container(
           padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
           decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF0F111A) : Colors.white,
+            color: isDark ? const Color(0xFF0F111A) : Colors.white,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(24),
               topRight: Radius.circular(24),
@@ -338,37 +401,74 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white24 : Colors.black12,
+                  color: isDark ? Colors.white24 : Colors.black12,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
               const SizedBox(height: 24),
-              Text('Change Avatar', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 24),
-              GridView.builder(
-                shrinkWrap: true,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
+              Text(
+                'Change Avatar',
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-                itemCount: avatars.length,
-                itemBuilder: (context, index) {
-                  return GestureDetector(
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _avatarChoiceItem(
+                    context,
+                    icon: Icons.camera_alt_outlined,
+                    label: 'Camera',
                     onTap: () {
-                      setState(() => _avatarUrl = avatars[index]);
                       Navigator.pop(context);
+                      _pickImage(ImageSource.camera);
                     },
-                    child: CircleAvatar(
-                      backgroundImage: NetworkImage(avatars[index]),
-                    ),
-                  );
-                },
+                  ),
+                  _avatarChoiceItem(
+                    context,
+                    icon: Icons.photo_library_outlined,
+                    label: 'Gallery',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _pickImage(ImageSource.gallery);
+                    },
+                  ),
+                ],
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _avatarChoiceItem(BuildContext context, {required IconData icon, required String label, required VoidCallback onTap}) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return InkWell(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: const Color(0xFF4C3BC9), size: 30),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: isDark ? Colors.white70 : Colors.black87,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -386,6 +486,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (result != null && result is Map<String, String>) {
       setState(() {
         _selectedCountryName = result['name']!;
+        _selectedCountryCode = result['code']!;
         _selectedCountryFlag = result['flag']!;
       });
     }

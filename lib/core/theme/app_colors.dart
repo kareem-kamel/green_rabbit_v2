@@ -67,26 +67,27 @@ class AppColors {
   static const Color buttonPrimary = Color(0xFF4C3BC9);
 
   // Text Colors
-  static const Color textPrimary = Colors.white;
-  static const Color textSecondary = Color(0xB3FFFFFF); // white70 approx
-  static const Color textMuted = Color(0x3DFFFFFF); // white24 approx
+  static const Color textLight = Colors.white;
+  static const Color textDark = Color(0xFF1F2937);
+  static const Color textGreyLight = Color(0xFF9CA3AF);
+  static const Color textGreyDark = Color(0xFF4B5563);
 
-  // Gradients
+  // Semantic Colors
+  static const Color textPrimary = Colors.white;
+  static const Color textSecondary = Color(0xB3FFFFFF);
+  static const Color textMuted = Color(0x3DFFFFFF);
+
+  // Light Mode Specifics
+  static const Color scaffoldBgLight = Color(0xFFF9FAFB);
+  static const Color cardBgLight = Colors.white;
+  static const Color borderLight = Color(0xFFE5E7EB);
+
+  // Gradients (Restored)
   static const LinearGradient primaryGradient1 = LinearGradient(
     colors: [primary, primaryDark],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-
-  static LinearGradient bannerGradient = LinearGradient(
-    colors: [primary.withOpacity(0.8), surface],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  // Divider / Border Colors
-  static Color border1 = Colors.white.withOpacity(0.1);
-  static Color borderSubtle = Colors.white.withOpacity(0.05);
 
   // Technical Signal Backgrounds
   static const Color technicalBullishRoot = Color(0xFF064E3B);
