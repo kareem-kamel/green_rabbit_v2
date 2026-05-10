@@ -164,8 +164,13 @@ class ChatCubit extends Cubit<ChatState> {
       
       emit(state.copyWith(isGenerating: false));
       loadUsageStats();
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (isClosed) return;
+      print('=== CHATBOT ERROR ===');
+      print('Error type: ${e.runtimeType}');
+      print('Error: $e');
+      print('Stack trace: $stackTrace');
+      print('====================');
       
       final errorMsg = ChatMessage(
         id: 'err_${DateTime.now().millisecondsSinceEpoch}',
