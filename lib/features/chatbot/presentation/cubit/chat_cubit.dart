@@ -164,14 +164,26 @@ class ChatCubit extends Cubit<ChatState> {
       
       emit(state.copyWith(isGenerating: false));
       loadUsageStats();
-    } catch (e) {
+    } catch (e, stackTrace) {
       if (isClosed) return;
+      print('=== CHATBOT ERROR ===');
+      print('Error type: ${e.runtimeType}');
+      print('Error: $e');
+      print('Stack trace: $stackTrace');
+      print('====================');
+      
+      String content = "Sorry, I'm having trouble connecting to the AI. Please check your network and try again.";
+      if (e is AIException) {
+        content = e.message;
+      } else {
+        content = e.toString().replaceAll('Exception: ', '');
+      }
       
       final errorMsg = ChatMessage(
         id: 'err_${DateTime.now().millisecondsSinceEpoch}',
         conversationId: state.activeConversationId ?? 'current',
         role: 'assistant',
-        content: "Sorry, I'm having trouble connecting to the AI. Please check your network and try again.",
+        content: content,
         createdAt: DateTime.now(),
       );
 

@@ -1,4 +1,4 @@
-// ignore_for_file: unused_import
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logger/logger.dart';
@@ -25,10 +25,13 @@ class ApiClient {
     _dio.options.connectTimeout = const Duration(seconds: 30);
     _dio.options.receiveTimeout = const Duration(seconds: 30);
     _dio.options.headers['Content-Type'] = 'application/json';
-    _dio.options.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
     _dio.options.headers['Accept'] = '*/*';
-    _dio.options.headers['Connection'] = 'keep-alive';
     _dio.options.headers['X-Pinggy-No-Screen'] = 'true';
+
+    if (!kIsWeb) {
+      _dio.options.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+      _dio.options.headers['Connection'] = 'keep-alive';
+    }
 
     // Mock Interceptor for local development
     if (AppConstants.useMockApi) {

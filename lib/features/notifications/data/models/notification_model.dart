@@ -48,6 +48,7 @@ class NotificationMetadata {
   final String? instrumentSymbol;
   final String? type;
   final String? deepLink;
+  final Map<String, dynamic> extraFields;
 
   NotificationMetadata({
     this.alertId,
@@ -55,15 +56,25 @@ class NotificationMetadata {
     this.instrumentSymbol,
     this.type,
     this.deepLink,
+    this.extraFields = const {},
   });
 
   factory NotificationMetadata.fromJson(Map<String, dynamic> json) {
+    final knownKeys = {'alertId', 'instrumentId', 'instrumentSymbol', 'type', 'deepLink'};
+    final extra = <String, dynamic>{};
+    json.forEach((key, value) {
+      if (!knownKeys.contains(key)) {
+        extra[key] = value;
+      }
+    });
+
     return NotificationMetadata(
       alertId: json['alertId'] as String?,
       instrumentId: json['instrumentId'] as String?,
       instrumentSymbol: json['instrumentSymbol'] as String?,
       type: json['type'] as String?,
       deepLink: json['deepLink'] as String?,
+      extraFields: extra,
     );
   }
 
@@ -74,6 +85,7 @@ class NotificationMetadata {
       'instrumentSymbol': instrumentSymbol,
       'type': type,
       'deepLink': deepLink,
+      ...extraFields,
     };
   }
 }

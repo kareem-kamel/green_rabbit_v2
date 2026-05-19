@@ -4,7 +4,7 @@ class AppConstants {
   AppConstants._();
 
   static const String appName = 'Green Rabbit';
-  static const String baseUrl = 'https://virtuous-cooperation-production-6420.up.railway.app/api/';
+  static const String baseUrl = 'https://green-rabbit-backend-api.up.railway.app/api/';
   
   static String get apiBaseUrl => baseUrl;
   
@@ -18,6 +18,7 @@ class AppConstants {
   static const String aiUsageEndpoint = '/ai/usage';
   static const String aiChatConversationsEndpoint = '/ai/chat/conversations';
   static const String alertsEndpoint = '/alerts';
+  static const String notificationsEndpoint = '/notifications';
 
   // Auth Endpoints
   static const String register = "/auth/register";

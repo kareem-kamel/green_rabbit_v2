@@ -18,7 +18,17 @@ class NewsCubit extends Cubit<NewsState> {
     }
   }
 
-  void toggleFavoriteLocally(String articleId, bool isBookmarked) {
+  Future<void> fetchFavoriteNews() async {
+    try {
+      emit(NewsLoading());
+      final articles = await repository.fetchFavoriteArticles();
+      emit(NewsLoaded(articles));
+    } catch (e) {
+      emit(NewsError("Error: ${e.toString()}"));
+    }
+  }
+
+  void toggleFavoriteLocally(String articleId, bool isBookmarked, {bool isFavoritesTab = false}) {
     if (state is NewsLoaded) {
       final currentState = state as NewsLoaded;
       final updatedArticles = currentState.articles.map((article) {
@@ -27,6 +37,11 @@ class NewsCubit extends Cubit<NewsState> {
         }
         return article;
       }).toList();
+
+      if (isFavoritesTab && !isBookmarked) {
+        updatedArticles.removeWhere((article) => article.id == articleId);
+      }
+
       emit(NewsLoaded(updatedArticles));
     }
   }

@@ -35,6 +35,10 @@ class ChatMessage extends Equatable {
   final String role;
   final String content;
   final int? tokensUsed;
+  final int? tokensIn;
+  final int? tokensOut;
+  final String? status;
+  final String? finishReason;
   final ChatFeedback? feedback;
   final DateTime? createdAt;
   final bool hasChart;
@@ -47,6 +51,10 @@ class ChatMessage extends Equatable {
     required this.role,
     required this.content,
     this.tokensUsed,
+    this.tokensIn,
+    this.tokensOut,
+    this.status,
+    this.finishReason,
     this.feedback,
     this.createdAt,
     this.hasChart = false,
@@ -59,6 +67,10 @@ class ChatMessage extends Equatable {
       role: json['role']?.toString() ?? 'assistant',
       content: json['content']?.toString() ?? '',
       tokensUsed: json['tokensUsed'] is int ? json['tokensUsed'] as int : null,
+      tokensIn: json['tokensIn'] is int ? json['tokensIn'] as int : null,
+      tokensOut: json['tokensOut'] is int ? json['tokensOut'] as int : null,
+      status: json['status']?.toString(),
+      finishReason: json['finishReason']?.toString(),
       feedback: json['feedback'] != null ? ChatFeedback.fromJson(json['feedback'] as Map<String, dynamic>) : null,
       createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'].toString()) : null,
       hasChart: json['hasChart'] ?? false,
@@ -66,7 +78,20 @@ class ChatMessage extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, conversationId, role, content, tokensUsed, feedback, createdAt, hasChart];
+  List<Object?> get props => [
+        id,
+        conversationId,
+        role,
+        content,
+        tokensUsed,
+        tokensIn,
+        tokensOut,
+        status,
+        finishReason,
+        feedback,
+        createdAt,
+        hasChart
+      ];
 
   Map<String, dynamic> toJson() {
     return {
@@ -81,6 +106,10 @@ class ChatMessage extends Equatable {
     String? role,
     String? content,
     int? tokensUsed,
+    int? tokensIn,
+    int? tokensOut,
+    String? status,
+    String? finishReason,
     ChatFeedback? feedback,
     DateTime? createdAt,
     bool? hasChart,
@@ -91,6 +120,10 @@ class ChatMessage extends Equatable {
       role: role ?? this.role,
       content: content ?? this.content,
       tokensUsed: tokensUsed ?? this.tokensUsed,
+      tokensIn: tokensIn ?? this.tokensIn,
+      tokensOut: tokensOut ?? this.tokensOut,
+      status: status ?? this.status,
+      finishReason: finishReason ?? this.finishReason,
       feedback: feedback ?? this.feedback,
       createdAt: createdAt ?? this.createdAt,
       hasChart: hasChart ?? this.hasChart,

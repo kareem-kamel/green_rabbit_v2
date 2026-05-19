@@ -1,5 +1,6 @@
 import '../models/chat_message_model.dart';
 import '../services/ai_service.dart';
+export '../services/ai_service.dart' show AIException;
 
 class ChatbotRepository {
   final AIService _aiService;

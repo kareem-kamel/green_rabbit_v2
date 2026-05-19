@@ -5,6 +5,21 @@ import 'package:green_rabbit/core/constants/app_constants.dart';
 import 'package:green_rabbit/core/network/api_client.dart';
 import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 
+class AIException implements Exception {
+  final String code;
+  final String message;
+  final Map<String, dynamic>? details;
+
+  AIException({
+    required this.code,
+    required this.message,
+    this.details,
+  });
+
+  @override
+  String toString() => message;
+}
+
 class AIService {
   final ApiClient _apiClient;
 
@@ -30,6 +45,39 @@ class AIService {
     return '${hex.sublist(0, 4).join()}-${hex.sublist(4, 6).join()}-${hex.sublist(6, 8).join()}-${hex.sublist(8, 10).join()}-${hex.sublist(10).join()}';
   }
 
+  static Future<Exception> handleDioError(DioException e) async {
+    if (e.response != null) {
+      final responseData = e.response!.data;
+      if (responseData is Map) {
+        if (responseData['success'] == false && responseData['error'] != null) {
+          final err = responseData['error'];
+          return AIException(
+            code: err['code']?.toString() ?? 'UNKNOWN_ERROR',
+            message: err['message']?.toString() ?? 'An unknown error occurred.',
+            details: err['details'] is Map ? Map<String, dynamic>.from(err['details']) : null,
+          );
+        }
+      } else if (responseData is ResponseBody) {
+        try {
+          final bytes = await responseData.stream.toList();
+          final bodyString = utf8.decode(bytes.expand((x) => x).toList());
+          final decoded = json.decode(bodyString);
+          if (decoded is Map && decoded['success'] == false && decoded['error'] != null) {
+            final err = decoded['error'];
+            return AIException(
+              code: err['code']?.toString() ?? 'UNKNOWN_ERROR',
+              message: err['message']?.toString() ?? 'An unknown error occurred.',
+              details: err['details'] is Map ? Map<String, dynamic>.from(err['details']) : null,
+            );
+          }
+        } catch (streamErr) {
+          print('Error parsing error stream: $streamErr');
+        }
+      }
+    }
+    return Exception(e.message ?? 'A network error occurred.');
+  }
+
   // --- Summarization ---
   Future<AISummary> summarizeContent(String targetId, String type) async {
     try {
@@ -50,6 +98,9 @@ class AIService {
       }
       throw Exception('Failed to summarize content');
     } catch (e) {
+      if (e is DioException) {
+        throw await handleDioError(e);
+      }
       throw Exception('Summarization error: $e');
     }
   }
@@ -70,6 +121,9 @@ class AIService {
       }
       throw Exception('Failed to get usage stats');
     } catch (e) {
+      if (e is DioException) {
+        throw await handleDioError(e);
+      }
       throw Exception('Usage stats error: $e');
     }
   }
@@ -91,6 +145,9 @@ class AIService {
       }
       return [];
     } catch (e) {
+      if (e is DioException) {
+        throw await handleDioError(e);
+      }
       print('List conversations error: $e');
       throw Exception('List conversations error: $e');
     }
@@ -113,6 +170,9 @@ class AIService {
       }
       throw Exception('Failed to create conversation');
     } catch (e) {
+      if (e is DioException) {
+        throw await handleDioError(e);
+      }
       print('Create conversation error: $e');
       throw Exception('Create conversation error: $e');
     }
@@ -148,6 +208,9 @@ class AIService {
       }
       return [];
     } catch (e) {
+      if (e is DioException) {
+        throw await handleDioError(e);
+      }
       print('Get messages error: $e');
       throw Exception('Get messages error: $e');
     }
@@ -159,7 +222,7 @@ class AIService {
       final messagesJson = history.map((m) => m.toJson()).toList();
       final data = {
         'content': content,
-        'messages': messagesJson, // The backend likely expects history in 'messages'
+        'messages': messagesJson,
       };
       
       final response = await _apiClient.dio.post(
@@ -178,6 +241,9 @@ class AIService {
       }
       throw Exception('Failed to send message');
     } catch (e) {
+      if (e is DioException) {
+        throw await handleDioError(e);
+      }
       print('Send message error: $e');
       throw Exception('Send message error: $e');
     }
@@ -207,11 +273,17 @@ class AIService {
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final ResponseBody stream = response.data;
+        bool isErrorEvent = false;
         await for (final chunk in utf8.decoder.bind(stream.stream)) {
           final lines = chunk.split('\n');
           for (final line in lines) {
             final trimmedLine = line.trim();
             if (trimmedLine.isEmpty) continue;
+            
+            if (trimmedLine.startsWith('event: error')) {
+              isErrorEvent = true;
+              continue;
+            }
             
             try {
               if (trimmedLine.startsWith('data:')) {
@@ -219,16 +291,20 @@ class AIService {
                 if (cleanedLine == '[DONE]') return;
                 
                 final decoded = json.decode(cleanedLine);
+                if (isErrorEvent || (decoded is Map && decoded.containsKey('code') && decoded.containsKey('message'))) {
+                  final code = decoded['code']?.toString() ?? 'STREAM_ERROR';
+                  final message = decoded['message']?.toString() ?? 'Stream error occurred';
+                  throw AIException(code: code, message: message);
+                }
+                
                 final type = decoded['type']?.toString();
                 
                 if (type == 'token') {
                   final text = decoded['content']?.toString() ?? '';
                   if (text.isNotEmpty) {
-                    // Split by spaces but keep the spaces in the list
                     final words = text.split(RegExp(r'(?<=\s)|(?=\s)'));
                     for (final word in words) {
                       yield word;
-                      // Extremely fast delay for that "active typing" feel without being slow
                       await Future.delayed(const Duration(milliseconds: 1));
                     }
                   }
@@ -237,12 +313,17 @@ class AIService {
                 }
               }
             } catch (e) {
+              if (e is AIException) rethrow;
               print('Error decoding stream line: $e');
             }
           }
         }
       }
     } catch (e) {
+      if (e is AIException) rethrow;
+      if (e is DioException) {
+        throw await handleDioError(e);
+      }
       print('Stream error: $e');
       throw Exception('Stream error: $e');
     }

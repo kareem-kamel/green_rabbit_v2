@@ -14,8 +14,8 @@ import 'package:green_rabbit/features/news/presentation/cubit/related_news_cubit
 import 'package:green_rabbit/features/chatbot/presentation/cubit/chat_cubit.dart';
 import 'package:green_rabbit/features/alerts/presentation/cubit/alert_cubit.dart';
 import 'package:green_rabbit/features/calendar/presentation/cubit/calendar_cubit.dart';
+import 'package:green_rabbit/features/notifications/presentation/cubit/notification_cubit.dart';
 import 'package:green_rabbit/features/news/presentation/screens/deep_link_article_handler.dart';
-import 'package:green_rabbit/shared/widgets/global_calculator_overlay.dart';
 
 import 'package:green_rabbit/features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
@@ -51,6 +51,7 @@ class GreenRabbitApp extends StatelessWidget {
         BlocProvider<ChatCubit>(create: (context) => di.sl<ChatCubit>()),
         BlocProvider<AlertCubit>(create: (context) => di.sl<AlertCubit>()),
         BlocProvider<CalendarCubit>(create: (context) => di.sl<CalendarCubit>()),
+        BlocProvider<NotificationCubit>(create: (context) => di.sl<NotificationCubit>()),
         BlocProvider(create: (context) => di.sl<AuthCubit>()..checkAuth()),
       ],
 
@@ -66,12 +67,7 @@ class GreenRabbitApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             builder: (context, child) {
-              return Stack(
-                children: [
-                  if (child != null) child,
-                  const GlobalCalculatorOverlay(),
-                ],
-              );
+              return child ?? const SizedBox.shrink();
             },
 
             // 👇 Use a BlocBuilder here to decide the home page
