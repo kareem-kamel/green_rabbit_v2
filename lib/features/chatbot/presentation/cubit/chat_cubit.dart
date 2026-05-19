@@ -172,11 +172,18 @@ class ChatCubit extends Cubit<ChatState> {
       print('Stack trace: $stackTrace');
       print('====================');
       
+      String content = "Sorry, I'm having trouble connecting to the AI. Please check your network and try again.";
+      if (e is AIException) {
+        content = e.message;
+      } else {
+        content = e.toString().replaceAll('Exception: ', '');
+      }
+      
       final errorMsg = ChatMessage(
         id: 'err_${DateTime.now().millisecondsSinceEpoch}',
         conversationId: state.activeConversationId ?? 'current',
         role: 'assistant',
-        content: "Sorry, I'm having trouble connecting to the AI. Please check your network and try again.",
+        content: content,
         createdAt: DateTime.now(),
       );
 

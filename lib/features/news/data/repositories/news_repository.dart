@@ -65,7 +65,10 @@ class NewsRepository {
       if (response.statusCode == 200) {
         final decodedData = response.data;
         if (decodedData['success'] == true && decodedData['data'] != null) {
-          return NewsArticle.fromJson(decodedData['data']);
+          final articleData = decodedData['data']['article'];
+          if (articleData != null) {
+            return NewsArticle.fromJson(articleData);
+          }
         }
       }
       return null;
@@ -97,8 +100,8 @@ class NewsRepository {
       if (response.statusCode == 200) {
         final decodedData = response.data;
         if (decodedData['success'] == true && decodedData['data'] != null) {
-          final List articlesJson = decodedData['data']['articles'] ?? [];
-          return articlesJson.map((json) => NewsArticle.fromJson(json)).toList();
+          final List favoritesJson = decodedData['data']['favorites'] ?? [];
+          return favoritesJson.map((json) => NewsArticle.fromJson(json['article'])).toList();
         }
       }
       return [];

@@ -4,7 +4,7 @@ class AppConstants {
   AppConstants._();
 
   static const String appName = 'Green Rabbit';
-  static const String baseUrl = 'https://virtuous-cooperation-production-6420.up.railway.app/api/';
+  static const String baseUrl = 'https://green-rabbit-backend-api.up.railway.app/api/';
   
   static String get apiBaseUrl => baseUrl;
   

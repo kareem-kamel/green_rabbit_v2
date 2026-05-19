@@ -49,7 +49,12 @@ class _MainWrapperState extends ConsumerState<MainWrapper> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       extendBody: true,
-      body: pages[selectedIndex],
+      body: Stack(
+        children: [
+          pages[selectedIndex],
+          const GlobalCalculatorOverlay(),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
         onTap: (index) {
