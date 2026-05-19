@@ -29,6 +29,8 @@ import '../../features/alerts/presentation/cubit/alert_cubit.dart';
 import '../../features/calendar/data/sources/calendar_remote_data_source.dart';
 import '../../features/calendar/data/repositories/calendar_repository_impl.dart';
 import '../../features/calendar/presentation/cubit/calendar_cubit.dart';
+import '../../features/notifications/data/repositories/notification_repository.dart';
+import '../../features/notifications/presentation/cubit/notification_cubit.dart';
 
 final sl = GetIt.instance;
 
@@ -107,6 +109,10 @@ Future<void> init() async {
   // Alerts
   sl.registerLazySingleton(() => AlertRepository(sl<ApiClient>()));
   sl.registerFactory(() => AlertCubit(repository: sl()));
+
+  // Notifications
+  sl.registerLazySingleton(() => NotificationRepository(sl<ApiClient>()));
+  sl.registerFactory(() => NotificationCubit(repository: sl()));
 
   // Calendar
   sl.registerLazySingleton<CalendarRemoteDataSource>(

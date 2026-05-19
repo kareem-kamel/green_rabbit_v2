@@ -203,3 +203,12 @@ class RelatedSymbol {
     );
   }
 }
+
+class CommentModel {
+  final String name;
+  final String text;
+  final String time;
+
+  CommentModel({required this.name, required this.text, required this.time});
+}
+

@@ -18,6 +18,7 @@ class AppConstants {
   static const String aiUsageEndpoint = '/ai/usage';
   static const String aiChatConversationsEndpoint = '/ai/chat/conversations';
   static const String alertsEndpoint = '/alerts';
+  static const String notificationsEndpoint = '/notifications';
 
   // Auth Endpoints
   static const String register = "/auth/register";

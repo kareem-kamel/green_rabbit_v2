@@ -6,11 +6,13 @@ import '../cubit/alert_state.dart';
 class CreateAlertSheet extends StatefulWidget {
   final String assetName;
   final double lastPrice;
+  final String? instrumentId;
 
   const CreateAlertSheet({
     super.key,
     required this.assetName,
     required this.lastPrice,
+    this.instrumentId,
   });
 
   @override
@@ -218,7 +220,7 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
           
           DateTime expiresAt = DateTime.now().add(const Duration(days: 30));
           
-          cubit.createAlert(widget.assetName, targetPrice, type, expiresAt: expiresAt);
+          cubit.createAlert(widget.instrumentId ?? widget.assetName, targetPrice, type, expiresAt: expiresAt);
           Navigator.pop(context);
         },
         style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
