@@ -4,10 +4,13 @@ import 'package:green_rabbit/core/widgets/primary_button.dart'; // Adjust your p
 import 'package:green_rabbit/features/auth/presentation/cubit/set_password_cubit.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/set_password_state.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/password_updated_dialog.dart';
-
+import 'package:green_rabbit/core/di/injection_container.dart' as di;
+import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
 
 class SetPasswordScreen extends StatefulWidget {
-  const SetPasswordScreen({super.key, required String email});
+  final String email;
+  final String otp;
+  const SetPasswordScreen({super.key, required this.email, required this.otp});
 
   @override
   State<SetPasswordScreen> createState() => _SetPasswordScreenState();
@@ -78,7 +81,7 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => SetPasswordCubit(),
+      create: (context) => SetPasswordCubit(repository: di.sl<AuthRepository>()),
       child: Scaffold(
         backgroundColor: const Color(0xFF121212),
         appBar: AppBar(
@@ -161,9 +164,11 @@ class _SetPasswordScreenState extends State<SetPasswordScreen> {
                       isLoading: state is SetPasswordLoading,
                       onPressed: () {
                         FocusScope.of(context).unfocus();
-                        context.read<SetPasswordCubit>().changePassword(
-                          _newPasswordController.text,
-                          _confirmPasswordController.text,
+                        context.read<SetPasswordCubit>().resetPassword(
+                          email: widget.email,
+                          otp: widget.otp,
+                          newPassword: _newPasswordController.text,
+                          confirmPassword: _confirmPasswordController.text,
                         );
                       },
                     ),

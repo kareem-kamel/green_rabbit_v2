@@ -204,11 +204,11 @@ class _NewsScreenState extends State<NewsScreen> {
                   const SizedBox(height: 16),
 
                   // Initial small articles (up to 4)
-                  ...initialSmallArticles.map((article) => _buildSmallArticle(context, article)).toList(),
+                  ...initialSmallArticles.map((article) => _buildSmallArticle(context, article)),
 
                   // All News section (the rest)
                   if (_showAllNews)
-                    ...remainingArticles.map((article) => _buildSmallArticle(context, article)).toList(),
+                    ...remainingArticles.map((article) => _buildSmallArticle(context, article)),
 
                   if (articles.length > 5)
                     Padding(

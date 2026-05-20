@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
 import 'forgot_password_state.dart';
 
 class ForgotPasswordCubit extends Cubit<ForgotPasswordState> {
-  ForgotPasswordCubit() : super(ForgotPasswordInitial());
+  final AuthRepository repository;
+
+  ForgotPasswordCubit({required this.repository}) : super(ForgotPasswordInitial());
 
   Future<void> sendResetCode(String email) async {
     // Basic validation
@@ -12,21 +15,17 @@ class ForgotPasswordCubit extends Cubit<ForgotPasswordState> {
       return;
     }
 
-    // Tell the UI to show the loading spinner in your PrimaryButton
     emit(ForgotPasswordLoading());
 
     debugPrint('=========================================');
-    debugPrint('🚀 MOCK API CALL: Sending reset code to $email');
+    debugPrint('🚀 REAL API CALL: Sending reset code to $email');
     debugPrint('=========================================');
 
     try {
-      // Fake network delay
-      await Future.delayed(const Duration(seconds: 2));
-      
-      // Tell the UI it worked!
+      await repository.forgotPassword(email);
       emit(ForgotPasswordSuccess());
     } catch (e) {
-      emit(ForgotPasswordError(e.toString()));
+      emit(ForgotPasswordError(e.toString().replaceAll('Exception: ', '')));
     }
   }
 }

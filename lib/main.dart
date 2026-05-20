@@ -38,7 +38,6 @@ class GreenRabbitApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<AuthCubit>(create: (context) => di.sl<AuthCubit>()),
         BlocProvider<SubscriptionCubit>(
           create: (context) => di.sl<SubscriptionCubit>()..init(),
         ),
@@ -51,7 +50,7 @@ class GreenRabbitApp extends StatelessWidget {
         BlocProvider<ChatCubit>(create: (context) => di.sl<ChatCubit>()),
         BlocProvider<AlertCubit>(create: (context) => di.sl<AlertCubit>()),
         BlocProvider<CalendarCubit>(create: (context) => di.sl<CalendarCubit>()),
-        BlocProvider(create: (context) => di.sl<AuthCubit>()..checkAuth()),
+        BlocProvider<AuthCubit>(create: (context) => di.sl<AuthCubit>()..checkAuth()),
       ],
 
       child: BlocBuilder<SettingsCubit, SettingsState>(
@@ -77,7 +76,7 @@ class GreenRabbitApp extends StatelessWidget {
             // 👇 Use a BlocBuilder here to decide the home page
             home: BlocBuilder<AuthCubit, AuthState>(
               builder: (context, state) {
-                if (state is AuthLoading) {
+                if (state is AuthChecking) {
                   return const Scaffold(
                     body: Center(child: CircularProgressIndicator()),
                   );
@@ -92,7 +91,8 @@ class GreenRabbitApp extends StatelessWidget {
                 }
 
                 // Default case: show Login (not onboarding)
-                return const LoginScreen();
+                // We show this for AuthInitial, AuthFailure, and AuthLoading.
+                return const LoginScreen(isFromSignup: false);
               },
             ),
             onGenerateRoute: (settings) {

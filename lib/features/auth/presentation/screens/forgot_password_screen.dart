@@ -5,6 +5,9 @@ import 'package:green_rabbit/core/widgets/primary_button.dart'; // Your shared b
 import 'package:green_rabbit/features/auth/presentation/cubit/forgot_password_cubit.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/forgot_password_state.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/verify_otp_screen.dart';
+import 'package:green_rabbit/core/di/injection_container.dart' as di;
+import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
+
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -24,7 +27,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => ForgotPasswordCubit(),
+      create: (context) => ForgotPasswordCubit(repository: di.sl<AuthRepository>()),
       child: Scaffold(
         backgroundColor: const Color(0xFF121212), // Your dark scaffold background
         appBar: AppBar(

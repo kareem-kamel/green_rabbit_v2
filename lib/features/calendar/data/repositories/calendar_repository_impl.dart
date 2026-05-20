@@ -1,4 +1,3 @@
-import '../models/calendar_event.dart';
 import '../sources/calendar_remote_data_source.dart';
 
 abstract class CalendarRepository {

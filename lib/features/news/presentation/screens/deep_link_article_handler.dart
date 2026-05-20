@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/di/injection_container.dart' as di;
-import '../../data/models/news_model.dart';
 import '../../data/repositories/news_repository.dart';
 import 'news_detail_screen.dart';
 

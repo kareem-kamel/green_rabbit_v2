@@ -5,6 +5,7 @@ import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:green_rabbit/core/widgets/primary_button.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/forgot_password_screen.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/register_screen.dart';
+import 'package:green_rabbit/features/auth/presentation/screens/preferences_screen.dart';
 import 'package:green_rabbit/features/auth/presentation/widget/auth_text_field.dart';
 import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
 import 'package:green_rabbit/features/auth/presentation/widget/social_auth.dart';
@@ -12,7 +13,8 @@ import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final bool isFromSignup;
+  const LoginScreen({super.key, required this.isFromSignup});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -20,8 +22,8 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   // TODO: Remove test credentials before production
-  final TextEditingController _emailController = TextEditingController(text: 'ahmed411144@gmail.com');
-  final TextEditingController _passwordController = TextEditingController(text: 'Ka#123456');
+  final TextEditingController _emailController = TextEditingController( );
+  final TextEditingController _passwordController = TextEditingController();
   bool _rememberMe = false;
 
   @override
@@ -47,14 +49,22 @@ class _LoginScreenState extends State<LoginScreen> {
           } else if (state is AuthSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Welcome !'), //${state.user.email}
+                content: const Text('Welcome !'),
                 backgroundColor: Colors.green,
               ),
             );
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (_) => const MainWrapper()),
-            );
+            
+            if (widget.isFromSignup) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const PreferencesScreen()),
+              );
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const MainWrapper()),
+              );
+            }
           }
         },
         builder: (context, state) {

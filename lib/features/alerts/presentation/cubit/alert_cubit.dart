@@ -1,6 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/repository/alert_repository.dart';
-import '../../data/models/alert_model.dart';
 import 'alert_state.dart';
 
 class AlertCubit extends Cubit<AlertState> {

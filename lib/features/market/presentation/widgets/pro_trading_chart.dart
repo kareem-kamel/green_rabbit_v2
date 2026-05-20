@@ -107,7 +107,7 @@ class _ProTradingChartState extends State<ProTradingChart> {
                       Text(
                         widget.symbolName.isNotEmpty
                             ? '${widget.symbolName} , ${widget.interval} , (${widget.currency})'
-                            : '${widget.interval}',
+                            : widget.interval,
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.85),
                           fontSize: 13,

@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../models/watchlist_model.dart';

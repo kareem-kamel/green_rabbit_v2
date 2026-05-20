@@ -806,7 +806,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                         ],
                       ),
                     );
-                  }).toList(),
+                  }),
                 ],
               ),
             );

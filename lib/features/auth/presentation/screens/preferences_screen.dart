@@ -4,6 +4,9 @@ import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:green_rabbit/core/widgets/primary_button.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/preferences_cubit.dart';
 import 'package:green_rabbit/features/auth/presentation/widget/selectable_card.dart';
+import 'package:green_rabbit/core/di/injection_container.dart' as di;
+import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
+import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
 
 // import 'package:green_rabbit/core/widgets/primary_button.dart'; // Add your custom button import
 
@@ -50,7 +53,7 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
   Widget build(BuildContext context) {
     // Provide the Cubit to this screen
     return BlocProvider(
-      create: (context) => PreferencesCubit(),
+      create: (context) => PreferencesCubit(repository: di.sl<AuthRepository>()),
       child: Scaffold(
         backgroundColor: AppColors.scaffoldBg, // AppColors.scaffoldBg
         body: SafeArea(
@@ -64,7 +67,12 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        // TODO: Navigate to Home immediately
+                        // Navigate to Home immediately
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (_) => const MainWrapper()),
+                          (route) => false,
+                        );
                       },
                       child: const Text(
                         'Skip',
@@ -102,16 +110,42 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
 
               // --- 2. The Pages ---
               Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  physics:
-                      const NeverScrollableScrollPhysics(), // Disables manual swiping
-                  onPageChanged: (index) {
-                    setState(() {
-                      _currentPage = index;
-                    });
+                child: BlocConsumer<PreferencesCubit, PreferencesState>(
+                  listener: (context, state) {
+                    if (state.status == PreferencesStatus.success) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Preferences saved successfully!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MainWrapper()),
+                        (route) => false,
+                      );
+                    } else if (state.status == PreferencesStatus.error) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(state.errorMessage ?? 'An error occurred'),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                    }
                   },
-                  children: [_buildInterestsPage(), _buildExperiencePage()],
+                  builder: (context, state) {
+                    return PageView(
+                      controller: _pageController,
+                      physics:
+                          const NeverScrollableScrollPhysics(), // Disables manual swiping
+                      onPageChanged: (index) {
+                        setState(() {
+                          _currentPage = index;
+                        });
+                      },
+                      children: [_buildInterestsPage(), _buildExperiencePage()],
+                    );
+                  },
                 ),
               ),
             ],
@@ -243,12 +277,12 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                 padding: const EdgeInsets.only(bottom: 24.0),
                 child: PrimaryButton(
                   text: 'Start Your Experience Now',
+                  isLoading: state.status == PreferencesStatus.loading,
                   // If the list is empty, pass null to disable the button!
                   onPressed: state.experienceLevel.isEmpty 
                     ? null 
                     : () {
                         context.read<PreferencesCubit>().savePreferences();
-                        // TODO: Navigate to Home Dashboard
                       },
                 ),
               ),
