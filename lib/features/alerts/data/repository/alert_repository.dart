@@ -11,7 +11,14 @@ class AlertRepository {
 
   Future<List<AlertModel>> fetchAlerts() async {
     try {
-      final response = await _apiClient.dio.get(_alertsEndpoint);
+      final response = await _apiClient.dio.get(
+        _alertsEndpoint,
+        queryParameters: {
+          'status': 'all',
+          'page': 1,
+          'limit': 50,
+        },
+      );
 
       if (response.statusCode == 200) {
         final data = response.data;

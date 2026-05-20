@@ -201,8 +201,8 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
 
   @override
   Future<List<MarketNewsArticle>> getInstrumentNews(String id) async {
-    // API Documentation explicitly requires a "Namespaced instrument ID" (e.g., stock:AAPL)
-    final String namespacedId = id.contains(':') ? id : 'stock:$id';
+    // API Documentation explicitly requires a "Namespaced instrument ID" (e.g., stocks:AAPL)
+    final String namespacedId = id.contains(':') ? id : 'stocks:$id';
     final url = AppConstants.instrumentNews(namespacedId);
     
     debugPrint('\n--- [MARKET API REQUEST] ---');

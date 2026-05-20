@@ -17,6 +17,8 @@ import 'package:intl/intl.dart';
 import 'package:interactive_chart/interactive_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:green_rabbit/features/alerts/presentation/widgets/create_alert_sheet.dart';
+import 'package:green_rabbit/features/market/presentation/pages/search_page.dart';
 
 class InstrumentDetailPage extends ConsumerStatefulWidget {
   final String instrumentId;
@@ -85,31 +87,31 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         onPressed: () => Navigator.pop(context),
       ),
       actions: [
-        _buildAppBarIcon(Icons.search, onPressed: () {}),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            shape: BoxShape.circle,
-          ),
-          child: InkWell(
-            onTap: () {},
-            borderRadius: BorderRadius.circular(20),
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Image.asset(
-                'assets/notification_icon.png',
-                width: 20,
-                height: 20,
-                color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87,
-                errorBuilder: (_, __, ___) => Icon(
-                  Icons.notifications_none_outlined,
-                  color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black87,
-                  size: 20,
-                ),
+        _buildAppBarIcon(
+          Icons.search,
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SearchPage()),
+            );
+          },
+        ),
+        _buildAppBarIcon(
+          Icons.notifications_none_outlined,
+          onPressed: () {
+            final detail = detailAsync.valueOrNull;
+            if (detail == null) return;
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (context) => CreateAlertSheet(
+                assetName: detail.symbol,
+                instrumentId: detail.id,
+                lastPrice: detail.price.current ?? 0.0,
               ),
-            ),
-          ),
+            );
+          },
         ),
         _buildAppBarIcon(
           isFavorite ? Icons.star : Icons.star_border,

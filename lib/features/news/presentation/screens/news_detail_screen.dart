@@ -12,17 +12,6 @@ import '../../../../core/di/injection_container.dart' as di;
 import 'package:share_plus/share_plus.dart';
 
 // ─────────────────────────────────────────────
-//  MODEL
-// ─────────────────────────────────────────────
-class CommentModel {
-  final String name;
-  final String text;
-  final String time;
-
-  CommentModel({required this.name, required this.text, required this.time});
-}
-
-// ─────────────────────────────────────────────
 //  SCREEN
 // ─────────────────────────────────────────────
 class NewsDetailScreen extends StatefulWidget {
@@ -38,31 +27,67 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   late bool _isFavorited;
   bool _isExpanded = false;
 
-  final List<CommentModel> _comments = [
-    CommentModel(
-        name: "Mahmoud Ali",
-        text: "I expect a surge in this stock, and it was very important.",
-        time: "11 hours ago"),
-    CommentModel(
-        name: "Sarah Jenkins",
-        text: "The energy sector is definitely looking volatile this quarter. Great summary!",
-        time: "12 hours ago"),
-  ];
+  List<CommentModel> _comments = [];
+  bool _isLoadingComments = false;
 
-  void _postComment() {
-    if (_commentController.text.trim().isNotEmpty) {
+  Future<void> _loadComments() async {
+    setState(() {
+      _isLoadingComments = true;
+    });
+    try {
+      final comments = await di.sl<NewsRepository>().fetchComments(
+        widget.article.id,
+        'news_article',
+      );
+      if (mounted) {
+        setState(() {
+          _comments = comments;
+          _isLoadingComments = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingComments = false;
+        });
+      }
+    }
+  }
+
+  void _postComment() async {
+    final text = _commentController.text.trim();
+    if (text.isNotEmpty) {
+      _commentController.clear();
+      FocusScope.of(context).unfocus();
+      
+      // Optimistic UI update
       setState(() {
         _comments.insert(
           0,
           CommentModel(
-            name: "Guest User",
-            text: _commentController.text,
+            name: "You",
+            text: text,
             time: "Just now",
           ),
         );
-        _commentController.clear();
       });
-      FocusScope.of(context).unfocus();
+
+      final success = await di.sl<NewsRepository>().postComment(
+        widget.article.id,
+        'news_article',
+        text,
+      );
+
+      if (!success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Failed to post comment. Please try again.")),
+          );
+          _loadComments();
+        }
+      } else {
+        _loadComments();
+      }
     }
   }
 
@@ -72,6 +97,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
     _isFavorited = widget.article.isBookmarked;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<RelatedNewsCubit>().fetchRelatedNews(widget.article.id);
+      _loadComments();
     });
   }
 
@@ -277,7 +303,23 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
             _buildSectionHeader("Comments"),
             _buildCommentInput(),
             const SizedBox(height: 8),
-            ..._comments.map((c) => _buildCommentCard(c)),
+            if (_isLoadingComments && _comments.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_comments.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(
+                  child: Text(
+                    "No comments yet. Be the first to comment!",
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                ),
+              )
+            else
+              ..._comments.map((c) => _buildCommentCard(c)),
             const SizedBox(height: 8),
             _buildSeparator(),
             const SizedBox(height: 8),

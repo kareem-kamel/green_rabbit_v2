@@ -189,44 +189,59 @@ class _NewsScreenState extends State<NewsScreen> {
 
                   // Section header
                   _buildSectionHeader(
-                    "Latest News", 
-                    hasFilter: true,
+                    selectedCategory == "Favorites" ? "Favorite Articles" : "Latest News", 
+                    hasFilter: selectedCategory != "Favorites",
                     hasViewAll: false,
                   ),
                   const SizedBox(height: 12),
 
-                  // Featured article (only the first one)
-                  if (featuredArticle != null)
-                    _buildFeaturedArticle(featuredArticle),
-
-                  const SizedBox(height: 16),
-                  _buildSeparator(),
-                  const SizedBox(height: 16),
-
-                  // Initial small articles (up to 4)
-                  ...initialSmallArticles.map((article) => _buildSmallArticle(context, article)),
-
-                  // All News section (the rest)
-                  if (_showAllNews)
-                    ...remainingArticles.map((article) => _buildSmallArticle(context, article)),
-
-                  if (articles.length > 5)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      child: Center(
-                        child: TextButton(
-                          onPressed: () => setState(() => _showAllNews = !_showAllNews),
+                  if (selectedCategory == "Favorites") ...[
+                    if (articles.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: Center(
                           child: Text(
-                            _showAllNews ? "View Less" : "View All News",
-                            style: const TextStyle(
-                              color: AppColors.secondaryBlue,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
+                            "No favorite articles yet.",
+                            style: TextStyle(color: AppColors.textGrey, fontSize: 16),
+                          ),
+                        ),
+                      )
+                    else
+                      ...articles.map((article) => _buildSmallArticle(context, article)).toList(),
+                  ] else ...[
+                    // Featured article (only the first one)
+                    if (featuredArticle != null)
+                      _buildFeaturedArticle(featuredArticle),
+
+                    const SizedBox(height: 16),
+                    _buildSeparator(),
+                    const SizedBox(height: 16),
+
+                    // Initial small articles (up to 4)
+                    ...initialSmallArticles.map((article) => _buildSmallArticle(context, article)).toList(),
+
+                    // All News section (the rest)
+                    if (_showAllNews)
+                      ...remainingArticles.map((article) => _buildSmallArticle(context, article)).toList(),
+
+                    if (articles.length > 5)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: TextButton(
+                            onPressed: () => setState(() => _showAllNews = !_showAllNews),
+                            child: Text(
+                              _showAllNews ? "View Less" : "View All News",
+                              style: const TextStyle(
+                                color: AppColors.secondaryBlue,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
+                  ],
 
                   const SizedBox(height: 8),
                   _buildSeparator(),
@@ -279,7 +294,7 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 
   Widget _buildCategoryRow() {
-    final categories = ["Featured"];
+    final categories = ["Featured", "Favorites"];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
@@ -337,7 +352,17 @@ class _NewsScreenState extends State<NewsScreen> {
     bool isActive = selectedCategory == label;
 
     return GestureDetector(
-      onTap: () => setState(() => selectedCategory = label),
+      onTap: () {
+        if (selectedCategory == label) return;
+        setState(() {
+          selectedCategory = label;
+        });
+        if (label == "Favorites") {
+          context.read<NewsCubit>().fetchFavoriteNews();
+        } else {
+          context.read<NewsCubit>().fetchNewsFeed();
+        }
+      },
       child: Container(
         margin: const EdgeInsets.only(right: 10),
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -401,12 +426,21 @@ class _NewsScreenState extends State<NewsScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => NewsDetailScreen(article: article),
-        ),
-      ),
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => NewsDetailScreen(article: article),
+          ),
+        );
+        if (context.mounted) {
+          if (selectedCategory == "Favorites") {
+            context.read<NewsCubit>().fetchFavoriteNews();
+          } else {
+            context.read<NewsCubit>().fetchNewsFeed();
+          }
+        }
+      },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -446,7 +480,11 @@ class _NewsScreenState extends State<NewsScreen> {
                               !isFavorited,
                             );
                             if (success) {
-                              context.read<NewsCubit>().toggleFavoriteLocally(article.id, !isFavorited);
+                              context.read<NewsCubit>().toggleFavoriteLocally(
+                                article.id,
+                                !isFavorited,
+                                isFavoritesTab: selectedCategory == "Favorites",
+                              );
                               setStateLocal(() {
                                 isFavorited = !isFavorited;
                               });
@@ -554,12 +592,21 @@ class _NewsScreenState extends State<NewsScreen> {
         : "";
 
     return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => NewsDetailScreen(article: article),
-        ),
-      ),
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => NewsDetailScreen(article: article),
+          ),
+        );
+        if (context.mounted) {
+          if (selectedCategory == "Favorites") {
+            context.read<NewsCubit>().fetchFavoriteNews();
+          } else {
+            context.read<NewsCubit>().fetchNewsFeed();
+          }
+        }
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.all(12),

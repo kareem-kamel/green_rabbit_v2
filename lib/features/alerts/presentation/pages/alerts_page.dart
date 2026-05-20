@@ -1,97 +1,64 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import '../../data/models/alert_model.dart';
-import 'package:green_rabbit/features/market/data/models/market_instrument.dart';
+import '../cubit/alert_cubit.dart';
+import '../cubit/alert_state.dart';
 
-class AlertsPage extends StatelessWidget {
+class AlertsPage extends StatefulWidget {
   const AlertsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // Mock data for display based on API docs
-    final alerts = [
-      AlertModel(
-        id: 'a1b2c3d4-e5f6-7890-abcd-ef0123456789',
-        instrument: _mockInstrument('AAPL', 'Apple Inc.'),
-        targetPrice: 200,
-        type: 'price_above',
-        typeDisplay: 'Price goes above \$200.00',
-        status: 'active',
-        createdAt: DateTime.now().subtract(const Duration(days: 2)),
-        updatedAt: DateTime.now().subtract(const Duration(days: 2)),
-      ),
-      AlertModel(
-        id: 'b2c3d4e5-f6a7-8901-bcde-f01234567890',
-        instrument: _mockInstrument('NVDA', 'NVIDIA Corp.'),
-        targetPrice: 100,
-        type: 'price_below',
-        typeDisplay: 'Price goes below \$100.00',
-        status: 'triggered',
-        createdAt: DateTime.now().subtract(const Duration(days: 10)),
-        updatedAt: DateTime.now().subtract(const Duration(days: 5)),
-        triggeredAt: DateTime.now().subtract(const Duration(days: 5)),
-        triggeredPrice: 99.87,
-      ),
-    ];
+  State<AlertsPage> createState() => _AlertsPageState();
+}
 
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'Price Alerts',
-          style: TextStyle(
-            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        actions: [
-          IconButton(
-            onPressed: () {
-              // Show dialog to create new alert
-            },
-            icon: Icon(Icons.add_circle_outline, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: alerts.isEmpty
-          ? _buildEmptyState(context)
-          : ListView.separated(
-              padding: const EdgeInsets.all(20),
-              itemCount: alerts.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                final alert = alerts[index];
-                return _buildAlertCard(context, alert);
-              },
-            ),
-    );
-  }
-
-  MarketInstrument _mockInstrument(String symbol, String name) {
-    // This uses a raw Map for fromJson since the real constructor might change
-    return _instrumentFromMap({
-      'id': symbol,
-      'symbol': symbol,
-      'name': name,
-      'type': 'stock',
-      'price': 150.0,
-      'change': 2.5,
-      'changePercent': 1.2,
-      'logoUrl': 'https://cdn.greenrabbit.app/logos/${symbol.toLowerCase()}.png',
+class _AlertsPageState extends State<AlertsPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AlertCubit>().fetchAlerts();
     });
   }
 
-  dynamic _instrumentFromMap(Map<String, dynamic> map) {
-    // Return an instance of MarketInstrument if possible, or just a mock
-    return MarketInstrument.fromJson(map);
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AlertCubit, AlertState>(
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: Icon(Icons.arrow_back_ios, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 20),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              'Price Alerts',
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          body: state.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : state.alerts.isEmpty
+                  ? _buildEmptyState(context)
+                  : ListView.separated(
+                      padding: const EdgeInsets.all(20),
+                      itemCount: state.alerts.length,
+                      separatorBuilder: (context, index) => const SizedBox(height: 16),
+                      itemBuilder: (context, index) {
+                        final alert = state.alerts[index];
+                        return _buildAlertCard(context, alert);
+                      },
+                    ),
+        );
+      },
+    );
   }
 
   Widget _buildEmptyState(BuildContext context) {
@@ -104,15 +71,6 @@ class AlertsPage extends StatelessWidget {
           Text(
             'No price alerts set',
             style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white38 : Colors.black38, fontSize: 16),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton(
-            onPressed: () {},
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF4C3BC9),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Create New Alert', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -201,7 +159,7 @@ class AlertsPage extends StatelessWidget {
               else
                 IconButton(
                   onPressed: () {
-                    // API: Delete alert
+                    context.read<AlertCubit>().deleteAlert(alert.id);
                   },
                   icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
                 ),
