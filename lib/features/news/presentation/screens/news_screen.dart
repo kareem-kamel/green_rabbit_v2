@@ -5,13 +5,14 @@ import 'news_detail_screen.dart';
 import '../../../chatbot/presentation/screens/chatbot_screen.dart';
 import '../../../alerts/presentation/widgets/create_alert_sheet.dart';
 import '../../../../core/widgets/ask_ai_badge.dart';
-import '../../../../core/widgets/ai_service_carousel.dart';
+import '../../../../core/widgets/ai_trading_assistant_card.dart';
 import '../cubit/news_cubit.dart';
 import '../cubit/news_state.dart';
 import '../../data/models/news_model.dart';
 import '../../data/repositories/news_repository.dart';
 import '../../../../core/di/injection_container.dart' as di;
 import 'package:share_plus/share_plus.dart';
+import '../../../../core/utils/image_utils.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -51,7 +52,7 @@ class _NewsScreenState extends State<NewsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NewsCubit>().fetchNewsFeed();
+      context.read<NewsCubit>().fetchNewsFeed(limit: 20);
     });
   }
 
@@ -154,14 +155,14 @@ class _NewsScreenState extends State<NewsScreen> {
 
             final featuredArticle = articles.isNotEmpty ? articles.first : null;
             
-            // Show only the first 4 small articles initially (total 5 with featured)
+            // Show only the first 9 small articles initially (total 10 with featured)
             final initialSmallArticles = articles.length > 1 
-                ? (articles.length > 5 ? articles.sublist(1, 5) : articles.sublist(1)) 
+                ? articles.sublist(1, articles.length > 10 ? 10 : articles.length) 
                 : <NewsArticle>[];
                 
             // The rest of the news
-            final remainingArticles = articles.length > 5 
-                ? articles.sublist(5) 
+            final remainingArticles = articles.length > 10 
+                ? articles.sublist(10) 
                 : <NewsArticle>[];
 
             return SingleChildScrollView(
@@ -171,12 +172,12 @@ class _NewsScreenState extends State<NewsScreen> {
                 children: [
                   const SizedBox(height: 10),
 
-                  // AI Service Carousel (matches Market page)
-                  AIServiceCarousel(
-                    onItemTap: (index) {
-                      if (index == 0) {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatBotScreen()));
-                      }
+                  AITradingAssistantCard(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ChatBotScreen()),
+                      );
                     },
                   ),
                   const SizedBox(height: 8),
@@ -224,7 +225,7 @@ class _NewsScreenState extends State<NewsScreen> {
                     if (_showAllNews)
                       ...remainingArticles.map((article) => _buildSmallArticle(context, article)).toList(),
 
-                    if (articles.length > 5)
+                    if (articles.length > 10)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         child: Center(
@@ -358,9 +359,9 @@ class _NewsScreenState extends State<NewsScreen> {
           selectedCategory = label;
         });
         if (label == "Favorites") {
-          context.read<NewsCubit>().fetchFavoriteNews();
+          context.read<NewsCubit>().fetchFavoriteNews(limit: 20);
         } else {
-          context.read<NewsCubit>().fetchNewsFeed();
+          context.read<NewsCubit>().fetchNewsFeed(limit: 20);
         }
       },
       child: Container(
@@ -450,7 +451,7 @@ class _NewsScreenState extends State<NewsScreen> {
                 borderRadius: BorderRadius.circular(16),
                 child: article.largeImage.isNotEmpty
                     ? Image.network(
-                        article.largeImage,
+                        ImageUtils.getSafeImageUrl(article.largeImage),
                         height: 220,
                         width: double.infinity,
                         fit: BoxFit.cover,
@@ -476,7 +477,7 @@ class _NewsScreenState extends State<NewsScreen> {
                           color: isFavorited ? AppColors.primaryPurple : Colors.black.withOpacity(0.3),
                           onTap: () async {
                             final success = await di.sl<NewsRepository>().toggleFavorite(
-                              article.id,
+                              article,
                               !isFavorited,
                             );
                             if (success) {
@@ -629,7 +630,7 @@ class _NewsScreenState extends State<NewsScreen> {
                   borderRadius: BorderRadius.circular(12),
                   child: article.smallImage.isNotEmpty
                       ? Image.network(
-                          article.smallImage,
+                          ImageUtils.getSafeImageUrl(article.smallImage),
                           width: 90,
                           height: 90,
                           fit: BoxFit.cover,

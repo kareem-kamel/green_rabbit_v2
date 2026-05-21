@@ -11,6 +11,7 @@ import '../cubit/news_cubit.dart';
 import '../../../chatbot/presentation/screens/chatbot_screen.dart';
 import '../../../../core/di/injection_container.dart' as di;
 import 'package:share_plus/share_plus.dart';
+import '../../../../core/utils/image_utils.dart';
 
 // ─────────────────────────────────────────────
 //  SCREEN
@@ -27,9 +28,33 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   final TextEditingController _commentController = TextEditingController();
   late bool _isFavorited;
   bool _isExpanded = false;
+  NewsArticle? _fullArticle;
+  bool _isLoadingDetail = false;
 
   List<CommentModel> _comments = [];
   bool _isLoadingComments = false;
+
+  Future<void> _loadArticleDetail() async {
+    setState(() {
+      _isLoadingDetail = true;
+    });
+    try {
+      final detail = await di.sl<NewsRepository>().fetchArticleDetail(widget.article.id);
+      if (mounted && detail != null) {
+        setState(() {
+          _fullArticle = detail;
+          _isFavorited = detail.isBookmarked;
+          _isLoadingDetail = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingDetail = false;
+        });
+      }
+    }
+  }
 
   Future<void> _loadComments() async {
     setState(() {
@@ -37,7 +62,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
     });
     try {
       final comments = await di.sl<NewsRepository>().fetchComments(
-        widget.article.id,
+        widget.article,
         'news_article',
       );
       if (mounted) {
@@ -74,7 +99,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
       });
 
       final success = await di.sl<NewsRepository>().postComment(
-        widget.article.id,
+        widget.article,
         'news_article',
         text,
       );
@@ -96,15 +121,18 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   void initState() {
     super.initState();
     _isFavorited = widget.article.isBookmarked;
+    _fullArticle = widget.article;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadArticleDetail();
       context.read<RelatedNewsCubit>().fetchRelatedNews(widget.article.id);
       _loadComments();
     });
   }
 
   void _toggleFavorite() async {
+    final article = _fullArticle ?? widget.article;
     final success = await di.sl<NewsRepository>().toggleFavorite(
-      widget.article.id,
+      article,
       !_isFavorited,
     );
     if (success) {
@@ -198,6 +226,24 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                       Text(" | ${widget.article.timeAgo}",
                           style:
                               const TextStyle(color: Colors.grey, fontSize: 13)),
+                      if (widget.article.sentiment.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: (widget.article.sentiment.toLowerCase() == 'bullish' ? Colors.green : (widget.article.sentiment.toLowerCase() == 'bearish' ? Colors.red : Colors.grey)).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            widget.article.sentiment.toUpperCase(),
+                            style: TextStyle(
+                              color: widget.article.sentiment.toLowerCase() == 'bullish' ? Colors.green : (widget.article.sentiment.toLowerCase() == 'bearish' ? Colors.red : Colors.grey),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -208,7 +254,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                         borderRadius: BorderRadius.circular(16),
                         child: widget.article.largeImage.isNotEmpty
                             ? Image.network(
-                                widget.article.largeImage,
+                                ImageUtils.getSafeImageUrl(widget.article.largeImage),
                                 height: 220,
                                 width: double.infinity,
                                 fit: BoxFit.cover,
@@ -325,32 +371,59 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
             _buildSeparator(),
             const SizedBox(height: 8),
 
+            // ── Analysis & Opinions section
+            if (_fullArticle != null && _fullArticle!.analysisOpinions.isNotEmpty) ...[
+              _buildSectionHeader("Analysis & Opinions"),
+              ..._fullArticle!.analysisOpinions.map((analysis) => _buildRelatedItem(analysis)).toList(),
+              const SizedBox(height: 8),
+              _buildSeparator(),
+              const SizedBox(height: 8),
+            ],
+
             // ── Related news
             _buildSectionHeader("Related News", hasViewAll: true),
             BlocBuilder<RelatedNewsCubit, RelatedNewsState>(
               builder: (context, state) {
+                List<NewsArticle> relatedArticles = [];
+                bool isLoading = false;
+                String? error;
+
                 if (state is RelatedNewsLoading) {
+                  isLoading = true;
+                } else if (state is RelatedNewsError) {
+                  error = state.message;
+                } else if (state is RelatedNewsLoaded) {
+                  relatedArticles = state.articles;
+                }
+
+                // Fallback to related news from the detail response if cubit is empty or loading
+                if (relatedArticles.isEmpty && _fullArticle != null && _fullArticle!.relatedNews.isNotEmpty) {
+                  relatedArticles = _fullArticle!.relatedNews;
+                  // If we have fallback data, don't show loading/error
+                  isLoading = false;
+                  error = null;
+                }
+
+                if (isLoading && relatedArticles.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.all(16.0),
                     child: Center(child: CircularProgressIndicator()),
                   );
-                } else if (state is RelatedNewsError) {
+                } else if (error != null && relatedArticles.isEmpty) {
                   return Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Text(state.message, style: const TextStyle(color: Colors.grey)),
+                    child: Text(error, style: const TextStyle(color: Colors.grey)),
                   );
-                } else if (state is RelatedNewsLoaded) {
-                  if (state.articles.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text("No related news found", style: TextStyle(color: Colors.grey)),
-                    );
-                  }
-                  return Column(
-                    children: state.articles.map((article) => _buildRelatedItem(article)).toList(),
+                } else if (relatedArticles.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text("No related news found", style: TextStyle(color: Colors.grey)),
                   );
                 }
-                return const SizedBox.shrink();
+
+                return Column(
+                  children: relatedArticles.map((article) => _buildRelatedItem(article)).toList(),
+                );
               },
             ),
             const SizedBox(height: 8),
@@ -369,9 +442,10 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     
-    final bodyText = widget.article.snippet.isNotEmpty 
-        ? widget.article.snippet 
-        : "No detailed content available for this article.";
+    final article = _fullArticle ?? widget.article;
+    final bodyText = article.content.isNotEmpty 
+        ? article.content 
+        : (article.summary.isNotEmpty ? article.summary : "No detailed content available for this article.");
 
     return Text(
       bodyText,
@@ -610,7 +684,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
             borderRadius: BorderRadius.circular(8),
             child: article.thumbImage.isNotEmpty
                 ? Image.network(
-                    article.thumbImage,
+                    ImageUtils.getSafeImageUrl(article.thumbImage),
                     width: 80,
                     height: 80,
                     fit: BoxFit.cover,
