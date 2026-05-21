@@ -20,7 +20,6 @@ import '../../features/profile/data/sources/profile_remote_data_source.dart';
 import '../../features/profile/data/repositories/profile_repository_impl.dart';
 import '../../features/profile/presentation/cubit/profile_cubit.dart';
 import '../../features/profile/presentation/cubit/settings_cubit.dart';
-import '../../features/auth/data/api/auth_api.dart';
 import '../../features/chatbot/data/repository/chatbot_repository.dart';
 import '../../features/chatbot/data/services/ai_service.dart';
 import '../../features/chatbot/presentation/cubit/chat_cubit.dart';

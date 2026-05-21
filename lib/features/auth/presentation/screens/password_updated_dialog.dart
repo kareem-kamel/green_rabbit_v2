@@ -56,7 +56,7 @@ class PasswordUpdatedDialog extends StatelessWidget {
                 // Example:
                 Navigator.pushAndRemoveUntil(
                   context, 
-                  MaterialPageRoute(builder: (context) => const LoginScreen()), 
+                  MaterialPageRoute(builder: (context) => const LoginScreen(isFromSignup: false)), 
                   (route) => false,
                 );
               },

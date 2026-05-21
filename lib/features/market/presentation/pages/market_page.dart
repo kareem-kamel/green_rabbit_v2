@@ -7,16 +7,13 @@ import 'package:green_rabbit/core/theme/app_theme.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:green_rabbit/features/profile/presentation/screens/profile_screen.dart';
 import '../../../../shared/widgets/app_card.dart';
-import '../../../../shared/widgets/app_search_field.dart';
 import '../../../../shared/widgets/app_section_header.dart';
 import '../../../../shared/widgets/sparkline_painter.dart';
 import 'instrument_detail_page.dart';
 import '../providers/market_providers.dart';
 import '../../data/models/market_instrument.dart';
-import '../../../watchlist/presentation/providers/watchlist_providers.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
 import 'package:green_rabbit/features/market/presentation/pages/search_page.dart';
-import 'package:green_rabbit/core/widgets/ai_service_carousel.dart';
 
 class MarketPage extends ConsumerStatefulWidget {
   const MarketPage({super.key});

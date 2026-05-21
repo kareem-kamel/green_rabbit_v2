@@ -65,7 +65,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
       return [];
     }
     
-    return list.where((item) => item is Map).map((item) {
+    return list.whereType<Map>().map((item) {
       final Map<String, dynamic> itemMap = Map<String, dynamic>.from(item as Map);
       return MarketInstrument.fromJson(itemMap);
     }).toList();
@@ -100,7 +100,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
       throw Exception('Could not extract valid instrument details from response for ID: $id');
     }
 
-    return MarketInstrumentDetail.fromJson(Map<String, dynamic>.from(rawData as Map));
+    return MarketInstrumentDetail.fromJson(Map<String, dynamic>.from(rawData));
   }
 
   @override
@@ -141,7 +141,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
         return {'candles': []};
       }
 
-      final Map<String, dynamic> data = Map<String, dynamic>.from(chartContainer as Map);
+      final Map<String, dynamic> data = Map<String, dynamic>.from(chartContainer);
 
       if (data.containsKey('candles')) {
         final List<dynamic> originalCandles = data['candles'];
@@ -196,7 +196,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
       throw Exception('Stats data object not found for ID: $id');
     }
     
-    return MarketInstrumentStats.fromJson(Map<String, dynamic>.from(data as Map));
+    return MarketInstrumentStats.fromJson(Map<String, dynamic>.from(data));
   }
 
   @override
@@ -284,7 +284,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
 
     // Each trending item is: { rank, instrument: {...}, trendingReason, trendingScore }
     // Extract the nested instrument object before parsing.
-    return list.where((item) => item is Map).map((item) {
+    return list.whereType<Map>().map((item) {
       final Map<String, dynamic> itemMap = Map<String, dynamic>.from(item as Map);
       final inner = itemMap['instrument'];
       final instrumentMap = inner is Map

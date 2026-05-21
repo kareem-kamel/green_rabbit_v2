@@ -1,11 +1,19 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
 import 'set_password_state.dart';
 
 class SetPasswordCubit extends Cubit<SetPasswordState> {
-  SetPasswordCubit() : super(SetPasswordInitial());
+  final AuthRepository repository;
 
-  Future<void> changePassword(String newPassword, String confirmPassword) async {
+  SetPasswordCubit({required this.repository}) : super(SetPasswordInitial());
+
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
     // 1. Validation
     if (newPassword.isEmpty || confirmPassword.isEmpty) {
       emit(SetPasswordError("Please fill in both fields."));
@@ -24,17 +32,21 @@ class SetPasswordCubit extends Cubit<SetPasswordState> {
     emit(SetPasswordLoading());
 
     debugPrint('=========================================');
-    debugPrint('🚀 MOCK API CALL: Changing Password...');
+    debugPrint('🚀 REAL API CALL: Resetting Password...');
     debugPrint('=========================================');
 
     try {
-      // Fake network delay
-      await Future.delayed(const Duration(seconds: 2));
+      await repository.resetPassword(
+        email: email,
+        otp: otp,
+        newPassword: newPassword,
+        confirmNewPassword: confirmPassword,
+      );
       
       // 3. Success State
       emit(SetPasswordSuccess());
     } catch (e) {
-      emit(SetPasswordError(e.toString()));
+      emit(SetPasswordError(e.toString().replaceAll('Exception: ', '')));
     }
   }
 }

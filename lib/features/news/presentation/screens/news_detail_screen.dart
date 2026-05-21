@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/ai_news_summary_card.dart';
 import '../../../../core/widgets/ask_ai_badge.dart';

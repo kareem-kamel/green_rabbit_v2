@@ -39,7 +39,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             builder: (context) => BlocProvider(
               // The professional way: Ask your injection container for the Cubit!
               create: (context) => sl<AuthCubit>(), 
-              child: const LoginScreen(),
+              child: const LoginScreen(isFromSignup: false),
             ),
           ),
     );

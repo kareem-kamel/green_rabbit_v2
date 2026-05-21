@@ -1,7 +1,5 @@
-import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../models/calendar_event.dart';
 
 abstract class CalendarRemoteDataSource {
   Future<Map<String, dynamic>> getCalendarEvents({

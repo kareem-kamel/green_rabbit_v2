@@ -10,6 +10,46 @@ class AuthRepository {
 
   AuthRepository({required this.apiClient, required this.storage});
 
+  // Helper method to extract detailed error messages from JSON payload
+  String _extractMessageFromData(dynamic data, String defaultMessage) {
+    if (data is Map) {
+      if (data['error'] is Map) {
+        // Try to get specific field validation detail first
+        if (data['error']['details'] is Map && data['error']['details'].isNotEmpty) {
+          return data['error']['details'].values.first.toString();
+        }
+        if (data['error']['message'] != null) {
+          return data['error']['message'].toString();
+        }
+      }
+      if (data['message'] != null) {
+        return data['message'].toString();
+      }
+    } else if (data is String && data.isNotEmpty) {
+      // Sometimes backend returns raw error text
+      return data.length > 100 ? defaultMessage : data;
+    }
+    return defaultMessage;
+  }
+
+  // Helper method to safely extract error message from DioException
+  String _getErrorMessage(DioException e, String defaultMessage) {
+    try {
+      return _extractMessageFromData(e.response?.data, defaultMessage);
+    } catch (_) {}
+    return defaultMessage;
+  }
+
+  // Helper method to check if the response was technically a 200 OK but had "success": false
+  void _checkResponseSuccess(Response response, String defaultError) {
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(defaultError);
+    }
+    if (response.data is Map && response.data['success'] == false) {
+      throw Exception(_extractMessageFromData(response.data, defaultError));
+    }
+  }
+
   // --- NEW: ONBOARDING HELPERS ---
   
   /// Marks that the user has seen the onboarding slides
@@ -21,6 +61,31 @@ class AuthRepository {
   Future<bool> isFirstTime() async {
     final value = await storage.read(key: 'isFirstTime');
     return value == null; // If null, they haven't finished onboarding yet
+  }
+
+  Future<void> saveUserOnboarding({
+    required String experienceLevel,
+    required List<String> interestedIn,
+  }) async {
+    try {
+      final response = await apiClient.dio.post(
+        AppConstants.userOnboarding,
+        data: {
+          "experienceLevel": experienceLevel.toLowerCase(),
+          "interestedIn": interestedIn, // Sent as a JSON Array: ["Crypto", "Stocks"]
+        },
+      );
+
+      _checkResponseSuccess(response, "Failed to save preferences.");
+      
+      // Also mark local storage as complete
+      await setOnboardingComplete();
+    } on DioException catch (e) {
+      debugPrint('🚨 ONBOARDING 400 ERROR RAW DATA: ${e.response?.data}');
+      throw Exception(_getErrorMessage(e, 'Failed to save preferences.'));
+    } catch (e) {
+      throw Exception(e.toString());
+    }
   }
 
   // --- REGISTER ---
@@ -44,12 +109,9 @@ class AuthRepository {
         },
       );
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception("Registration failed.");
-      }
+      _checkResponseSuccess(response, "Registration failed.");
     } on DioException catch (e) {
-      final errorMessage = e.response?.data['message'] ?? 'An error occurred during registration.';
-      throw Exception(errorMessage);
+      throw Exception(_getErrorMessage(e, 'An error occurred during registration.'));
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -66,12 +128,9 @@ class AuthRepository {
         data: {"email": email, "otp": code},
       );
 
-      if (response.data['success'] != true) {
-        throw Exception("Invalid code. Please try again.");
-      }
+      _checkResponseSuccess(response, "Invalid code. Please try again.");
     } on DioException catch (e) {
-      final errorMessage = e.response?.data['message'] ?? 'Invalid code. Try again.';
-      throw Exception(errorMessage);
+      throw Exception(_getErrorMessage(e, 'Invalid code. Try again.'));
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -84,10 +143,14 @@ class AuthRepository {
     required bool rememberMe,
   }) async {
     try {
+      debugPrint('AuthRepository: Attempting login...');
       final response = await apiClient.dio.post(
         AppConstants.login,
         data: {"email": email.trim(), "password": password},
       );
+      debugPrint('AuthRepository: Login request successful');
+
+      _checkResponseSuccess(response, "Login successful, but an error occurred.");
 
       final responseData = response.data['data'];
 
@@ -107,14 +170,17 @@ class AuthRepository {
         
         // Mark onboarding as complete once they successfully log in
         await setOnboardingComplete();
-        
+        debugPrint('AuthRepository: Login completed');
       } else {
         throw Exception("Login successful, but no access token was found.");
       }
     } on DioException catch (e) {
-      final errorMessage = e.response?.data['message'] ?? 'Invalid email or password.';
-      throw Exception(errorMessage);
+      debugPrint('AuthRepository: DioException caught! Parsing error message...');
+      final msg = _getErrorMessage(e, 'Invalid email or password.');
+      debugPrint('AuthRepository: Parsed error message: $msg');
+      throw Exception(msg);
     } catch (e) {
+      debugPrint('AuthRepository: Generic exception caught: $e');
       throw Exception(e.toString());
     }
   }
@@ -140,7 +206,7 @@ class AuthRepository {
 
       if (refreshToken != null) {
         await apiClient.dio.post(
-          '/api/auth/logout', 
+          AppConstants.logout, 
           data: {"refreshToken": refreshToken},
         );
       }
@@ -151,6 +217,72 @@ class AuthRepository {
       await storage.delete(key: AppConstants.keyAccessToken);
       await storage.delete(key: AppConstants.keyRefreshToken); 
       await storage.delete(key: 'rememberMe');
+    }
+  }
+
+  // --- FORGOT PASSWORD ---
+  Future<void> forgotPassword(String email) async {
+    try {
+      final response = await apiClient.dio.post(
+        AppConstants.forgotPassword,
+        data: {"email": email.trim()},
+      );
+
+      _checkResponseSuccess(response, "Failed to send reset code.");
+    } on DioException catch (e) {
+      throw Exception(_getErrorMessage(e, 'An error occurred. Try again.'));
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  // --- RESET PASSWORD ---
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+    required String confirmNewPassword,
+  }) async {
+    try {
+      final response = await apiClient.dio.post(
+        AppConstants.resetPassword,
+        data: {
+          "email": email.trim(),
+          "otp": otp,
+          "newPassword": newPassword,
+          "confirmNewPassword": confirmNewPassword,
+        },
+      );
+
+      _checkResponseSuccess(response, "Failed to reset password.");
+    } on DioException catch (e) {
+      throw Exception(_getErrorMessage(e, 'Invalid OTP or error resetting password.'));
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  // --- CHANGE PASSWORD ---
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmNewPassword,
+  }) async {
+    try {
+      final response = await apiClient.dio.post(
+        AppConstants.changePassword,
+        data: {
+          "currentPassword": currentPassword,
+          "newPassword": newPassword,
+          "confirmNewPassword": confirmNewPassword,
+        },
+      );
+
+      _checkResponseSuccess(response, "Failed to change password.");
+    } on DioException catch (e) {
+      throw Exception(_getErrorMessage(e, 'An error occurred while changing password.'));
+    } catch (e) {
+      throw Exception(e.toString());
     }
   }
 }

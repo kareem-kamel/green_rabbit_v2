@@ -124,17 +124,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                   );
 
                   // 2. 🔀 DYNAMIC ROUTING BASED ON THE FLOW
-                  if (widget.isForgotPasswordFlow == true) {
-                    // LOGIC 2: Forgot Password Flow -> Go to Set Password
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        // Make sure to pass the email so SetPasswordScreen knows WHOSE password to change!
-                        builder: (context) =>
-                            SetPasswordScreen(email: widget.email),
-                      ),
-                    );
-                  } else {
+                  if (widget.isForgotPasswordFlow == false) {
                     // LOGIC 1: Signup Flow -> Go to Preferences/Onboarding
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
@@ -152,7 +142,7 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                     Navigator.pushAndRemoveUntil(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => const LoginScreen(),
+                        builder: (context) => const LoginScreen(isFromSignup: true),
                       ),
                       (Route<dynamic> route) =>
                           false, // This destroys all previous screens
@@ -233,11 +223,22 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                         color: const Color(0xFF8B5CF6),
                       ),
                       onCompleted: (pin) {
-                        // 👇 FIX 1: Auto-submit using strictly named parameters
-                        context.read<VerifyOtpCubit>().verifyCode(
-                          email: widget.email,
-                          code: pin,
-                        );
+                        if (widget.isForgotPasswordFlow) {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SetPasswordScreen(
+                                email: widget.email,
+                                otp: pin,
+                              ),
+                            ),
+                          );
+                        } else {
+                          context.read<VerifyOtpCubit>().verifyCode(
+                            email: widget.email,
+                            code: pin,
+                          );
+                        }
                       },
                     ),
 
@@ -249,11 +250,31 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                       isLoading: state is VerifyOtpLoading,
                       onPressed: () {
                         FocusScope.of(context).unfocus();
-                        context.read<VerifyOtpCubit>().verifyCode(
-                          email: widget
-                              .email, // Pass the email the user signed up with!
-                          code: _pinController.text,
-                        );
+                        if (widget.isForgotPasswordFlow) {
+                          if (_pinController.text.length == 6) {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => SetPasswordScreen(
+                                  email: widget.email,
+                                  otp: _pinController.text,
+                                ),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text("Please enter the complete 6-digit code."),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        } else {
+                          context.read<VerifyOtpCubit>().verifyCode(
+                            email: widget.email,
+                            code: _pinController.text,
+                          );
+                        }
                       },
                     ),
                   ],
