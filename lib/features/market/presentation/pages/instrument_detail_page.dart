@@ -19,6 +19,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:green_rabbit/features/alerts/presentation/widgets/create_alert_sheet.dart';
 import 'package:green_rabbit/features/market/presentation/pages/search_page.dart';
+import 'package:green_rabbit/core/utils/image_utils.dart';
 
 class InstrumentDetailPage extends ConsumerStatefulWidget {
   final String instrumentId;
@@ -587,7 +588,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           CircleAvatar(
             radius: 35,
             backgroundColor: AppColors.surface,
-            backgroundImage: article.imageUrl != null ? NetworkImage(article.imageUrl!) : null,
+            backgroundImage: article.imageUrl != null ? NetworkImage(ImageUtils.getSafeImageUrl(article.imageUrl!)) : null,
             child: article.imageUrl == null 
                 ? const Icon(Icons.person, color: AppColors.textMuted, size: 30)
                 : null,
@@ -642,7 +643,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
               image: article.imageUrl != null 
-                ? DecorationImage(image: NetworkImage(article.imageUrl!), fit: BoxFit.cover)
+                ? DecorationImage(image: NetworkImage(ImageUtils.getSafeImageUrl(article.imageUrl!)), fit: BoxFit.cover)
                 : null,
               color: AppColors.surface,
             ),

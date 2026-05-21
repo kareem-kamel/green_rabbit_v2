@@ -13,7 +13,10 @@ class AppConstants {
 
   // Endpoints
   static const String newsEndpoint = '/news';
-  static const String relatedNewsEndpoint = '/news/related';
+  static String newsDetailEndpoint(String id) => '/news/$id';
+  static String newsRelatedEndpoint(String id) => '/news/$id/related';
+  static String newsFavoriteEndpoint(String id) => '/news/$id/favorite';
+  static const String newsFavoritesListEndpoint = '/news/favorites';
   static const String aiSummarizeEndpoint = '/ai/summarize';
   static const String aiUsageEndpoint = '/ai/usage';
   static const String aiChatConversationsEndpoint = '/ai/chat/conversations';
