@@ -107,6 +107,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<ChatCubit, ChatState>(
+      buildWhen: (previous, current) {
+        if (previous.isGenerating != current.isGenerating) return true;
+        if (previous.messages.length != current.messages.length) return true;
+        if (previous.messages.isEmpty || current.messages.isEmpty) return true;
+        final prevLast = previous.messages.last;
+        final currLast = current.messages.last;
+        return prevLast.id != currLast.id || prevLast.content != currLast.content;
+      },
       listenWhen: (previous, current) =>
           previous.messages.length != current.messages.length ||
           (current.isGenerating &&
@@ -529,6 +537,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                       ],
                       Expanded(
                         child: MarkdownBody(
+                          key: ValueKey('${msg.id}_${msg.content.length}'),
                           data: msg.content,
                           selectable: true,
                           styleSheet: MarkdownStyleSheet(

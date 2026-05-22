@@ -5,8 +5,17 @@ class AppConstants {
 
   static const String appName = 'Green Rabbit';
   static const String baseUrl = 'https://green-rabbit-backend-api.up.railway.app/api/';
-  
+
   static String get apiBaseUrl => baseUrl;
+
+  /// Joins [apiBaseUrl] and [path] without a double slash (Dio tolerates it; http does not).
+  static Uri apiUri(String path) {
+    final base = apiBaseUrl.endsWith('/')
+        ? apiBaseUrl.substring(0, apiBaseUrl.length - 1)
+        : apiBaseUrl;
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    return Uri.parse('$base$normalizedPath');
+  }
   
   static bool get useMockApi => false;
   static String? get apiToken => dotenv.get('API_TOKEN', fallback: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4N2Y3MDI4MC0wNWQzLTQwOTAtOTRmZS00MjVjNGIyOGY5Y2UiLCJlbWFpbCI6ImFobWVkNDExMTQ0QGdtYWlsLmNvbSIsInRpZXIiOiJmcmVlIiwibGFuZyI6ImVuIiwidHYiOjEsImlhdCI6MTc3NjIxMjE4MiwiZXhwIjoxNzc2MjE1NzgyfQ.2TYV_VMZ9yZeMfT5KHKHtkhUZRqp4lQFU9hHsK7mUWo');

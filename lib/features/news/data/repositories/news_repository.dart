@@ -223,7 +223,27 @@ class NewsRepository {
     return false;
   }
 
-  NewsArticle? _parseFavoriteEntry(dynamic item) {
+  String _favoriteArticleKey(NewsArticle article) {
+    if (article.id.trim().isNotEmpty) return article.id.trim();
+    if (article.url.trim().isNotEmpty) return article.url.trim();
+    return article.title.trim();
+  }
+
+  /// Lower = preferred when the same article appears under multiple ?type= lists.
+  int _favoriteTypePriority(String type) {
+    switch (_normalizeNewsType(type)) {
+      case 'forex':
+        return 0;
+      case 'crypto':
+        return 1;
+      case 'stock':
+        return 2;
+      default:
+        return 3;
+    }
+  }
+
+  NewsArticle? _parseFavoriteEntry(dynamic item, {required String queryType}) {
     if (item is! Map) return null;
     final fav = Map<String, dynamic>.from(item);
 
@@ -245,7 +265,49 @@ class NewsRepository {
       return null;
     }
 
-    return NewsArticle.fromJson(articleJson).copyWith(isBookmarked: true);
+    final storedType = fav['type'] ?? fav['instrument_type'] ?? fav['instrumentType'];
+    final resolvedType = storedType != null
+        ? _normalizeNewsType(storedType.toString())
+        : queryType;
+
+    return NewsArticle.fromJson(articleJson).copyWith(
+      isBookmarked: true,
+      type: resolvedType,
+    );
+  }
+
+  void _mergeFavoriteBatch(
+    List<NewsArticle> merged,
+    Map<String, int> indexByArticleKey,
+    List<NewsArticle> batch,
+    String queryType,
+  ) {
+    for (final article in batch) {
+      final tagged = article.copyWith(
+        type: _normalizeNewsType(
+          article.type.isNotEmpty ? article.type : queryType,
+        ),
+        isBookmarked: true,
+      );
+      final key = _favoriteArticleKey(tagged);
+      if (key.isEmpty) {
+        merged.add(tagged);
+        continue;
+      }
+
+      final existingIndex = indexByArticleKey[key];
+      if (existingIndex == null) {
+        indexByArticleKey[key] = merged.length;
+        merged.add(tagged);
+        continue;
+      }
+
+      final existing = merged[existingIndex];
+      if (_favoriteTypePriority(tagged.type) <
+          _favoriteTypePriority(existing.type)) {
+        merged[existingIndex] = tagged;
+      }
+    }
   }
 
   Future<List<NewsArticle>> _fetchFavoritesForType({
@@ -276,18 +338,18 @@ class NewsRepository {
 
     final articles = <NewsArticle>[];
     for (final item in favoritesJson) {
-      final article = _parseFavoriteEntry(item);
+      final article = _parseFavoriteEntry(item, queryType: type);
       if (article != null) articles.add(article);
     }
-    print('DEBUG: favorites type=$type count=${articles.length}');
+    print('DEBUG: favorites type=$type parsed=${articles.length}');
     return articles;
   }
 
-  /// GET /news/favorites — backend filters by ?type= (same as favorite POST).
+  /// GET /news/favorites — one request per provider type, then merge.
   Future<List<NewsArticle>> fetchFavoriteArticles({int page = 1, int limit = 20}) async {
     try {
-      final seenIds = <String>{};
       final merged = <NewsArticle>[];
+      final indexByArticleKey = <String, int>{};
 
       for (final type in AppConstants.newsInstrumentTypes) {
         try {
@@ -296,15 +358,16 @@ class NewsRepository {
             page: page,
             limit: limit,
           );
-          for (final article in batch) {
-            if (seenIds.add(article.id)) merged.add(article);
-          }
+          _mergeFavoriteBatch(merged, indexByArticleKey, batch, type);
         } catch (e) {
           print('DEBUG: fetchFavoriteArticles type=$type error: $e');
         }
       }
 
-      print('DEBUG: fetchFavoriteArticles total=${merged.length}');
+      print(
+        'DEBUG: fetchFavoriteArticles total=${merged.length} '
+        'types=${merged.map((a) => a.type).join(', ')}',
+      );
       return merged;
     } catch (e, stack) {
       print('Error fetching favorites: $e\n$stack');

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/repository/chatbot_repository.dart';
 import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
@@ -7,8 +10,10 @@ import 'chat_state.dart';
 class ChatCubit extends Cubit<ChatState> {
   final ChatbotRepository repository;
   CancelToken? _activeCancelToken;
-  DateTime? _lastStreamEmitAt;
-  static const _streamEmitIntervalMs = 48;
+  Timer? _revealTimer;
+
+  /// ChatGPT-style typewriter: UI trails the live stream slightly.
+  static const _revealTickMs = 18;
 
   ChatCubit({required this.repository}) : super(const ChatState(
     messages: [],
@@ -129,15 +134,71 @@ class ChatCubit extends Cubit<ChatState> {
         'tap New Chat to continue in a fresh thread.';
   }
 
-  bool _shouldEmitStreamUpdate() {
-    final now = DateTime.now();
-    if (_lastStreamEmitAt == null ||
-        now.difference(_lastStreamEmitAt!).inMilliseconds >=
-            _streamEmitIntervalMs) {
-      _lastStreamEmitAt = now;
-      return true;
+  /// Backend may send deltas (append) or cumulative content (replace).
+  String _mergeStreamChunk(String current, String incoming) {
+    if (incoming.isEmpty) return current;
+    if (current.isEmpty) return incoming;
+    if (incoming.length >= current.length && incoming.startsWith(current)) {
+      return incoming;
     }
-    return false;
+    return current + incoming;
+  }
+
+  void _cancelRevealTimer() {
+    _revealTimer?.cancel();
+    _revealTimer = null;
+  }
+
+  int _revealCharsPerTick(int backlog) {
+    if (backlog > 200) return 18;
+    if (backlog > 100) return 10;
+    if (backlog > 40) return 5;
+    if (backlog > 12) return 2;
+    return 1;
+  }
+
+  String _advanceTypewriter(String displayed, String target) {
+    if (displayed.length >= target.length) return displayed;
+
+    final backlog = target.length - displayed.length;
+    var take = _revealCharsPerTick(backlog);
+    var end = displayed.length + take;
+    if (end > target.length) end = target.length;
+
+    // Prefer stopping after a space when we're not catching up fast.
+    if (backlog < 48 && end < target.length) {
+      final slice = target.substring(displayed.length, end);
+      if (!slice.contains(' ') && !slice.contains('\n')) {
+        final spaceAfter = target.indexOf(' ', end);
+        final newlineAfter = target.indexOf('\n', end);
+        var boundary = -1;
+        if (spaceAfter != -1) boundary = spaceAfter;
+        if (newlineAfter != -1 &&
+            (boundary == -1 || newlineAfter < boundary)) {
+          boundary = newlineAfter;
+        }
+        if (boundary != -1 && boundary - displayed.length <= take + 10) {
+          end = boundary + 1;
+          if (end > target.length) end = target.length;
+        }
+      }
+    }
+
+    return target.substring(0, end);
+  }
+
+  Future<void> _waitForRevealCatchUp({
+    required String conversationId,
+    required String target,
+    required String displayed,
+    required bool Function() isCancelled,
+  }) async {
+    var shown = displayed;
+    while (shown.length < target.length && !isCancelled()) {
+      shown = _advanceTypewriter(shown, target);
+      _emitStreamingAssistantMessage(conversationId, shown);
+      await Future.delayed(const Duration(milliseconds: _revealTickMs ~/ 2));
+    }
   }
 
   void _emitStreamingAssistantMessage(
@@ -187,6 +248,7 @@ class ChatCubit extends Cubit<ChatState> {
     _activeCancelToken?.cancel();
     _activeCancelToken = CancelToken();
     final cancelToken = _activeCancelToken!;
+    _cancelRevealTimer();
 
     try {
       String conversationId;
@@ -218,16 +280,35 @@ class ChatCubit extends Cubit<ChatState> {
           ? withAiPlaceholder.sublist(0, withAiPlaceholder.length - 2)
           : <ChatMessage>[];
 
-      String fullContent = '';
+      var streamTarget = '';
+      var streamDisplayed = '';
       const maxAttempts = 4;
       Object? lastError;
-      _lastStreamEmitAt = null;
 
       for (var attempt = 0; attempt < maxAttempts; attempt++) {
         if (cancelToken.isCancelled) return;
 
         try {
-          fullContent = '';
+          streamTarget = '';
+          streamDisplayed = '';
+          _cancelRevealTimer();
+
+          _revealTimer = Timer.periodic(
+            const Duration(milliseconds: _revealTickMs),
+            (_) {
+              if (isClosed || cancelToken.isCancelled) return;
+              if (state.activeConversationId != conversationId) return;
+              if (streamDisplayed.length >= streamTarget.length) return;
+
+              streamDisplayed =
+                  _advanceTypewriter(streamDisplayed, streamTarget);
+              _emitStreamingAssistantMessage(
+                conversationId,
+                streamDisplayed,
+              );
+            },
+          );
+
           await for (final chunk in repository.sendMessageStream(
             conversationId,
             text,
@@ -240,19 +321,30 @@ class ChatCubit extends Cubit<ChatState> {
               return;
             }
 
-            fullContent += chunk;
-
-            if (_shouldEmitStreamUpdate()) {
-              _emitStreamingAssistantMessage(conversationId, fullContent);
-            }
+            streamTarget = _mergeStreamChunk(streamTarget, chunk);
           }
-          _lastStreamEmitAt = null;
-          if (fullContent.isNotEmpty) {
-            _emitStreamingAssistantMessage(conversationId, fullContent);
+
+          _cancelRevealTimer();
+          await _waitForRevealCatchUp(
+            conversationId: conversationId,
+            target: streamTarget,
+            displayed: streamDisplayed,
+            isCancelled: () => isClosed || cancelToken.isCancelled,
+          );
+          streamDisplayed = streamTarget;
+          if (streamTarget.isNotEmpty) {
+            _emitStreamingAssistantMessage(conversationId, streamDisplayed);
+          }
+          if (kDebugMode) {
+            print(
+              '[CHAT_STREAM] UI final len=${streamTarget.length} chars',
+            );
           }
           lastError = null;
           break;
         } catch (e) {
+          _cancelRevealTimer();
+
           if (isClosed || cancelToken.isCancelled) return;
           if (e is DioException && CancelToken.isCancel(e)) return;
 
@@ -274,7 +366,7 @@ class ChatCubit extends Cubit<ChatState> {
         throw lastError!;
       }
 
-      if (fullContent.trim().isEmpty) {
+      if (streamTarget.trim().isEmpty) {
         _setAssistantError(
           conversationId,
           'No response received from the AI. Please try again.',
@@ -303,6 +395,7 @@ class ChatCubit extends Cubit<ChatState> {
         message,
       );
     } finally {
+      _cancelRevealTimer();
       if (_activeCancelToken == cancelToken) {
         _activeCancelToken = null;
       }
@@ -310,7 +403,7 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   void stopGenerating() {
-    _lastStreamEmitAt = null;
+    _cancelRevealTimer();
     _activeCancelToken?.cancel();
     _activeCancelToken = null;
 
