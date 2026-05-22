@@ -15,6 +15,9 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../core/utils/image_utils.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 
+import 'package:shimmer/shimmer.dart';
+import '../../../../shared/widgets/app_card.dart';
+
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
 
@@ -123,7 +126,7 @@ class _NewsScreenState extends State<NewsScreen> {
       body: BlocBuilder<NewsCubit, NewsState>(
         builder: (context, state) {
           if (state is NewsLoading) {
-            return const Center(child: CircularProgressIndicator());
+            return _buildSkeletonLoading();
           } else if (state is NewsError) {
             return Center(
               child: Text(
@@ -728,6 +731,86 @@ class _NewsScreenState extends State<NewsScreen> {
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkeletonLoading() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final highlightColor = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              height: 100,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: List.generate(4, (index) => Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: Container(
+                  width: 80,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+              )),
+            ),
+            const SizedBox(height: 24),
+            Container(width: 150, height: 24, color: Colors.white),
+            const SizedBox(height: 16),
+            Container(
+              height: 200,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            const SizedBox(height: 24),
+            ...List.generate(3, (index) => Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: Row(
+                children: [
+                  Container(
+                    width: 90,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(width: double.infinity, height: 16, color: Colors.white),
+                        const SizedBox(height: 8),
+                        Container(width: 150, height: 16, color: Colors.white),
+                        const SizedBox(height: 16),
+                        Container(width: 100, height: 12, color: Colors.white),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            )),
           ],
         ),
       ),

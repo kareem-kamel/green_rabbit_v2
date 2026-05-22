@@ -15,6 +15,7 @@ import 'package:green_rabbit/features/news/presentation/screens/news_detail_scre
 import 'package:green_rabbit/core/utils/image_utils.dart';
 import 'package:flutter_bloc/flutter_bloc.dart' as bloc;
 import 'package:shimmer/shimmer.dart';
+import '../../../profile/presentation/screens/profile_screen.dart';
 
 class WatchlistPage extends ConsumerWidget {
   const WatchlistPage({super.key});
@@ -64,6 +65,13 @@ class WatchlistPage extends ConsumerWidget {
   }
 
   Widget _buildHeader(BuildContext context, WidgetRef ref, WatchlistState state) {
+    String watchlistName = state.selectedWatchlist?.name ?? '';
+    if (watchlistName.toLowerCase() == 'my watchlist' || watchlistName.toLowerCase() == 'default watchlist') {
+      watchlistName = 'My Favorites';
+    } else {
+      watchlistName = watchlistName.replaceAll(RegExp('watchlist', caseSensitive: false), 'Favorites');
+    }
+
     return Row(
       children: [
         Expanded(
@@ -71,12 +79,12 @@ class WatchlistPage extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Watchlist',
+                'Favorites',
                 style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              if (state.selectedWatchlist != null)
+              if (watchlistName.isNotEmpty)
                 Text(
-                  state.selectedWatchlist!.name,
+                  watchlistName,
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -92,7 +100,15 @@ class WatchlistPage extends ConsumerWidget {
           ),
         _headerIcon(context, Icons.filter_alt_outlined),
         const SizedBox(width: 12),
-        _headerIcon(context, Icons.menu),
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            );
+          },
+          child: _headerIcon(context, Icons.menu),
+        ),
       ],
     );
   }
@@ -149,7 +165,7 @@ class WatchlistPage extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'AI Watchlist Summarize',
+                        'AI Favorites Summarize',
                         style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -244,7 +260,7 @@ class WatchlistPage extends ConsumerWidget {
                     ref.read(watchlistProvider.notifier).toggleInstrument(instrument);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('${instrument.symbol} removed from watchlist'),
+                        content: Text('${instrument.symbol} removed from favorites'),
                         backgroundColor: AppColors.error.withOpacity(0.8),
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -294,17 +310,25 @@ class WatchlistPage extends ConsumerWidget {
         children: [
           const Padding(
             padding: EdgeInsets.all(20),
-            child: Text('My Watchlists', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            child: Text('My Favorites', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
           ),
-          ...state.watchlists.map((w) => ListTile(
-            leading: Icon(Icons.list, color: state.selectedWatchlist?.id == w.id ? AppColors.primary : Colors.grey),
-            title: Text(w.name, style: const TextStyle(color: Colors.white)),
-            trailing: Text('${w.instrumentsCount} items', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-            onTap: () {
-              ref.read(watchlistProvider.notifier).selectWatchlist(w);
-              Navigator.pop(context);
-            },
-          )),
+          ...state.watchlists.map((w) {
+            String wName = w.name;
+            if (wName.toLowerCase() == 'my watchlist' || wName.toLowerCase() == 'default watchlist') {
+              wName = 'My Favorites';
+            } else {
+              wName = wName.replaceAll(RegExp('watchlist', caseSensitive: false), 'Favorites');
+            }
+            return ListTile(
+              leading: Icon(Icons.list, color: state.selectedWatchlist?.id == w.id ? AppColors.primary : Colors.grey),
+              title: Text(wName, style: const TextStyle(color: Colors.white)),
+              trailing: Text('${w.instrumentsCount} items', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              onTap: () {
+                ref.read(watchlistProvider.notifier).selectWatchlist(w);
+                Navigator.pop(context);
+              },
+            );
+          }),
           const SizedBox(height: 20),
         ],
       ),
@@ -342,7 +366,7 @@ class WatchlistPage extends ConsumerWidget {
           ),
           const SizedBox(height: 32),
           Text(
-            'Build your watchlist',
+            'Build your favorites',
             style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),

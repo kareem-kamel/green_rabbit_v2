@@ -12,6 +12,9 @@ import '../../../../core/di/injection_container.dart' as di;
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/utils/image_utils.dart';
 
+import 'package:shimmer/shimmer.dart';
+import '../../../../shared/widgets/app_card.dart';
+
 // ─────────────────────────────────────────────
 //  SCREEN
 // ─────────────────────────────────────────────
@@ -30,6 +33,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   NewsArticle? _fullArticle;
   bool _isLoadingDetail = false;
   bool _showAllRelated = false;
+  bool _showAllAnalysis = false;
 
   List<CommentModel> _comments = [];
   bool _isLoadingComments = false;
@@ -43,7 +47,10 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
 
     NewsArticle? detail;
     try {
-      detail = await di.sl<NewsRepository>().fetchArticleDetail(widget.article.id);
+      detail = await di.sl<NewsRepository>().fetchArticleDetail(
+        widget.article.id,
+        type: widget.article.type,
+      );
     } catch (e) {
       print('DEBUG: fetchArticleDetail error: $e');
     }
@@ -360,9 +367,8 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
             _buildCommentInput(),
             const SizedBox(height: 8),
             if (_isLoadingComments && _comments.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Center(child: CircularProgressIndicator()),
+              Column(
+                children: List.generate(2, (index) => _buildSkeletonComment()),
               )
             else if (_comments.isEmpty)
               const Padding(
@@ -381,9 +387,23 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
             const SizedBox(height: 8),
 
             // ── Analysis & Opinions section
-            if (_fullArticle != null && _fullArticle!.analysisOpinions.isNotEmpty) ...[
+            if (_isLoadingDetail && (_fullArticle == null || _fullArticle!.analysisOpinions.isEmpty)) ...[
               _buildSectionHeader("Analysis & Opinions"),
-              ..._fullArticle!.analysisOpinions.map((analysis) => _buildRelatedItem(analysis)).toList(),
+              ...List.generate(2, (index) => _buildSkeletonRelatedItem()),
+              const SizedBox(height: 8),
+              _buildSeparator(),
+              const SizedBox(height: 8),
+            ] else if (_fullArticle != null && _fullArticle!.analysisOpinions.isNotEmpty) ...[
+              _buildSectionHeader(
+                "Analysis & Opinions",
+                hasViewAll: _fullArticle!.analysisOpinions.length > 3,
+                onViewAll: () => setState(() => _showAllAnalysis = !_showAllAnalysis),
+                isExpanded: _showAllAnalysis,
+              ),
+              ...( _showAllAnalysis 
+                  ? _fullArticle!.analysisOpinions 
+                  : _fullArticle!.analysisOpinions.take(3)
+                ).map((analysis) => _buildRelatedItem(analysis)).toList(),
               const SizedBox(height: 8),
               _buildSeparator(),
               const SizedBox(height: 8),
@@ -394,6 +414,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
               "Related News",
               hasViewAll: true,
               onViewAll: () => setState(() => _showAllRelated = !_showAllRelated),
+              isExpanded: _showAllRelated,
             ),
             BlocBuilder<RelatedNewsCubit, RelatedNewsState>(
               builder: (context, state) {
@@ -418,9 +439,8 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                 }
 
                 if (isLoading && relatedArticles.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Center(child: CircularProgressIndicator()),
+                  return Column(
+                    children: List.generate(3, (index) => _buildSkeletonRelatedItem()),
                   );
                 } else if (error != null && relatedArticles.isEmpty) {
                   return Padding(
@@ -474,6 +494,28 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
     final isDark = theme.brightness == Brightness.dark;
     
     final article = _fullArticle ?? widget.article;
+
+    if (_isLoadingDetail && article.content.isEmpty) {
+      final baseColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+      final highlightColor = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+      
+      return Shimmer.fromColors(
+        baseColor: baseColor,
+        highlightColor: highlightColor,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: List.generate(4, (index) => Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Container(
+              width: index == 3 ? 200 : double.infinity,
+              height: 16,
+              color: Colors.white,
+            ),
+          )),
+        ),
+      );
+    }
+
     final bodyText = article.content.isNotEmpty 
         ? article.content 
         : (article.summary.isNotEmpty ? article.summary : "No detailed content available for this article.");
@@ -503,7 +545,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   // ─────────────────────────────────────────────
   //  WIDGET BUILDERS
   // ─────────────────────────────────────────────
-  Widget _buildSectionHeader(String title, {bool hasViewAll = false, VoidCallback? onViewAll}) {
+  Widget _buildSectionHeader(String title, {bool hasViewAll = false, VoidCallback? onViewAll, bool isExpanded = false}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -521,7 +563,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
             GestureDetector(
               onTap: onViewAll,
               child: Text(
-                _showAllRelated ? "See less" : "View all",
+                isExpanded ? "See less" : "View all",
                 style: const TextStyle(color: Colors.blueAccent, fontSize: 14),
               ),
             ),
@@ -829,6 +871,83 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
       height: 1,
       margin: const EdgeInsets.symmetric(horizontal: 16),
       color: AppColors.borderGrey.withOpacity(0.08),
+    );
+  }
+
+  Widget _buildSkeletonRelatedItem() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final highlightColor = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(width: double.infinity, height: 16, color: Colors.white),
+                  const SizedBox(height: 8),
+                  Container(width: 100, height: 12, color: Colors.white),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkeletonComment() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final highlightColor = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(width: 80, height: 12, color: Colors.white),
+                  const SizedBox(height: 8),
+                  Container(width: double.infinity, height: 14, color: Colors.white),
+                  const SizedBox(height: 4),
+                  Container(width: 150, height: 14, color: Colors.white),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

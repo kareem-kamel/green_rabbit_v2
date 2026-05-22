@@ -114,11 +114,19 @@ class NewsRepository {
     }
   }
 
-  Future<NewsArticle?> fetchArticleDetail(String id) async {
+  Future<NewsArticle?> _fetchArticleDetailOnce(String id, {String? type}) async {
     try {
       final url = AppConstants.newsDetailEndpoint(id);
-      print('DEBUG: Calling fetchArticleDetail endpoint: $url');
-      final response = await _apiClient.dio.get(url);
+      final queryParameters = <String, dynamic>{};
+      if (type != null && type.isNotEmpty) {
+        queryParameters['type'] = type;
+      }
+
+      print('DEBUG: Calling fetchArticleDetail endpoint: $url query=$queryParameters');
+      final response = await _apiClient.dio.get(
+        url,
+        queryParameters: queryParameters.isEmpty ? null : queryParameters,
+      );
       print('DEBUG: fetchArticleDetail response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
@@ -129,26 +137,61 @@ class NewsRepository {
       }
       return null;
     } catch (e) {
+      if (e is DioException) {
+        print('DEBUG: fetchArticleDetail error status: ${e.response?.statusCode}');
+      }
+      print('DEBUG: _fetchArticleDetailOnce error: $e');
+      return null;
+    }
+  }
+
+  Future<NewsArticle?> fetchArticleDetail(String id, {String? type}) async {
+    try {
+      // 1. Try with the provided type first
+      if (type != null && type.isNotEmpty) {
+        final article = await _fetchArticleDetailOnce(id, type: type);
+        if (article != null) return article;
+      }
+
+      // 2. Try without type parameter
+      final genericArticle = await _fetchArticleDetailOnce(id);
+      if (genericArticle != null) return genericArticle;
+
+      // 3. Fallback: try other types
+      for (final t in ['stock', 'crypto', 'forex']) {
+        if (t == type) continue;
+        final article = await _fetchArticleDetailOnce(id, type: t);
+        if (article != null) return article;
+      }
+
+      return null;
+    } catch (e) {
       print('DEBUG: fetchArticleDetail error: $e');
       return null;
     }
   }
 
+  String _getSanitizedType(NewsArticle article) {
+    // The backend expects specific types: "stock" | "crypto" | "forex"
+    String sanitizedType = article.type.toLowerCase();
+    if (sanitizedType != 'stock' && sanitizedType != 'crypto' && sanitizedType != 'forex') {
+      // Default to crypto if it's from a crypto source or has crypto tickers, otherwise stock
+      if (article.sourceName.toLowerCase().contains('coin') ||
+          article.categories.any((c) =>
+              c.toLowerCase().contains('crypto') ||
+              c.toLowerCase().contains('bitcoin'))) {
+        sanitizedType = 'crypto';
+      } else {
+        sanitizedType = 'stock';
+      }
+    }
+    return sanitizedType;
+  }
+
   Future<bool> toggleFavorite(NewsArticle article, bool isAdd) async {
     try {
       final url = AppConstants.newsFavoriteEndpoint(article.id);
-      
-      // The backend expects specific types: "stock" | "crypto" | "forex"
-      String sanitizedType = article.type.toLowerCase();
-      if (sanitizedType != 'stock' && sanitizedType != 'crypto' && sanitizedType != 'forex') {
-        // Default to crypto if it's from a crypto source or has crypto tickers, otherwise stock
-        if (article.sourceName.toLowerCase().contains('coin') || 
-            article.categories.any((c) => c.toLowerCase().contains('crypto' ) || c.toLowerCase().contains('bitcoin'))) {
-          sanitizedType = 'crypto';
-        } else {
-          sanitizedType = 'stock';
-        }
-      }
+      final sanitizedType = _getSanitizedType(article);
 
       print('DEBUG: toggleFavorite - ID: ${article.id}, isAdd: $isAdd, type: $sanitizedType');
 
@@ -230,10 +273,16 @@ class NewsRepository {
     try {
       final url = '/comments';
       final targetId = article.id;
-      final response = await _apiClient.dio.get(url, queryParameters: {
-        'entityType': type,
-        'entityId': targetId,
-      });
+      final response = await _apiClient.dio.get(
+        url,
+        queryParameters: {
+          'entityType': type,
+          'entityId': targetId,
+        },
+        options: Options(
+          validateStatus: (status) => status == 200 || status == 404,
+        ),
+      );
 
       if (response.statusCode == 200) {
         final decodedData = response.data;
@@ -241,6 +290,9 @@ class NewsRepository {
           final List list = decodedData['data'] is List ? decodedData['data'] : (decodedData['data']?['comments'] ?? []);
           return list.map((c) => CommentModel.fromJson(Map<String, dynamic>.from(c))).toList();
         }
+      } else if (response.statusCode == 404) {
+        // ENTITY_NOT_FOUND is treated as "no comments yet" for this entity
+        return [];
       }
       return [];
     } catch (e) {
