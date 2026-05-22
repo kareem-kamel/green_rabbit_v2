@@ -115,64 +115,45 @@ class CalendarEventCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Left Column (Flag/Currency)
+            // Left Column (Flag/Currency + Rabbits)
             SizedBox(
-              width: 75, // Increased for Holiday currency+flag
+              width: 70, // Fixed width for alignment
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (!hasMetrics)
-                    // Holiday Layout: JPY [Flag]
-                    Row(
-                      children: [
-                        Text(
-                          event.currency ?? 'JPY',
-                          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w400),
+                  // Flag next to Currency
+                  Row(
+                    children: [
+                      Container(
+                        width: 24,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(2),
+                          image: event.instrument?.logoUrl != null 
+                            ? DecorationImage(image: NetworkImage(event.instrument!.logoUrl!), fit: BoxFit.cover)
+                            : null,
+                          color: Colors.grey[800],
                         ),
-                        const SizedBox(width: 6),
-                        Container(
-                          width: 24,
-                          height: 16,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(2),
-                            image: event.instrument?.logoUrl != null 
-                              ? DecorationImage(image: NetworkImage(event.instrument!.logoUrl!), fit: BoxFit.cover)
-                              : null,
-                            color: Colors.grey[800],
-                          ),
-                        ),
-                      ],
-                    )
-                  else ...[
-                    // Standard Layout: Flag above Currency
-                    Container(
-                      width: 32,
-                      height: 20,
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(4),
-                        image: event.instrument?.logoUrl != null 
-                          ? DecorationImage(image: NetworkImage(event.instrument!.logoUrl!), fit: BoxFit.cover)
-                          : null,
-                        color: Colors.grey[800],
                       ),
-                    ),
-                    Text(
-                      event.currency ?? 'USD',
-                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w400),
-                    ),
-                  ],
+                      const SizedBox(width: 6),
+                      Text(
+                        event.currency ?? 'USD',
+                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w400),
+                      ),
+                    ],
+                  ),
+                  // Importance (Rabbits)
                   if (event.impact != null) ...[
                     const SizedBox(height: 8),
                     Row(
                       children: List.generate(3, (index) {
                         final isHighlighted = (event.impact ?? 1) > index;
                         return Padding(
-                          padding: const EdgeInsets.only(right: 2),
+                          padding: const EdgeInsets.only(right: 3),
                           child: Image.asset(
                             isHighlighted ? 'assets/rabbit_highlighted.png' : 'assets/rabbit_dark.png',
-                            width: 14,
-                            height: 14,
+                            width: 12,
+                            height: 12,
                           ),
                         );
                       }),
@@ -185,16 +166,16 @@ class CalendarEventCard extends StatelessWidget {
             // Event Name and Details
             Expanded(
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
                     event.name ?? event.symbol,
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w300),
+                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w400),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   if (!hasMetrics) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
                       event.description ?? '',
                       style: const TextStyle(color: Colors.grey, fontSize: 13),
@@ -213,23 +194,6 @@ class CalendarEventCard extends StatelessWidget {
   }
 
   List<TextSpan> _getDetailedTextSpans() {
-    if (event.epsEstimate != null || event.epsActual != null) {
-      // Earnings Layout
-      return [
-        const TextSpan(text: "EPS / Forecast"),
-        const TextSpan(text: "\n"),
-        TextSpan(
-          text: "${event.epsActual ?? '-'} / ${event.epsEstimate ?? '-'}",
-          style: TextStyle(color: (event.epsActual ?? 0) >= (event.epsEstimate ?? 0) ? AppColors.profitGreen : Colors.red),
-        ),
-        const TextSpan(text: "\nRevenue / Forecast\n"),
-        TextSpan(
-          text: "${event.revenueActual ?? '-'}B / ${event.revenueEstimate ?? '-'}B",
-          style: TextStyle(color: (event.revenueActual ?? 0) >= (event.revenueEstimate ?? 0) ? AppColors.profitGreen : Colors.red),
-        ),
-      ];
-    }
-    
     if (event.actual != null) {
       return [
         const TextSpan(text: "Act:"),
@@ -268,10 +232,10 @@ class CalendarEventCard extends StatelessWidget {
       }
 
       return Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildMetricRow("Ratio", ratioText),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           _buildMetricRow("Type", splitType, valueColor: typeColor),
         ],
       );
@@ -333,11 +297,11 @@ class CalendarEventCard extends StatelessWidget {
       }
 
       return Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: () {
           final List<Widget> children = [];
           for (int i = 0; i < metrics.length; i++) {
-            if (i > 0) children.add(const SizedBox(height: 4));
+            if (i > 0) children.add(const SizedBox(height: 6));
             children.add(metrics[i]);
           }
           return children;
@@ -349,15 +313,15 @@ class CalendarEventCard extends StatelessWidget {
     if (event.dividendYield != null || event.paymentDate != null) {
       final String yieldStr = event.dividendYield != null ? " (${event.dividendYield!.toStringAsFixed(2)}%)" : "";
       return Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildMetricRow("Dividend / Yield", "\$${event.amount ?? '-'} $yieldStr"),
           if (event.paymentDate != null && event.paymentDate!.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             _buildMetricRow("Payment Date", event.paymentDate!),
           ],
           if (event.dividendType != null && event.dividendType!.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             _buildMetricRow("Type", event.dividendType!),
           ],
         ],
@@ -367,49 +331,55 @@ class CalendarEventCard extends StatelessWidget {
     // Earnings Layout
     if (event.epsEstimate != null || event.epsActual != null) {
       return Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text("EPS / Forecast", style: TextStyle(color: Colors.grey, fontSize: 13)),
-              const SizedBox(width: 12),
-              Text(
-                "${event.epsActual ?? '-'} ",
-                style: TextStyle(
-                  color: (event.epsActual ?? 0) >= (event.epsEstimate ?? 0) ? AppColors.profitGreen : Colors.red,
-                  fontSize: 13,
-                ),
-              ),
-              Text(
-                "/ ${event.epsEstimate ?? '-'}",
-                style: const TextStyle(color: Colors.white70, fontSize: 13),
+              Row(
+                children: [
+                  Text(
+                    "${event.epsActual ?? '-'} ",
+                    style: TextStyle(
+                      color: (event.epsActual ?? 0) >= (event.epsEstimate ?? 0) ? AppColors.profitGreen : Colors.red,
+                      fontSize: 13,
+                    ),
+                  ),
+                  Text(
+                    "/ ${event.epsEstimate ?? '-'}",
+                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ],
               ),
             ],
           ),
           if (event.revenueActual != null || event.revenueEstimate != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Row(
-              mainAxisAlignment: MainAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text("Revenue / Forecast", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                const SizedBox(width: 12),
-                Text(
-                  "${event.revenueActual ?? '-'}B ",
-                  style: TextStyle(
-                    color: (event.revenueActual ?? 0) >= (event.revenueEstimate ?? 0) ? AppColors.profitGreen : Colors.red,
-                    fontSize: 13,
-                  ),
-                ),
-                Text(
-                  "/ ${event.revenueEstimate ?? '-'}B",
-                  style: const TextStyle(color: Colors.white70, fontSize: 13),
+                Row(
+                  children: [
+                    Text(
+                      "${event.revenueActual ?? '-'}B ",
+                      style: TextStyle(
+                        color: (event.revenueActual ?? 0) >= (event.revenueEstimate ?? 0) ? AppColors.profitGreen : Colors.red,
+                        fontSize: 13,
+                      ),
+                    ),
+                    Text(
+                      "/ ${event.revenueEstimate ?? '-'}B",
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ],
                 ),
               ],
             ),
           ],
           if (event.surprisePercent != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             _buildMetricRow(
               "Surprise",
               "${event.surprisePercent! >= 0 ? '+' : ''}${event.surprisePercent!.toStringAsFixed(1)}%",
@@ -417,7 +387,7 @@ class CalendarEventCard extends StatelessWidget {
             ),
           ],
           if (event.time != null && event.time!.isNotEmpty) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             _buildMetricRow(
               "Time",
               event.time!.toLowerCase() == 'amc' 
@@ -441,17 +411,15 @@ class CalendarEventCard extends StatelessWidget {
             ),
           ),
         ),
-        const Icon(Icons.diamond, color: Colors.amber, size: 14),
       ],
     );
   }
 
   Widget _buildMetricRow(String label, String value, {Color? valueColor}) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-        const SizedBox(width: 12),
         Text(value, style: TextStyle(color: valueColor ?? Colors.white70, fontSize: 13)),
       ],
     );
@@ -460,9 +428,6 @@ class CalendarEventCard extends StatelessWidget {
   String _getEventDetails() {
     if (event.actual != null) {
       return "Act: ${event.actual} | Prev: ${event.previous ?? '-'}";
-    }
-    if (event.epsEstimate != null) {
-      return "Est: ${event.epsEstimate} | Act: ${event.epsActual ?? '-'}";
     }
     if (event.amount != null) {
       return "Amount: ${event.amount}";
