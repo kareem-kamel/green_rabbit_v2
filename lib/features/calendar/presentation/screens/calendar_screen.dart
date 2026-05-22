@@ -165,7 +165,6 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 child: Row(
                   children: _tabs.map((tab) {
                     final isActive = _selectedTab == tab;
-                    final activeColor = _selectedCategory == 'ipo' ? const Color(0xFF5E5CE6) : AppColors.secondaryBlue;
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: InkWell(
