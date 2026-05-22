@@ -13,6 +13,7 @@ import '../../data/repositories/news_repository.dart';
 import '../../../../core/di/injection_container.dart' as di;
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/utils/image_utils.dart';
+import '../../../profile/presentation/screens/profile_screen.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -108,9 +109,13 @@ class _NewsScreenState extends State<NewsScreen> {
           ),
           const SizedBox(width: 12),
           _buildAppBarIcon(
-            icon: Icons.add_alert_rounded,
-            iconColor: AppColors.primaryPurple,
-            onTap: () => _openAlertMenu(context),
+            icon: Icons.menu,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ProfileScreen()),
+              );
+            },
           ),
           const SizedBox(width: 16),
         ],
