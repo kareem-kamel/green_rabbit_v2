@@ -302,17 +302,13 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                   const SizedBox(height: 16),
 
                   // Stock chips
-                  if (widget.article.relatedSymbols.isNotEmpty)
+                  if (widget.article.tickers.isNotEmpty)
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Row(
-                        children: widget.article.relatedSymbols.map((symbol) {
-                          return _buildStockChip(
-                              symbol.symbol,
-                              "${symbol.changePercent >= 0 ? '+' : ''}${symbol.changePercent}%",
-                              symbol.changePercent >= 0
-                                  ? Colors.greenAccent
-                                  : Colors.redAccent);
+                        children: widget.article.tickers.map((ticker) {
+                          return _buildStockChip(ticker);
                         }).toList(),
                       ),
                     ),
@@ -442,10 +438,20 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                     ? relatedArticles 
                     : relatedArticles.take(3).toList();
 
-                return AnimatedSize(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
+                return AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 400),
+                  transitionBuilder: (Widget child, Animation<double> animation) {
+                    return SizeTransition(
+                      sizeFactor: animation,
+                      axisAlignment: -1.0,
+                      child: FadeTransition(
+                        opacity: animation,
+                        child: child,
+                      ),
+                    );
+                  },
                   child: Column(
+                    key: ValueKey("related_list_${_showAllRelated}"),
                     children: displayArticles.map((article) => _buildRelatedItem(article)).toList(),
                   ),
                 );
@@ -472,11 +478,18 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
         ? article.content 
         : (article.summary.isNotEmpty ? article.summary : "No detailed content available for this article.");
 
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        return SizeTransition(
+          sizeFactor: animation,
+          axisAlignment: -1.0,
+          child: child,
+        );
+      },
       child: Text(
         bodyText,
+        key: ValueKey("body_${_isExpanded}"),
         maxLines: _isExpanded ? null : 4,
         overflow: _isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
         style: TextStyle(
@@ -761,31 +774,22 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
     );
   }
 
-  Widget _buildStockChip(String label, String percent, Color color) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+  Widget _buildStockChip(String label) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      margin: const EdgeInsets.only(right: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: const EdgeInsets.only(right: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C2128) : Colors.grey[100],
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(6),
         border: Border.all(color: isDark ? Colors.white10 : Colors.grey[300]!),
       ),
-      child: Row(
-        children: [
-          Text(label,
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  color: isDark ? Colors.white : Colors.black)),
-          const SizedBox(width: 8),
-          Text(percent,
-              style: TextStyle(
-                  color: color, fontSize: 12, fontWeight: FontWeight.bold)),
-        ],
-      ),
+      child: Text(label,
+          style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              color: isDark ? Colors.white : Colors.black87)),
     );
   }
 

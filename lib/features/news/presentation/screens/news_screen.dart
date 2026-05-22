@@ -226,16 +226,25 @@ class _NewsScreenState extends State<NewsScreen> {
                     // Initial articles
                     ...initialSmallArticles.map((article) => _buildSmallArticle(context, article)).toList(),
 
-                    // Animated rest of the news
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                      child: Column(
-                        children: [
-                          if (_showAllNews)
-                            ...remainingArticles.map((article) => _buildSmallArticle(context, article)).toList(),
-                        ],
-                      ),
+                    // Top-to-bottom animated expansion
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      transitionBuilder: (Widget child, Animation<double> animation) {
+                        return SizeTransition(
+                          sizeFactor: animation,
+                          axisAlignment: -1.0, // Expand from top to bottom
+                          child: FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: _showAllNews 
+                        ? Column(
+                            key: const ValueKey("remaining_news"),
+                            children: remainingArticles.map((article) => _buildSmallArticle(context, article)).toList(),
+                          )
+                        : const SizedBox.shrink(key: ValueKey("hidden_news")),
                     ),
 
                     if (articles.length > 6)
@@ -601,13 +610,9 @@ class _NewsScreenState extends State<NewsScreen> {
   Widget _buildSmallArticle(BuildContext context, NewsArticle article) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    bool isBullish = article.relatedSymbols.isNotEmpty && article.relatedSymbols.first.changePercent >= 0;
-    String tickerText = article.relatedSymbols.isNotEmpty 
-        ? article.relatedSymbols.first.symbol 
-        : "N/A";
-    String changeText = article.relatedSymbols.isNotEmpty 
-        ? "${article.relatedSymbols.first.changePercent >= 0 ? '+' : ''}${article.relatedSymbols.first.changePercent}%" 
-        : "";
+    String tickerText = article.tickers.isNotEmpty 
+        ? article.tickers.first 
+        : (article.relatedSymbols.isNotEmpty ? article.relatedSymbols.first.symbol : "N/A");
 
     return InkWell(
       onTap: () async {
@@ -688,26 +693,13 @@ class _NewsScreenState extends State<NewsScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text("$tickerText ",
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                                color: AppColors.textGrey, fontSize: 11)),
-                      ),
-                      if (changeText.isNotEmpty)
-                        Text(changeText,
-                            style: TextStyle(
-                                color: isBullish
-                                    ? AppColors.profitGreen
-                                    : AppColors.lossRed,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold)),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
+                  if (tickerText != "N/A")
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Text(tickerText,
+                          style: const TextStyle(
+                              color: AppColors.textGrey, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
                   Text(article.title, maxLines: 2, overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
