@@ -67,6 +67,7 @@ class ApiClient {
         onError: (DioException e, handler) async {
           _logger.e(
               'API Error [${e.response?.statusCode}] for ${e.requestOptions.uri}: ${e.message}');
+          _logger.e('API Error Response: ${e.response?.data}');
           if (e.response?.statusCode == 401) {
             _logger.w('Unauthorized: 401 Error');
           }

@@ -5,6 +5,7 @@ import 'package:green_rabbit/core/theme/app_colors.dart';
 import '../../../../shared/widgets/app_card.dart';
 import '../../../market/presentation/pages/instrument_detail_page.dart';
 import '../providers/watchlist_providers.dart';
+import 'package:green_rabbit/features/chatbot/presentation/screens/chatbot_screen.dart';
 import '../../../../shared/widgets/main_wrapper.dart';
 
 class WatchlistPage extends ConsumerWidget {
@@ -101,79 +102,87 @@ class WatchlistPage extends ConsumerWidget {
   }
 
   Widget _buildAISummaryBanner(BuildContext context) {
-    return Stack(
-      children: [
-        Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(top: 10),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF2E246A), Color(0xFF1B1839)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE2E8F0),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                padding: const EdgeInsets.all(10),
-                child: Image.asset('assets/watchlist.png', fit: BoxFit.contain),
-              ),
-              const SizedBox(width: 20),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'AI Watchlist Summarize',
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    SizedBox(height: 6),
-                    Text(
-                      'Smart insights based on today\'s market news',
-                      style: TextStyle(color: Color(0xB3FFFFFF), fontSize: 13, height: 1.3),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.arrow_outward, color: Colors.white70, size: 24),
-            ],
-          ),
-        ),
-        Positioned(
-          top: 0,
-          left: 0,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ChatBotScreen()),
+        );
+      },
+      child: Stack(
+        children: [
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(top: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
             decoration: BoxDecoration(
-              color: const Color(0xFFFBBF24),
-              borderRadius: BorderRadius.circular(8),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF2E246A), Color(0xFF1B1839)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(24),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.bolt, color: Colors.black87, size: 14),
-                SizedBox(width: 4),
-                Text(
-                  'Free Trial',
-                  style: TextStyle(color: Colors.black87, fontSize: 11, fontWeight: FontWeight.bold),
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE2E8F0),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  padding: const EdgeInsets.all(10),
+                  child: Image.asset('assets/watchlist.png', fit: BoxFit.contain),
                 ),
+                const SizedBox(width: 20),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'AI Watchlist Summarize',
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: 6),
+                      Text(
+                        'Smart insights based on today\'s market news',
+                        style: TextStyle(color: Color(0xB3FFFFFF), fontSize: 13, height: 1.3),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_outward, color: Colors.white70, size: 24),
               ],
             ),
           ),
-        ),
-      ],
+          Positioned(
+            top: 0,
+            left: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFBBF24),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.bolt, color: Colors.black87, size: 14),
+                  SizedBox(width: 4),
+                  Text(
+                    'Free Trial',
+                    style: TextStyle(color: Colors.black87, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

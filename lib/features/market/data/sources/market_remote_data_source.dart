@@ -11,7 +11,7 @@ abstract class MarketRemoteDataSource {
   Future<MarketInstrumentDetail> getInstrumentDetails(String id);
   Future<Map<String, dynamic>> getInstrumentChart(String id, {String? period, String? interval});
   Future<MarketInstrumentStats> getInstrumentStats(String id, {String? interval});
-  Future<List<MarketNewsArticle>> getInstrumentNews(String id);
+  Future<List<MarketNewsArticle>> getInstrumentNews(String id, {String? type});
   Future<List<MarketInstrument>> getTrendingInstruments();
   Stream<Map<String, dynamic>> getMarketStream(List<String> instruments);
 }
@@ -200,16 +200,60 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
   }
 
   @override
-  Future<List<MarketNewsArticle>> getInstrumentNews(String id) async {
-    // API Documentation explicitly requires a "Namespaced instrument ID" (e.g., stocks:AAPL)
-    final String namespacedId = id.contains(':') ? id : 'stocks:$id';
+  Future<List<MarketNewsArticle>> getInstrumentNews(String id, {String? type}) async {
+    // 1. Determine the category: stock, crypto, or forex
+    String category = 'stock';
+    
+    if (id.contains(':')) {
+      final prefix = id.split(':').first.toLowerCase();
+      if (prefix == 'crypto') {
+        category = 'crypto';
+      } else if (prefix == 'forex') {
+        category = 'forex';
+      } else if (prefix == 'stock' || prefix == 'stocks') {
+        category = 'stock';
+      }
+    } else if (type != null) {
+      final t = type.toLowerCase();
+      if (t == 'crypto') {
+        category = 'crypto';
+      } else if (t == 'forex') {
+        category = 'forex';
+      }
+    }
+
+    // 2. Build the namespaced instrument ID using singular prefixes for the URL path parameter (e.g., stock:AAPL)
+    String namespacedId = id;
+    if (id.contains(':')) {
+      final parts = id.split(':');
+      final prefix = parts.first.toLowerCase();
+      final rest = parts.sublist(1).join(':');
+      if (prefix == 'stocks' || prefix == 'stock') {
+        namespacedId = 'stock:$rest';
+      } else {
+        namespacedId = '$prefix:$rest';
+      }
+    } else {
+      namespacedId = '$category:$id';
+    }
+
+    // 3. Map to the query parameter value expected by the server ('stocks', 'crypto', 'forex')
+    final String queryType = category == 'stock' ? 'stocks' : category;
+
     final url = AppConstants.instrumentNews(namespacedId);
+    final queryParams = {
+      'type': queryType,
+    };
     
     debugPrint('\n--- [MARKET API REQUEST] ---');
     debugPrint('URL: $url');
+    debugPrint('Query Params: $queryParams');
 
     try {
-      final response = await _apiClient.dio.get(url);
+      final response = await _apiClient.dio.get(
+        url,
+        queryParameters: queryParams,
+      );
 
       debugPrint('--- [MARKET API RESPONSE] ---');
       debugPrint('Status: ${response.statusCode}');

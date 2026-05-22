@@ -4,6 +4,8 @@ import 'package:interactive_chart/interactive_chart.dart'; // For CandleData mod
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
+import 'package:green_rabbit/features/profile/presentation/screens/subscription_screen.dart';
+
 enum ProChartMode { area, candle, indicators }
 
 /// Tier-safe period ↔ interval pairs confirmed working via API testing.
@@ -208,50 +210,80 @@ class _ProTradingChartState extends State<ProTradingChart> {
         message.toLowerCase().contains('unavailable') ||
         message.toLowerCase().contains('tier');
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isTierError ? Icons.lock_outline : Icons.cloud_off_outlined,
-              color: isTierError ? AppColors.premiumGold : AppColors.textMuted,
-              size: 48,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isTierError
-                  ? 'Subscription Required for ${widget.period} / ${widget.interval}'
-                  : 'Chart Unavailable',
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              isTierError
-                  ? 'This period/interval combination requires a higher subscription tier.\nTry 1M with 1h interval.'
-                  : message,
-              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-              textAlign: TextAlign.center,
-            ),
-            if (widget.onRetry != null) ...[
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: widget.onRetry,
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('Retry'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.unlockBlue,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
+    Widget errorContent = Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            isTierError ? Icons.lock_outline : Icons.cloud_off_outlined,
+            color: isTierError ? AppColors.premiumGold : AppColors.textMuted,
+            size: 48,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            isTierError
+                ? 'Subscription Required for ${widget.period} / ${widget.interval}'
+                : 'Chart Unavailable',
+            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            isTierError
+                ? 'This period/interval combination requires a higher subscription tier.\nTry 1M with 1h interval.'
+                : message,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+          if (isTierError) ...[
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SubscriptionScreen()),
+                );
+              },
+              icon: const Icon(Icons.star, size: 16, color: AppColors.premiumGold),
+              label: const Text('Upgrade Plan'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.unlockBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-            ],
+            ),
+          ] else if (widget.onRetry != null) ...[
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: widget.onRetry,
+              icon: const Icon(Icons.refresh, size: 16),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.unlockBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
+
+    if (isTierError) {
+      return GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SubscriptionScreen()),
+          );
+        },
+        behavior: HitTestBehavior.opaque,
+        child: Center(child: errorContent),
+      );
+    }
+
+    return Center(child: errorContent);
   }
 
   // ── Empty State ──────────────────────────────────────────────────────

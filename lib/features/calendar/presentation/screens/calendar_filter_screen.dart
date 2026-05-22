@@ -58,7 +58,7 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          "Economic Calendar Filter",
+          "Calendar Filter",
           style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         actions: [
