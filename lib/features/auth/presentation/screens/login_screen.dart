@@ -21,9 +21,8 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // TODO: Remove test credentials before production
-  final TextEditingController _emailController = TextEditingController(text: 'mahmoud.elsherbiny.work@gmail.com');
-  final TextEditingController _passwordController = TextEditingController(text: 'Pass123@');
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
   bool _rememberMe = false;
 
   @override

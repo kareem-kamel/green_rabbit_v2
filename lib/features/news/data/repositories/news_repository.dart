@@ -273,9 +273,14 @@ class NewsRepository {
     try {
       final url = '/comments';
       final targetId = article.id;
+
       final response = await _apiClient.dio.get(
         url,
         queryParameters: {
+          'entityType': type,
+          'entityId': targetId,
+        },
+        data: {
           'entityType': type,
           'entityId': targetId,
         },
@@ -304,10 +309,11 @@ class NewsRepository {
   Future<bool> postComment(NewsArticle article, String type, String text) async {
     try {
       final url = '/comments';
+
       final response = await _apiClient.dio.post(url, data: {
         'entityType': type,
         'entityId': article.id,
-        'text': text,
+        'content': text, // Matches backend expectation for field name
       });
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
