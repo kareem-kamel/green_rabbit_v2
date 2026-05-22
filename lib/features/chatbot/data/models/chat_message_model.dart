@@ -200,11 +200,32 @@ class AIUsageStats extends Equatable {
   });
 
   factory AIUsageStats.fromJson(Map<String, dynamic> json) {
+    final periodJson = json['currentPeriod'] ?? json['current_period'];
+    final requestsJson = json['requests'];
+
     return AIUsageStats(
-      currentPeriod: AIUsagePeriod.fromJson(json['currentPeriod'] as Map<String, dynamic>),
-      requests: AIUsageRequests.fromJson(json['requests'] as Map<String, dynamic>),
+      currentPeriod: periodJson is Map<String, dynamic>
+          ? AIUsagePeriod.fromJson(periodJson)
+          : const AIUsagePeriod(
+              startDate: '',
+              endDate: '',
+              tokensUsed: 0,
+              tokensLimit: 100,
+              tokensRemaining: 100,
+            ),
+      requests: requestsJson is Map<String, dynamic>
+          ? AIUsageRequests.fromJson(requestsJson)
+          : const AIUsageRequests(
+              summarizations: 0,
+              chatMessages: 0,
+              totalRequests: 0,
+            ),
       tier: json['tier']?.toString() ?? 'free',
-      resetAt: json['resetAt'] != null ? DateTime.tryParse(json['resetAt'].toString()) : null,
+      resetAt: json['resetAt'] != null
+          ? DateTime.tryParse(json['resetAt'].toString())
+          : (json['reset_at'] != null
+              ? DateTime.tryParse(json['reset_at'].toString())
+              : null),
     );
   }
 
@@ -229,11 +250,11 @@ class AIUsagePeriod extends Equatable {
 
   factory AIUsagePeriod.fromJson(Map<String, dynamic> json) {
     return AIUsagePeriod(
-      startDate: json['startDate']?.toString() ?? '',
-      endDate: json['endDate']?.toString() ?? '',
-      tokensUsed: json['tokensUsed'] is int ? json['tokensUsed'] as int : 0,
-      tokensLimit: json['tokensLimit'] is int ? json['tokensLimit'] as int : 0,
-      tokensRemaining: json['tokensRemaining'] is int ? json['tokensRemaining'] as int : 0,
+      startDate: (json['startDate'] ?? json['start_date'])?.toString() ?? '',
+      endDate: (json['endDate'] ?? json['end_date'])?.toString() ?? '',
+      tokensUsed: _asInt(json['tokensUsed'] ?? json['tokens_used']),
+      tokensLimit: _asInt(json['tokensLimit'] ?? json['tokens_limit'], fallback: 100),
+      tokensRemaining: _asInt(json['tokensRemaining'] ?? json['tokens_remaining']),
     );
   }
 
@@ -254,12 +275,18 @@ class AIUsageRequests extends Equatable {
 
   factory AIUsageRequests.fromJson(Map<String, dynamic> json) {
     return AIUsageRequests(
-      summarizations: json['summarizations'] is int ? json['summarizations'] as int : 0,
-      chatMessages: json['chatMessages'] is int ? json['chatMessages'] as int : 0,
-      totalRequests: json['totalRequests'] is int ? json['totalRequests'] as int : 0,
+      summarizations: _asInt(json['summarizations']),
+      chatMessages: _asInt(json['chatMessages'] ?? json['chat_messages']),
+      totalRequests: _asInt(json['totalRequests'] ?? json['total_requests']),
     );
   }
 
   @override
   List<Object?> get props => [summarizations, chatMessages, totalRequests];
+}
+
+int _asInt(dynamic value, {int fallback = 0}) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? fallback;
 }

@@ -481,17 +481,21 @@ class _NewsScreenState extends State<NewsScreen> {
                               !isFavorited,
                             );
                             if (success) {
+                              final added = !isFavorited;
                               context.read<NewsCubit>().toggleFavoriteLocally(
                                 article.id,
-                                !isFavorited,
+                                added,
                                 isFavoritesTab: selectedCategory == "Favorites",
                               );
+                              if (added && selectedCategory == "Favorites") {
+                                context.read<NewsCubit>().fetchFavoriteNews(limit: 20);
+                              }
                               setStateLocal(() {
-                                isFavorited = !isFavorited;
+                                isFavorited = added;
                               });
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text(isFavorited ? 'Added to favorites' : 'Removed from favorites'),
+                                  content: Text(added ? 'Added to favorites' : 'Removed from favorites'),
                                   duration: const Duration(seconds: 1),
                                 ),
                               );

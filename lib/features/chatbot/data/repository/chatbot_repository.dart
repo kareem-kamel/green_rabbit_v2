@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../models/chat_message_model.dart';
 import '../services/ai_service.dart';
 export '../services/ai_service.dart' show AIException;
@@ -39,7 +40,17 @@ class ChatbotRepository {
     return _aiService.sendMessage(conversationId, content, history: history);
   }
 
-  Stream<String> sendMessageStream(String conversationId, String content, {List<ChatMessage> history = const []}) {
-    return _aiService.sendMessageStream(conversationId, content, history: history);
+  Stream<String> sendMessageStream(
+    String conversationId,
+    String content, {
+    List<ChatMessage> history = const [],
+    CancelToken? cancelToken,
+  }) {
+    return _aiService.sendMessageStream(
+      conversationId,
+      content,
+      history: history,
+      cancelToken: cancelToken,
+    );
   }
 }

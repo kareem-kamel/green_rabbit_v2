@@ -17,6 +17,10 @@ class AppConstants {
   static String newsRelatedEndpoint(String id) => '/news/$id/related';
   static String newsFavoriteEndpoint(String id) => '/news/$id/favorite';
   static const String newsFavoritesListEndpoint = '/news/favorites';
+
+  /// News provider keys for ?type= on favorite / favorites / related APIs.
+  /// All three are used; if stock/crypto fail upstream, the app retries other types.
+  static const List<String> newsInstrumentTypes = ['forex', 'crypto', 'stock'];
   static const String aiSummarizeEndpoint = '/ai/summarize';
   static const String aiUsageEndpoint = '/ai/usage';
   static const String aiChatConversationsEndpoint = '/ai/chat/conversations';

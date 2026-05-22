@@ -28,6 +28,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   bool _clearedOnOpen = false;
   bool _initialPromptSent = false;
   bool _autoScroll = true;
+  bool _scrollScheduled = false;
 
   @override
   void initState() {
@@ -60,11 +61,21 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   }
 
   void _scrollToBottom() {
-    if (!_autoScroll) return;
-    
+    if (!_autoScroll || _scrollScheduled) return;
+
+    _scrollScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      _scrollScheduled = false;
+      if (!mounted || !_scrollController.hasClients) return;
+
+      final position = _scrollController.position;
+      if (!position.hasContentDimensions) return;
+
+      final target = position.maxScrollExtent;
+      if (!target.isFinite) return;
+
+      if ((position.pixels - target).abs() > 2) {
+        _scrollController.jumpTo(target);
       }
     });
   }
@@ -96,6 +107,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<ChatCubit, ChatState>(
+      listenWhen: (previous, current) =>
+          previous.messages.length != current.messages.length ||
+          (current.isGenerating &&
+              current.messages.isNotEmpty &&
+              previous.messages.lastOrNull?.content !=
+                  current.messages.last.content),
       listener: (context, state) {
         if (state.messages.isNotEmpty) {
           _scrollToBottom();
@@ -446,6 +463,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     );
   }
 
+  bool _isErrorMessage(ChatMessage msg) => msg.id.startsWith('err_');
+
   Widget _buildMessageBubble(BuildContext context, ChatMessage msg, bool isLastGenerating) {
     if (msg.isUser) {
       return Align(
@@ -474,6 +493,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       );
     }
 
+    final isError = _isErrorMessage(msg);
+
     return Align(
       alignment: Alignment.centerLeft,
       child: Column(
@@ -483,37 +504,56 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             margin: EdgeInsets.only(bottom: msg.hasChart ? 0 : 12, right: 40),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.07),
+              color: isError
+                  ? Colors.red.withOpacity(0.12)
+                  : Colors.white.withOpacity(0.07),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(4),
                 topRight: Radius.circular(16),
                 bottomLeft: Radius.circular(16),
                 bottomRight: Radius.circular(16),
               ),
+              border: isError
+                  ? Border.all(color: Colors.redAccent.withOpacity(0.5))
+                  : null,
             ),
             child: msg.content.isEmpty && isLastGenerating
                 ? const SizedBox(width: 40, child: TypingIndicator())
-                : MarkdownBody(
-                    data: msg.content,
-                    selectable: true,
-                    styleSheet: MarkdownStyleSheet(
-                      p: const TextStyle(color: Colors.white, fontSize: 14, height: 1.5),
-                      strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                      h1: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-                      h2: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-                      h3: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
-                      listBullet: const TextStyle(color: Colors.white70),
-                    ),
+                : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (isError) ...[
+                        const Icon(Icons.error_outline,
+                            color: Colors.redAccent, size: 18),
+                        const SizedBox(width: 8),
+                      ],
+                      Expanded(
+                        child: MarkdownBody(
+                          data: msg.content,
+                          selectable: true,
+                          styleSheet: MarkdownStyleSheet(
+                            p: TextStyle(
+                              color: isError ? Colors.redAccent[100] : Colors.white,
+                              fontSize: 14,
+                              height: 1.5,
+                            ),
+                            strong: TextStyle(
+                              color: isError ? Colors.redAccent[100] : Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
           ),
           if (msg.hasChart) ...[
             const SizedBox(height: 8),
             _buildInlineChart(),
-            const SizedBox(height: 8),
-            _buildStopGeneratingButton(context),
             const SizedBox(height: 4),
           ],
-          if (!msg.hasChart)
+          if (!msg.hasChart && !isError)
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 8),
               child: Icon(Icons.copy_outlined, color: Colors.white.withOpacity(0.3), size: 16),
@@ -542,28 +582,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               style: TextStyle(color: t == "1D" ? Colors.white : Colors.grey, fontSize: 11))).toList(),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildStopGeneratingButton(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.read<ChatCubit>().stopGenerating(),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.stop_rounded, color: Colors.white, size: 18),
-            SizedBox(width: 8),
-            Text("Stop generating...", style: TextStyle(color: Colors.white, fontSize: 13)),
-          ],
-        ),
       ),
     );
   }
@@ -684,13 +702,21 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             ),
             const SizedBox(width: 10),
             GestureDetector(
-              onTap: state.isGenerating ? null : () => _handleSend(cubit),
+              onTap: state.isGenerating
+                  ? () => cubit.stopGenerating()
+                  : () => _handleSend(cubit),
               child: Container(
-                height: 48, width: 48,
-                decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF8B5CF6)),
-                child: state.isGenerating 
-                  ? const Padding(padding: EdgeInsets.all(12), child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                height: 48,
+                width: 48,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: state.isGenerating
+                      ? Colors.redAccent.withOpacity(0.9)
+                      : const Color(0xFF8B5CF6),
+                ),
+                child: state.isGenerating
+                    ? const Icon(Icons.stop_rounded, color: Colors.white, size: 22)
+                    : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
               ),
             ),
           ],

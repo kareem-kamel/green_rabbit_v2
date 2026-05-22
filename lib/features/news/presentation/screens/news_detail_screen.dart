@@ -33,26 +33,37 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   List<CommentModel> _comments = [];
   bool _isLoadingComments = false;
 
-  Future<void> _loadArticleDetail() async {
+  Future<void> _loadArticleDetailAndRelated() async {
+    context.read<RelatedNewsCubit>().reset();
+
     setState(() {
       _isLoadingDetail = true;
     });
+
+    NewsArticle? detail;
     try {
-      final detail = await di.sl<NewsRepository>().fetchArticleDetail(widget.article.id);
-      if (mounted && detail != null) {
-        setState(() {
+      detail = await di.sl<NewsRepository>().fetchArticleDetail(widget.article.id);
+    } catch (e) {
+      print('DEBUG: fetchArticleDetail error: $e');
+    }
+
+    if (mounted) {
+      setState(() {
+        if (detail != null) {
           _fullArticle = detail;
           _isFavorited = detail.isBookmarked;
-          _isLoadingDetail = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoadingDetail = false;
-        });
-      }
+        }
+        _isLoadingDetail = false;
+      });
     }
+
+    if (!mounted) return;
+
+    await context.read<RelatedNewsCubit>().fetchRelatedNews(
+      widget.article.id,
+      type: detail?.type ?? widget.article.type,
+      fallback: detail?.relatedNews ?? widget.article.relatedNews,
+    );
   }
 
   Future<void> _loadComments() async {
@@ -122,8 +133,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
     _isFavorited = widget.article.isBookmarked;
     _fullArticle = widget.article;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadArticleDetail();
-      context.read<RelatedNewsCubit>().fetchRelatedNews(widget.article.id);
+      _loadArticleDetailAndRelated();
       _loadComments();
     });
   }

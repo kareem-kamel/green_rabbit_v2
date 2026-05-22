@@ -71,10 +71,12 @@ class NewsArticle {
     
     String articleType = articleData['type']?.toString() ?? '';
     final relatedSymbols = articleData['related_symbols'] as List?;
-    if (relatedSymbols != null && relatedSymbols.isNotEmpty) {
-      final first = relatedSymbols.first;
-      if (first is Map && first['type'] != null) {
-        articleType = first['type'].toString();
+    if (relatedSymbols != null) {
+      for (final item in relatedSymbols) {
+        if (item is Map && item['type'] != null) {
+          articleType = item['type'].toString();
+          break;
+        }
       }
     }
 
@@ -104,7 +106,15 @@ class NewsArticle {
       url: (articleData['url'] ?? articleData['external_url'] ?? articleData['link'])?.toString() ?? '',
       sentiment: articleData['sentiment']?.toString() ?? '',
       relevanceScore: (articleData['relevanceScore'] ?? articleData['relevance_score'] ?? 0.0).toDouble(),
-      tickers: (articleData['tickers'] as List? ?? articleData['related_symbols'] as List? ?? []).map((e) => e.toString()).toList(),
+      tickers: (articleData['tickers'] as List? ?? articleData['related_symbols'] as List? ?? [])
+          .map((e) {
+            if (e is Map) {
+              return (e['symbol'] ?? e['ticker'])?.toString() ?? '';
+            }
+            return e.toString();
+          })
+          .where((s) => s.isNotEmpty)
+          .toList(),
       readTimeMinutes: articleData['readTimeMinutes'] ?? articleData['read_time_minutes'] ?? articleData['reading_time_minutes'] ?? 0,
       relatedNews: (json['related_news'] as List? ?? json['related_articles'] as List? ?? [])
           .map((n) => NewsArticle.fromJson(Map<String, dynamic>.from(n)))
