@@ -30,9 +30,17 @@ class GlobalCalculatorOverlay extends StatefulWidget {
 }
 
 class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
-  double _xOffset = 0.0;
-  bool _isHidden = false;
+  double _xOffset = 42.0;
+  bool _isHidden = true;
   bool _isPageOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Ensure it starts hidden
+    _xOffset = 42.0;
+    _isHidden = true;
+  }
 
   void _openCalculator() async {
     if (_isHidden) {
