@@ -152,11 +152,13 @@ class AuthRepository {
 
       _checkResponseSuccess(response, "Login successful, but an error occurred.");
 
-      final responseData = response.data['data'];
+      debugPrint('AuthRepository: Full Response Data: ${response.data}');
+      final responseData = response.data is Map ? (response.data['data'] ?? response.data) : null;
+      debugPrint('AuthRepository: Extracted responseData: $responseData');
 
-      if (responseData != null && responseData['accessToken'] != null) {
-        final accessToken = responseData['accessToken'];
-        final refreshToken = responseData['refreshToken'];
+      if (responseData is Map && (responseData['accessToken'] != null || responseData['token'] != null)) {
+        final accessToken = responseData['accessToken'] ?? responseData['token'];
+        final refreshToken = responseData['refreshToken'] ?? responseData['refresh_token'];
 
         // Save Token
         await storage.write(key: AppConstants.keyAccessToken, value: accessToken);
@@ -172,7 +174,8 @@ class AuthRepository {
         await setOnboardingComplete();
         debugPrint('AuthRepository: Login completed');
       } else {
-        throw Exception("Login successful, but no access token was found.");
+        debugPrint('AuthRepository: Failed to find token in responseData: $responseData');
+        throw Exception("Login successful, but no access token was found in the response.");
       }
     } on DioException catch (e) {
       debugPrint('AuthRepository: DioException caught! Parsing error message...');

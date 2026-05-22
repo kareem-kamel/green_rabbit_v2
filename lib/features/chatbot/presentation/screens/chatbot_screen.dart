@@ -10,11 +10,17 @@ import '../cubit/chat_state.dart';
 class ChatBotScreen extends StatefulWidget {
   final bool startEmpty;
   final String? initialPrompt;
+  final String? summaryId;
+  final String? summaryType;
+  final String? summaryUrl;
 
   const ChatBotScreen({
     super.key, 
     this.startEmpty = false,
     this.initialPrompt,
+    this.summaryId,
+    this.summaryType,
+    this.summaryUrl,
   });
 
   @override
@@ -143,6 +149,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             if (!mounted) return;
             _initialPromptSent = true;
             cubit.sendMessage(widget.initialPrompt!);
+          });
+        }
+
+        if (widget.summaryId != null && widget.summaryType != null && !_initialPromptSent) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            _initialPromptSent = true;
+            cubit.summarize(widget.summaryId!, widget.summaryType!, url: widget.summaryUrl);
           });
         }
 

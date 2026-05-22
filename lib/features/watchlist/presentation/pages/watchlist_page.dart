@@ -47,7 +47,7 @@ class WatchlistPage extends ConsumerWidget {
                       const SizedBox(height: 10),
                       _buildHeader(context, ref, watchlistState),
                       const SizedBox(height: 24),
-                      _buildAISummaryBanner(context),
+                      _buildAISummaryBanner(context, watchlistState),
                       const SizedBox(height: 24),
                       _buildTrackedSection(context, ref, watchlistState),
                       const SizedBox(height: 32),
@@ -125,13 +125,25 @@ class WatchlistPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildAISummaryBanner(BuildContext context) {
+  Widget _buildAISummaryBanner(BuildContext context, WatchlistState state) {
     return GestureDetector(
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const ChatBotScreen()),
-        );
+        if (state.selectedWatchlist != null) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChatBotScreen(
+                summaryId: state.selectedWatchlist!.id,
+                summaryType: 'watch_list',
+              ),
+            ),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ChatBotScreen()),
+          );
+        }
       },
       child: Stack(
         children: [

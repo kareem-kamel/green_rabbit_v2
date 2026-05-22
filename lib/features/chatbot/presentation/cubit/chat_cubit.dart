@@ -93,6 +93,83 @@ class ChatCubit extends Cubit<ChatState> {
     ));
   }
 
+  Future<void> summarize(String entityId, String entityType, {String? url}) async {
+    emit(state.copyWith(
+      isGenerating: true,
+      hasMessages: true,
+      messages: [],
+      activeConversationId: 'summary',
+    ));
+
+    _activeCancelToken?.cancel();
+    _activeCancelToken = CancelToken();
+    final cancelToken = _activeCancelToken!;
+    _cancelRevealTimer();
+
+    final aiMessage = ChatMessage(
+      id: 'summary_${DateTime.now().millisecondsSinceEpoch}',
+      conversationId: 'summary',
+      role: 'assistant',
+      content: '',
+      createdAt: DateTime.now(),
+    );
+
+    emit(state.copyWith(messages: [aiMessage]));
+
+    var streamTarget = '';
+    var streamDisplayed = '';
+
+    try {
+      _revealTimer = Timer.periodic(
+        const Duration(milliseconds: _revealTickMs),
+        (_) {
+          if (isClosed || cancelToken.isCancelled) return;
+          if (state.activeConversationId != 'summary') return;
+          if (streamDisplayed.length >= streamTarget.length) return;
+
+          streamDisplayed = _advanceTypewriter(streamDisplayed, streamTarget);
+          _emitStreamingAssistantMessage('summary', streamDisplayed);
+        },
+      );
+
+      await for (final chunk in repository.summarizeContentStream(
+        entityId,
+        entityType,
+        url: url,
+        cancelToken: cancelToken,
+      )) {
+        if (cancelToken.isCancelled) break;
+        streamTarget = _mergeStreamChunk(streamTarget, chunk);
+      }
+
+      // Finish revealing any leftover backlog.
+      if (!cancelToken.isCancelled) {
+        await _waitForRevealCatchUp(
+          conversationId: 'summary',
+          target: streamTarget,
+          displayed: streamDisplayed,
+          isCancelled: () => cancelToken.isCancelled,
+        );
+      }
+
+      _cancelRevealTimer();
+      emit(state.copyWith(isGenerating: false));
+    } catch (e) {
+      _cancelRevealTimer();
+      if (!cancelToken.isCancelled) {
+        emit(state.copyWith(
+          isGenerating: false,
+          messages: [
+            _errorMessage(
+              'summary',
+              _formatError(e),
+            ),
+          ],
+        ));
+      }
+    }
+  }
+
   Future<void> deleteConversation(String id) async {
     try {
       final success = await repository.deleteConversation(id);

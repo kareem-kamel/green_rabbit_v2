@@ -110,7 +110,7 @@ class AIService {
   }
 
   // --- Summarization ---
-  Future<AISummary> summarizeContent(String targetId, String type) async {
+  Future<AISummary> summarizeContent(String targetId, String type, {String? url}) async {
     try {
       final response = await _apiClient.dio.post(
         _summarizeEndpoint,
@@ -118,6 +118,7 @@ class AIService {
         data: {
           'targetId': targetId,
           'type': type,
+          if (url != null && url.isNotEmpty) 'url': url,
         },
       );
 
@@ -133,6 +134,58 @@ class AIService {
         throw await handleDioError(e);
       }
       throw Exception('Summarization error: $e');
+    }
+  }
+
+  Stream<String> summarizeContentStream(
+    String targetId,
+    String type, {
+    String? url,
+    CancelToken? cancelToken,
+  }) async* {
+    try {
+      final path = '$_summarizeEndpoint?stream=true';
+      final data = {
+        'targetId': targetId,
+        'type': type,
+        if (url != null && url.isNotEmpty) 'url': url,
+      };
+
+      final lineStream = openSsePostLineStream(
+        resolveToken: _apiClient.resolveAuthToken,
+        baseUrl: _apiClient.dio.options.baseUrl,
+        path: path,
+        body: data,
+        extraHeaders: _getHeaders(),
+        cancelToken: cancelToken,
+        dioPostStream: (p, d, c, h) => _apiClient.dio.post(
+          p,
+          data: d,
+          cancelToken: c,
+          options: Options(
+            headers: h,
+            responseType: ResponseType.stream,
+          ),
+        ),
+      );
+
+      String eventType = 'message';
+      await for (final line in lineStream) {
+        if (line.startsWith('event:')) {
+          eventType = line.substring(6).trim();
+          continue;
+        }
+        if (line.startsWith('data:')) {
+          final payload = line.substring(5).trim();
+          yield* _parseSsePayload(payload, eventType);
+          eventType = 'message';
+        }
+      }
+    } catch (e) {
+      if (e is DioException) {
+        throw await handleDioError(e);
+      }
+      rethrow;
     }
   }
 
