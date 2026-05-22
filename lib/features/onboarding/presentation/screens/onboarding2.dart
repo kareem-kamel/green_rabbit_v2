@@ -91,6 +91,7 @@ class OnboardingPageTwo extends StatelessWidget {
 
                 // Get Started Button
                 AppButton(label: 'Get Started', onPressed: onGetStarted),
+                /*
                 const SizedBox(height: 14),
 
                 // Join As A Guest Button
@@ -99,6 +100,7 @@ class OnboardingPageTwo extends StatelessWidget {
                   onPressed: onJoinAsGuest,
                   style: AppButtonStyle.outline,
                 ),
+                */
               ],
             ),
           ),

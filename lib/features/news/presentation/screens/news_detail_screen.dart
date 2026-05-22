@@ -296,7 +296,9 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => ChatBotScreen(
-                                  initialPrompt: "Tell me more about this news: ${widget.article.title}",
+                                  summaryId: widget.article.id,
+                                  summaryType: 'news_article',
+                                  summaryUrl: widget.article.url,
                                 ),
                               ),
                             );
@@ -328,7 +330,9 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => ChatBotScreen(
-                            initialPrompt: "Summarize this article: ${widget.article.title}\n\n${widget.article.snippet}",
+                            summaryId: widget.article.id,
+                            summaryType: 'news_article',
+                            summaryUrl: widget.article.url,
                           ),
                         ),
                       );
@@ -767,51 +771,61 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: article.thumbImage.isNotEmpty
-                ? Image.network(
-                    ImageUtils.getSafeImageUrl(article.thumbImage),
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => NewsDetailScreen(article: article),
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: article.thumbImage.isNotEmpty
+                  ? Image.network(
+                      ImageUtils.getSafeImageUrl(article.thumbImage),
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        width: 80,
+                        height: 80,
+                        color: isDark ? AppColors.cardBg : Colors.grey[300],
+                        child: Icon(Icons.image_not_supported,
+                            color: isDark ? Colors.white : Colors.black54),
+                      ),
+                    )
+                  : Container(
                       width: 80,
                       height: 80,
                       color: isDark ? AppColors.cardBg : Colors.grey[300],
-                      child: Icon(Icons.image_not_supported,
-                          color: isDark ? Colors.white : Colors.black54),
                     ),
-                  )
-                : Container(
-                    width: 80,
-                    height: 80,
-                    color: isDark ? AppColors.cardBg : Colors.grey[300],
-                  ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(article.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black,
-                        fontSize: 15)),
-                const SizedBox(height: 8),
-                Text("${article.sourceName} • ${article.timeAgo}",
-                    style: const TextStyle(color: Colors.grey, fontSize: 12)),
-              ],
             ),
-          ),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(article.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black,
+                          fontSize: 15)),
+                  const SizedBox(height: 8),
+                  Text("${article.sourceName} • ${article.timeAgo}",
+                      style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -5,7 +5,7 @@ import 'news_detail_screen.dart';
 import '../../../chatbot/presentation/screens/chatbot_screen.dart';
 import '../../../alerts/presentation/widgets/create_alert_sheet.dart';
 import '../../../../core/widgets/ask_ai_badge.dart';
-import '../../../../core/widgets/ai_trading_assistant_card.dart';
+import '../../../../core/widgets/ai_service_carousel.dart';
 import '../cubit/news_cubit.dart';
 import '../cubit/news_state.dart';
 import '../../data/models/news_model.dart';
@@ -180,8 +180,8 @@ class _NewsScreenState extends State<NewsScreen> {
                 children: [
                   const SizedBox(height: 10),
 
-                  AITradingAssistantCard(
-                    onTap: () {
+                  AIServiceCarousel(
+                    onItemTap: (index) {
                       Navigator.push(
                         context,
                         MaterialPageRoute(builder: (_) => const ChatBotScreen()),
@@ -677,7 +677,9 @@ class _NewsScreenState extends State<NewsScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => ChatBotScreen(
-                            initialPrompt: "Tell me more about this news: ${article.title}",
+                            summaryId: article.id,
+                            summaryType: 'news_article',
+                            summaryUrl: article.url,
                           ),
                         ),
                       );
@@ -752,10 +754,10 @@ class _NewsScreenState extends State<NewsScreen> {
           children: [
             const SizedBox(height: 10),
             Container(
-              height: 100,
+              height: 160,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(24),
               ),
             ),
             const SizedBox(height: 16),

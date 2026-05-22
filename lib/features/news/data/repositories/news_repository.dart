@@ -272,17 +272,31 @@ class NewsRepository {
   Future<List<CommentModel>> fetchComments(NewsArticle article, String type) async {
     try {
       final url = '/comments';
-      final targetId = article.id;
+      final String targetId = article.id;
+      // Force "news_article" as per your CURL example
+      final String entityType = "news_article";
+
+      print('DEBUG: fetchComments - START');
+      print('DEBUG: URL: $url');
+      print('DEBUG: entityType: $entityType');
+      print('DEBUG: entityId: $targetId');
+
       final response = await _apiClient.dio.get(
         url,
         queryParameters: {
-          'entityType': type,
+          'entityType': entityType,
+          'entityId': targetId,
+        },
+        data: {
+          'entityType': entityType,
           'entityId': targetId,
         },
         options: Options(
           validateStatus: (status) => status == 200 || status == 404,
         ),
       );
+
+      print('DEBUG: fetchComments - Response Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final decodedData = response.data;
@@ -291,7 +305,7 @@ class NewsRepository {
           return list.map((c) => CommentModel.fromJson(Map<String, dynamic>.from(c))).toList();
         }
       } else if (response.statusCode == 404) {
-        // ENTITY_NOT_FOUND is treated as "no comments yet" for this entity
+        print('DEBUG: fetchComments - 404 Entity Not Found (No comments yet for $entityType $targetId)');
         return [];
       }
       return [];
@@ -304,14 +318,27 @@ class NewsRepository {
   Future<bool> postComment(NewsArticle article, String type, String text) async {
     try {
       final url = '/comments';
+      final String targetId = article.id;
+      // Force "news_article" as per your CURL example
+      final String entityType = "news_article";
+
+      print('DEBUG: postComment - START');
+      print('DEBUG: Payload: {entityType: $entityType, entityId: $targetId, content: $text}');
+
       final response = await _apiClient.dio.post(url, data: {
-        'entityType': type,
-        'entityId': article.id,
-        'text': text,
+        'entityType': entityType,
+        'entityId': targetId,
+        'content': text,
       });
+
+      print('DEBUG: postComment - Response Status: ${response.statusCode}');
       return response.statusCode == 200 || response.statusCode == 201;
     } catch (e) {
       print('DEBUG: postComment error: $e');
+      if (e is DioException) {
+        print('DEBUG: Dio Error Status: ${e.response?.statusCode}');
+        print('DEBUG: Dio Error Data: ${e.response?.data}');
+      }
       return false;
     }
   }

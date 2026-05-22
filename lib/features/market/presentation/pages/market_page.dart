@@ -434,98 +434,87 @@ class _MarketPageState extends ConsumerState<MarketPage> {
               ),
             ],
           )
-        : Row( // Horizontal layout for list items
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Logo Section
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF131722) : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: const EdgeInsets.all(8),
-                child: instrument.logoUrl != null 
-                  ? Image.network(
-                      instrument.logoUrl!,
-                      errorBuilder: (_, __, ___) => Icon(Icons.diamond_outlined, color: theme.iconTheme.color?.withOpacity(0.5)),
-                    )
-                  : Icon(Icons.diamond_outlined, color: theme.iconTheme.color?.withOpacity(0.5)),
-              ),
-              const SizedBox(width: 16),
-              // Name and Symbol Section
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    (() {
-                      final words = instrument.name.trim().split(RegExp(r'\s+'));
-                      final style = TextStyle(
-                        color: theme.textTheme.bodyLarge?.color,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w400,
-                        letterSpacing: 0.5,
-                      );
-                      return words.length > 1
-                          ? Wrap(
-                              spacing: 4,
-                              runSpacing: 4,
-                              children: words.map((word) => Text(
-                                word,
-                                style: style,
-                                maxLines: 1,
-                                softWrap: false,
-                              )).toList(),
-                            )
-                          : FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                instrument.name,
-                                style: style,
-                                maxLines: 1,
-                                softWrap: false,
-                              ),
-                            );
-                    })(),
-                    const SizedBox(height: 4),
-                    Row(
+              // Top Section: Name and Symbol
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.access_time, size: 14, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            '${instrument.symbol} | ${instrument.exchange ?? 'Global'}',
-                            style: TextStyle(
-                              color: isDark ? Colors.grey[400] : Colors.grey[600],
-                              fontSize: 12,
-                              fontWeight: FontWeight.w400,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                        Text(
+                          instrument.name,
+                          style: TextStyle(
+                            color: theme.textTheme.bodyLarge?.color,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${instrument.symbol} | ${instrument.exchange ?? 'Global'}',
+                          style: TextStyle(
+                            color: isDark ? Colors.grey[400] : Colors.grey[600],
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Sparkline Section
-              if (instrument.sparkline7d != null && instrument.sparkline7d!.isNotEmpty)
-                SizedBox(
-                  width: 80,
-                  height: 40,
-                  child: CustomPaint(
-                    painter: SparklinePainter(
-                      instrument.sparkline7d!,
-                      isUp ? AppColors.success : AppColors.error,
-                      strokeWidth: 2,
-                    ),
                   ),
-                ),
-              const SizedBox(width: 16),
-              _buildPriceColumn(context, instrument, isUp),
+                  _buildPriceColumn(context, instrument, isUp),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Bottom Section: Logo and Sparkline
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF131722) : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.all(6),
+                    child: instrument.logoUrl != null 
+                      ? Image.network(
+                          instrument.logoUrl!,
+                          errorBuilder: (_, __, ___) => Icon(Icons.diamond_outlined, color: theme.iconTheme.color?.withOpacity(0.5), size: 16),
+                        )
+                      : Icon(Icons.diamond_outlined, color: theme.iconTheme.color?.withOpacity(0.5), size: 16),
+                  ),
+                  const SizedBox(width: 12),
+                  if (instrument.sparkline7d != null && instrument.sparkline7d!.isNotEmpty)
+                    Expanded(
+                      child: SizedBox(
+                        height: 30,
+                        child: CustomPaint(
+                          painter: SparklinePainter(
+                            instrument.sparkline7d!,
+                            isUp ? AppColors.success : AppColors.error,
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 12),
+                  // Small indicator for the sentiment or extra info could go here
+                  Icon(
+                    isUp ? Icons.trending_up : Icons.trending_down,
+                    color: (isUp ? AppColors.success : AppColors.error).withOpacity(0.5),
+                    size: 16,
+                  ),
+                ],
+              ),
             ],
           ),
     );
@@ -561,145 +550,3 @@ class _MarketPageState extends ConsumerState<MarketPage> {
   }
 }
 
-class AIServiceCarousel extends StatefulWidget {
-  const AIServiceCarousel({super.key});
-
-  @override
-  State<AIServiceCarousel> createState() => _AIServiceCarouselState();
-}
-
-class _AIServiceCarouselState extends State<AIServiceCarousel> {
-  final PageController _pageController = PageController();
-  int _currentIndex = 0;
-
-  final List<Map<String, dynamic>> _items = [
-    {
-      'title': 'AI Trading Assistant',
-      'desc': 'Understand prices, indicators, and news with AI-powered explanations',
-      'image': 'assets/component_1.png',
-    },
-    {
-      'title': 'AI News Summaries',
-      'desc': 'Turns complex financial news into short, easy-to-read insights',
-      'image': 'assets/component_2.png',
-    },
-    {
-      'title': 'Watchlist Insights',
-      'desc': 'Summarizes key changes across your tracked assets',
-      'image': 'assets/component_3.png',
-    },
-    {
-      'title': 'Market Pattern Detection',
-      'desc': 'Identifies repeating patterns and notable market behavior',
-      'image': 'assets/component_4.png',
-    },
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final double cardHeight = constraints.maxWidth > 600 ? 180 : 160;
-        final double iconSize = constraints.maxWidth > 600 ? 90 : 72;
-        
-        return Stack(
-          children: [
-            SizedBox(
-              height: cardHeight,
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: (index) => setState(() => _currentIndex = index),
-                itemCount: _items.length,
-                itemBuilder: (context, index) {
-                  final item = _items[index];
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const ChatBotScreen()),
-                      );
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: Theme.of(context).brightness == Brightness.dark 
-                              ? [const Color(0xFF2E246A), const Color(0xFF1B1839)]
-                              : [AppColors.primaryPurple, const Color(0xFF6366F1)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: iconSize,
-                            height: iconSize,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE2E8F0),
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            padding: const EdgeInsets.all(12),
-                            child: Image.asset(
-                              item['image'],
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item['title'],
-                                  style: TextStyle(color: Colors.white, fontSize: constraints.maxWidth > 600 ? 22 : 18, fontWeight: FontWeight.bold),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  item['desc'],
-                                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: constraints.maxWidth > 600 ? 15 : 13, height: 1.4),
-                                  maxLines: 3,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-        Positioned(
-          bottom: 12,
-          left: 0,
-          right: 0,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(_items.length, (index) {
-              final bool isActive = _currentIndex == index;
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                width: isActive ? 20 : 8,
-                height: 8,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  color: isActive ? Colors.white : Colors.white.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              );
-            }),
-          ),
-        ),
-          ],
-        );
-      },
-    );
-  }
-}
