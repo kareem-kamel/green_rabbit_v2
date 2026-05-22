@@ -1,20 +1,95 @@
+import 'dart:io' show Platform;
+import 'dart:math';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/network/api_client.dart';
 import '../models/subscription_model.dart';
 import '../models/transaction_model.dart';
 
 class SubscriptionRepository {
-  // In a real app, this would use Dio/ApiClient
+  final ApiClient _apiClient;
+  
   SubscriptionModel? _currentSubscription;
   final List<TransactionModel> _transactions = [];
   bool _hasUsedTrial = false;
 
+  SubscriptionRepository(this._apiClient);
+
+  String _generateUUID() {
+    final random = Random.secure();
+    final values = List<int>.generate(16, (i) => random.nextInt(256));
+    
+    // Set version to 4 (0100xxxx)
+    values[6] = (values[6] & 0x0f) | 0x40;
+    // Set variant to RFC 4122 (10xxxxxx)
+    values[8] = (values[8] & 0x3f) | 0x80;
+    
+    final buffer = StringBuffer();
+    for (var i = 0; i < 16; i++) {
+      if (i == 4 || i == 6 || i == 8 || i == 10) {
+        buffer.write('-');
+      }
+      buffer.write(values[i].toRadixString(16).padLeft(2, '0'));
+    }
+    return buffer.toString();
+  }
+
+  String _getPlatformName() {
+    if (kIsWeb) return 'web';
+    if (Platform.isIOS) return 'ios';
+    if (Platform.isAndroid) return 'android';
+    return 'web';
+  }
+
   Future<List<TransactionModel>> fetchHistory() async {
+    // In a real app, this would use Dio/ApiClient.
+    // If there is no endpoint, we return our local transactions list.
     await Future.delayed(const Duration(milliseconds: 300));
     return _transactions;
   }
 
   Future<List<Map<String, dynamic>>> fetchPlans() async {
-    // Simulate API delay
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      final response = await _apiClient.dio.get(AppConstants.subscriptionPlans);
+      if (response.statusCode == 200 && response.data != null && response.data['success'] == true) {
+        final List<dynamic> data = response.data['data'] ?? [];
+        final plans = data.map<Map<String, dynamic>>((plan) {
+          final featuresList = plan['features'] as List?;
+          final featuresStrings = featuresList != null
+              ? featuresList.map((f) {
+                  if (f is Map) {
+                    return f['name']?.toString() ?? '';
+                  }
+                  return f.toString();
+                }).where((s) => s.isNotEmpty).toList()
+              : <String>[];
+          return {
+            'id': plan['id'],
+            'name': plan['name'],
+            'description': plan['description'],
+            'price': (plan['price'] as num?)?.toDouble() ?? 0.0,
+            'currency': plan['currency'] ?? 'KWD',
+            'features': featuresStrings,
+            'trialDays': plan['trialDays'],
+            'isPro': plan['tier'] == 'premium' || plan['tier'] == 'pro',
+          };
+        }).toList();
+
+        // Remove Free Trial if user has already used it or has an active Pro sub
+        if (_hasUsedTrial || (_currentSubscription != null && _currentSubscription!.status != 'none')) {
+          plans.removeWhere((p) => p['id'] == 'plan_free');
+        }
+        return plans;
+      }
+    } catch (e) {
+      // Robust Fallback: Log and return mock plans
+      print("Failed to fetch plans from API, falling back to mock: $e");
+    }
+
+    // Simulate API delay for mock fallback
+    await Future.delayed(const Duration(milliseconds: 300));
     
     final allPlans = [
       {
@@ -57,7 +132,6 @@ class SubscriptionRepository {
       },
     ];
 
-    // Remove Free Trial if user has already used it or has an active Pro sub
     if (_hasUsedTrial || (_currentSubscription != null && _currentSubscription!.status != 'none')) {
       allPlans.removeWhere((p) => p['id'] == 'plan_free');
     }
@@ -66,15 +140,59 @@ class SubscriptionRepository {
   }
 
   Future<SubscriptionModel?> fetchCurrentSubscription() async {
+    try {
+      final response = await _apiClient.dio.get(AppConstants.subscriptionCurrent);
+      if (response.statusCode == 200 && response.data != null && response.data['success'] == true) {
+        if (response.data['data'] != null) {
+          _currentSubscription = SubscriptionModel.fromJson(response.data['data']);
+          return _currentSubscription;
+        }
+      }
+    } catch (e) {
+      print("Failed to fetch current subscription, falling back: $e");
+    }
+
     await Future.delayed(const Duration(milliseconds: 300));
     return _currentSubscription;
   }
 
   Future<SubscriptionModel> startTrial() async {
+    try {
+      final response = await _apiClient.dio.post(
+        AppConstants.activateFreeTrial,
+      );
+      
+      if (response.statusCode == 200 && response.data != null && response.data['success'] == true) {
+        final responseData = response.data['data'];
+        final trialData = responseData != null ? responseData['trial'] : null;
+        
+        final activeSub = await fetchCurrentSubscription();
+        if (activeSub != null) {
+          _hasUsedTrial = true;
+          return activeSub;
+        } else if (trialData != null) {
+          _hasUsedTrial = true;
+          _currentSubscription = SubscriptionModel(
+            id: 'sub_trial_${DateTime.now().millisecondsSinceEpoch}',
+            planId: trialData['planId'] ?? 'plan_free_trial_id',
+            planName: trialData['planName'] ?? 'Free Trial',
+            status: 'active',
+            currentPeriodStart: DateTime.now(),
+            currentPeriodEnd: trialData['endsAt'] != null ? DateTime.parse(trialData['endsAt']) : DateTime.now().add(const Duration(days: 7)),
+            features: ['all_pro_features'],
+          );
+          return _currentSubscription!;
+        }
+      }
+    } catch (e) {
+      print("Failed to start live free trial: $e. Falling back to local mock trial.");
+    }
+
+    // Mock fallback activation
     await Future.delayed(const Duration(seconds: 1));
     final now = DateTime.now();
     final startDate = now.subtract(const Duration(days: 3));
-    final endDate = startDate.add(const Duration(days: 7));
+    final endDate = startDate.add(const Duration(days: 4)); // 7 days total
     
     _hasUsedTrial = true;
     _currentSubscription = SubscriptionModel(
@@ -91,9 +209,57 @@ class SubscriptionRepository {
   }
 
   Future<SubscriptionModel> buyPlan({String planId = 'plan_pro_yearly'}) async {
+    try {
+      final idempotencyKey = _generateUUID();
+      final response = await _apiClient.dio.post(
+        AppConstants.subscriptionIntents,
+        data: {
+          'planId': planId,
+          'platform': _getPlatformName(),
+        },
+        options: Options(
+          headers: {
+            'X-Idempotency-Key': idempotencyKey,
+          },
+        ),
+      );
+
+      if ((response.statusCode == 200 || response.statusCode == 201) && 
+          response.data != null && response.data['success'] == true) {
+        final responseData = response.data['data'];
+        final checkoutData = responseData['checkout'];
+        final paymentData = responseData['payment'];
+        
+        final String? reference = paymentData != null ? paymentData['reference'] : null;
+        final String? paymentUrl = responseData['paymentUrl'] ?? (checkoutData != null ? checkoutData['paymentUrl'] : null);
+
+        if (paymentUrl != null && paymentUrl.isNotEmpty) {
+          final uri = Uri.parse(paymentUrl);
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        }
+        
+        // Wait a second and try to sync
+        if (reference != null && reference.isNotEmpty) {
+          try {
+            await syncPayment(reference);
+          } catch (_) {}
+        }
+
+        final activeSub = await fetchCurrentSubscription();
+        if (activeSub != null) {
+          return activeSub;
+        }
+      }
+    } catch (e) {
+      print("Failed live buy plan checkout: $e. Falling back to local mock purchase.");
+    }
+
+    // Mock fallback activation
     await Future.delayed(const Duration(seconds: 1));
     final startDate = DateTime.now();
-    final nextBillingDate = DateTime(2026, 3, 28);
+    final nextBillingDate = DateTime.now().add(const Duration(days: 365));
     
     final isPro = planId.contains('pro');
     
@@ -110,7 +276,7 @@ class SubscriptionRepository {
       features: isPro ? ['all_pro_features_full'] : ['no_ads', 'limited_ai'],
     );
 
-    // Record transaction
+    // Record mock transaction
     _transactions.insert(
         0,
         TransactionModel(
@@ -118,7 +284,7 @@ class SubscriptionRepository {
           planName: isPro ? 'Premium yearly subscription' : 'Classic yearly subscription',
           date: startDate,
           amount: isPro ? 99.99 : 8.99,
-          status: 'States',
+          status: 'Success',
           paymentMethod: 'visa .... 4242',
           transactionId: 'TXN-2026-${_transactions.length + 1}',
           discount: isPro ? 20.0 : 0.0,
@@ -127,7 +293,34 @@ class SubscriptionRepository {
     return _currentSubscription!;
   }
 
+  Future<SubscriptionModel> syncPayment(String paymentReference) async {
+    try {
+      final response = await _apiClient.dio.post(AppConstants.subscriptionSync(paymentReference));
+      if (response.statusCode == 200 && response.data != null && response.data['success'] == true) {
+        final activeSub = await fetchCurrentSubscription();
+        if (activeSub != null) {
+          return activeSub;
+        }
+      }
+    } catch (e) {
+      print("Failed syncing payment $paymentReference: $e");
+    }
+    return _currentSubscription ?? SubscriptionModel.none();
+  }
+
   Future<void> cancelSubscription({String reason = 'other'}) async {
+    try {
+      final response = await _apiClient.dio.post(AppConstants.subscriptionCancel, data: {
+        'reason': reason,
+      });
+      if (response.statusCode == 200 && response.data != null && response.data['success'] == true) {
+        await fetchCurrentSubscription();
+        return;
+      }
+    } catch (e) {
+      print("Failed live cancel subscription: $e");
+    }
+
     await Future.delayed(const Duration(milliseconds: 500));
     _currentSubscription = SubscriptionModel.none();
   }

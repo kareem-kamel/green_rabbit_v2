@@ -43,6 +43,7 @@ class AppConstants {
   static const String forgotPassword = "/auth/forgot-password";
   static const String resetPassword = "/auth/reset-password";
   static const String changePassword = "/auth/change-password";
+  static const String activateFreeTrial = "auth/activate-free-trial";
 
   // Storage Keys
   static const String keyAccessToken = 'access_token';
@@ -83,7 +84,39 @@ class AppConstants {
   // Calendars
   static String calendars(String category) => "calendars/$category";
 
+  // Subscriptions
+  static const String subscriptionPlans = "subscriptions/plans";
+  static const String subscriptionCurrent = "subscriptions/current";
+  static const String subscriptionCancel = "subscriptions/cancel";
+  static const String subscriptionIntents = "subscriptions/payments/intents";
+  static const String subscriptionPayments = "subscriptions/payments";
+  static String subscriptionSync(String ref) => "subscriptions/payments/$ref/sync";
+  static String subscriptionConfirm(String ref) => "subscriptions/payments/$ref/confirm";
+
   // Animation Durations
   static const Duration splashDelay = Duration(seconds: 3);
   static const Duration defaultAnimationDuration = Duration(milliseconds: 300);
+
+  static String getInstrumentDisplayName(String symbol, String name, String? exchange) {
+    if (exchange == 'Tadawul' || RegExp(r'^\d+$').hasMatch(symbol)) {
+      const tadawulNames = {
+        '1120': 'Al Rajhi Bank',
+        '1180': 'Alinma Bank',
+        '2222': 'Saudi Aramco',
+        '2350': 'Saudi Kayan',
+        '1150': 'Bank AlBilad',
+        '1010': 'Riyad Bank',
+        '1020': 'Bank AlJazira',
+        '1030': 'Saudi Investment Bank',
+        '1050': 'Banque Saudi Fransi',
+        '1060': 'Saudi Awwal Bank (SAB)',
+        '1080': 'Arab National Bank',
+        '7010': 'Saudi Telecom Company (STC)',
+        '5110': 'Saudi Electricity Company',
+        '2010': 'SABIC',
+      };
+      return tadawulNames[symbol] ?? name;
+    }
+    return name;
+  }
 }

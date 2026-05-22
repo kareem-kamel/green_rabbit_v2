@@ -15,8 +15,8 @@ class CalendarEvent {
   final double? amount; // for dividends
   final String? description; // for splits
   final double? ratio; // for splits
-  final int? fromFactor; // for splits
-  final int? toFactor; // for splits
+  final num? fromFactor; // for splits
+  final num? toFactor; // for splits
   final double? priceRangeLow; // for ipo
   final double? priceRangeHigh; // for ipo
   final double? offerPrice; // for ipo
@@ -83,8 +83,8 @@ class CalendarEvent {
       amount: (json['amount'] as num?)?.toDouble(),
       description: json['description'],
       ratio: (json['ratio'] as num?)?.toDouble(),
-      fromFactor: json['fromFactor'] as int?,
-      toFactor: json['toFactor'] as int?,
+      fromFactor: json['fromFactor'] as num?,
+      toFactor: json['toFactor'] as num?,
       priceRangeLow: (json['priceRangeLow'] as num?)?.toDouble(),
       priceRangeHigh: (json['priceRangeHigh'] as num?)?.toDouble(),
       offerPrice: (json['offerPrice'] as num?)?.toDouble(),

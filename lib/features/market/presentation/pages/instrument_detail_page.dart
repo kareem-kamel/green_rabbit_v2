@@ -20,6 +20,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:green_rabbit/features/alerts/presentation/widgets/create_alert_sheet.dart';
 import 'package:green_rabbit/features/market/presentation/pages/search_page.dart';
 import 'package:green_rabbit/core/utils/image_utils.dart';
+import 'package:green_rabbit/features/chatbot/presentation/screens/chatbot_screen.dart';
+import 'package:green_rabbit/features/profile/presentation/screens/subscription_screen.dart';
 
 class InstrumentDetailPage extends ConsumerStatefulWidget {
   final String instrumentId;
@@ -69,7 +71,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           body: detailAsync.when(
             data: (detail) => _buildContent(detail),
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, stack) => Center(child: Text('Error: $err', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black))),
+            error: (err, stack) => _buildErrorState(err),
           ),
         );
       },
@@ -177,15 +179,30 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         child: detailAsync.when(
           data: (detail) => _buildLandscapeChart(detail),
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.textPrimary))),
+          error: (err, stack) => _buildErrorState(err),
         ),
       ),
     );
   }
 
+  String _getNewsProviderKey(MarketInstrumentDetail detail) {
+    final String type;
+    final cleanType = detail.type.toLowerCase();
+    if (cleanType == 'stock' || cleanType == 'stocks') {
+      type = 'stocks';
+    } else if (cleanType == 'crypto') {
+      type = 'crypto';
+    } else if (cleanType == 'forex') {
+      type = 'forex';
+    } else {
+      type = 'stocks';
+    }
+    return '${widget.instrumentId}|$type';
+  }
+
   Widget _buildContent(MarketInstrumentDetail detail) {
     // Preload news provider immediately to ensure the request starts right away
-    ref.watch(instrumentNewsProvider(widget.instrumentId));
+    ref.watch(instrumentNewsProvider(_getNewsProviderKey(detail)));
     return Column(
       children: [
         _buildHeader(detail),
@@ -399,25 +416,35 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
             ),
           ),
           const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: const Color(0xFF6B5AE0),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Image.asset('assets/trade_logo.png', width: 16, height: 16, errorBuilder: (_, __, ___) => const Icon(Icons.psychology, color: Colors.purple, size: 16)),
+          GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ChatBotScreen(),
                 ),
-                const SizedBox(width: 8),
-                const Text('Analyze AI', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-              ],
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6B5AE0),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Image.asset('assets/trade_logo.png', width: 16, height: 16, errorBuilder: (_, __, ___) => const Icon(Icons.psychology, color: Colors.purple, size: 16)),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('Analyze AI', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                ],
+              ),
             ),
           ),
         ],
@@ -519,7 +546,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
 
 
   Widget _buildNewsTab(MarketInstrumentDetail detail) {
-    final newsAsync = ref.watch(instrumentNewsProvider(widget.instrumentId));
+    final newsAsync = ref.watch(instrumentNewsProvider(_getNewsProviderKey(detail)));
     debugPrint('📰 [DEBUG] _buildNewsTab building, state: $newsAsync');
     return newsAsync.when(
       data: (articles) {
@@ -546,7 +573,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   Widget _buildAnalysisTab(MarketInstrumentDetail detail) {
-    final newsAsync = ref.watch(instrumentNewsProvider(widget.instrumentId));
+    final newsAsync = ref.watch(instrumentNewsProvider(_getNewsProviderKey(detail)));
     return newsAsync.when(
       data: (articles) {
         if (articles.isEmpty) {
@@ -1009,9 +1036,18 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                         return Padding(
                           padding: const EdgeInsets.only(right: 16),
                           child: GestureDetector(
-                            onTap: () {
-                              setState(() { _selectedPeriod = t; });
-                            },
+                            onTap: mightBeLocked
+                                ? () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const SubscriptionScreen(),
+                                      ),
+                                    );
+                                  }
+                                : () {
+                                    setState(() { _selectedPeriod = t; });
+                                  },
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -1174,79 +1210,91 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       bgColor = AppColors.error.withOpacity(0.08);
     }
 
-    return Column(
-      children: [
-        Text(tech.name, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w400)),
-        const SizedBox(height: 12),
-        Expanded(
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(8),
+    return GestureDetector(
+      onTap: isLocked
+          ? () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SubscriptionScreen(),
                 ),
-                alignment: Alignment.center,
-                child: isLocked 
-                  ? Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.lock_outline, color: AppColors.primary, size: 18),
-                        const SizedBox(width: 4),
-                        const Text('Unlock', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600)),
-                      ],
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              tech.signal.replaceAll(' ', '\n'),
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: signalColor, 
-                                fontSize: 11, 
-                                fontWeight: FontWeight.bold, 
-                                height: 1.1
-                              ),
-                            ),
-                          ),
-                          if (isBullish || isBearish)
-                            Transform.rotate(
-                              angle: isBullish ? -0.5 : 0.5,
-                              child: Icon(
-                                isBullish ? Icons.arrow_outward : Icons.south_east, 
-                                color: signalColor, 
-                                size: 14
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-              ),
-              if (isLocked)
-                Positioned(
-                  top: -6,
-                  left: -6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                    decoration: const BoxDecoration(
-                      color: AppColors.premiumGold,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(8),
-                        bottomRight: Radius.circular(8),
-                      ),
-                    ),
-                    child: const Icon(Icons.workspace_premium, color: Colors.white, size: 10),
+              );
+            }
+          : null,
+      child: Column(
+        children: [
+          Text(tech.name, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w400)),
+          const SizedBox(height: 12),
+          Expanded(
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(8),
                   ),
+                  alignment: Alignment.center,
+                  child: isLocked 
+                    ? Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Icon(Icons.lock_outline, color: AppColors.primary, size: 18),
+                          SizedBox(width: 4),
+                          Text('Unlock', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+                        ],
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                tech.signal.replaceAll(' ', '\n'),
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: signalColor, 
+                                  fontSize: 11, 
+                                  fontWeight: FontWeight.bold, 
+                                  height: 1.1
+                                ),
+                              ),
+                            ),
+                            if (isBullish || isBearish)
+                              Transform.rotate(
+                                angle: isBullish ? -0.5 : 0.5,
+                                child: Icon(
+                                  isBullish ? Icons.arrow_outward : Icons.south_east, 
+                                  color: signalColor, 
+                                  size: 14
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                 ),
-            ],
+                if (isLocked)
+                  Positioned(
+                    top: -6,
+                    left: -6,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: const BoxDecoration(
+                        color: AppColors.premiumGold,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(8),
+                          bottomRight: Radius.circular(8),
+                        ),
+                      ),
+                      child: const Icon(Icons.workspace_premium, color: Colors.white, size: 10),
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1269,7 +1317,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   Widget _buildNewsDashboardTab(MarketInstrumentDetail detail) {
-    final newsAsync = ref.watch(instrumentNewsProvider(widget.instrumentId));
+    final newsAsync = ref.watch(instrumentNewsProvider(_getNewsProviderKey(detail)));
     debugPrint('📰 [DEBUG] _buildNewsDashboardTab building, state: $newsAsync');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1643,7 +1691,16 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
 
     return Expanded(
       child: GestureDetector(
-        onTap: isLocked ? null : () => setState(() => _selectedTechnicalInterval = interval),
+        onTap: isLocked 
+            ? () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SubscriptionScreen(),
+                  ),
+                );
+              }
+            : () => setState(() => _selectedTechnicalInterval = interval),
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 4),
           child: Column(
@@ -2151,7 +2208,16 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
             return _landscapeButton(
               p['label']!,
               isActive: isActive,
-              onTap: () => setState(() => _selectedPeriod = p['period']!),
+              onTap: mightBeLocked
+                  ? () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SubscriptionScreen(),
+                        ),
+                      );
+                    }
+                  : () => setState(() => _selectedPeriod = p['period']!),
               trailingIcon: mightBeLocked ? Icons.lock_outline : null,
             );
           }),
@@ -2328,6 +2394,112 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(Object err) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    // Extract a user-friendly error message
+    String title = 'Instrument Not Found';
+    String message = 'We couldn\'t find details for "${widget.instrumentId}". Please verify the symbol or try again.';
+    
+    if (err is DioException) {
+      final responseData = err.response?.data;
+      if (responseData is Map) {
+        final errorMap = responseData['error'];
+        if (errorMap is Map && errorMap['message'] != null) {
+          message = errorMap['message'].toString();
+        }
+      }
+    } else {
+      final errString = err.toString();
+      if (errString.contains('INSTRUMENT_NOT_FOUND') || errString.contains('404')) {
+        title = 'Instrument Not Found';
+      } else {
+        title = 'Load Failed';
+        message = 'An unexpected error occurred while loading details. Please try again.';
+      }
+    }
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.error_outline_rounded,
+                color: AppColors.error,
+                size: 64,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              title,
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black,
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: 200,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.buttonPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Go Back',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () {
+                ref.invalidate(instrumentDetailsProvider(widget.instrumentId));
+              },
+              child: const Text(
+                'Retry Connection',
+                style: TextStyle(
+                  color: Color(0xFF6B5AE0),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
