@@ -98,33 +98,75 @@ class ChatCubit extends Cubit<ChatState> {
       isGenerating: true,
       hasMessages: true,
       messages: [],
+      activeConversationId: 'summary',
     ));
 
+    _activeCancelToken?.cancel();
+    _activeCancelToken = CancelToken();
+    final cancelToken = _activeCancelToken!;
+    _cancelRevealTimer();
+
+    final aiMessage = ChatMessage(
+      id: 'summary_${DateTime.now().millisecondsSinceEpoch}',
+      conversationId: 'summary',
+      role: 'assistant',
+      content: '',
+      createdAt: DateTime.now(),
+    );
+
+    emit(state.copyWith(messages: [aiMessage]));
+
+    var streamTarget = '';
+    var streamDisplayed = '';
+
     try {
-      final summary = await repository.summarizeContent(entityId, entityType, url: url);
-      
-      final summaryMessage = ChatMessage(
-        id: 'summary_${DateTime.now().millisecondsSinceEpoch}',
-        conversationId: '',
-        role: 'assistant',
-        content: summary.summary,
-        createdAt: DateTime.now(),
+      _revealTimer = Timer.periodic(
+        const Duration(milliseconds: _revealTickMs),
+        (_) {
+          if (isClosed || cancelToken.isCancelled) return;
+          if (state.activeConversationId != 'summary') return;
+          if (streamDisplayed.length >= streamTarget.length) return;
+
+          streamDisplayed = _advanceTypewriter(streamDisplayed, streamTarget);
+          _emitStreamingAssistantMessage('summary', streamDisplayed);
+        },
       );
 
-      emit(state.copyWith(
-        messages: [summaryMessage],
-        isGenerating: false,
-      ));
+      await for (final chunk in repository.summarizeContentStream(
+        entityId,
+        entityType,
+        url: url,
+        cancelToken: cancelToken,
+      )) {
+        if (cancelToken.isCancelled) break;
+        streamTarget = _mergeStreamChunk(streamTarget, chunk);
+      }
+
+      // Finish revealing any leftover backlog.
+      if (!cancelToken.isCancelled) {
+        await _waitForRevealCatchUp(
+          conversationId: 'summary',
+          target: streamTarget,
+          displayed: streamDisplayed,
+          isCancelled: () => cancelToken.isCancelled,
+        );
+      }
+
+      _cancelRevealTimer();
+      emit(state.copyWith(isGenerating: false));
     } catch (e) {
-      emit(state.copyWith(
-        isGenerating: false,
-        messages: [
-          _errorMessage(
-            '',
-            _formatError(e),
-          ),
-        ],
-      ));
+      _cancelRevealTimer();
+      if (!cancelToken.isCancelled) {
+        emit(state.copyWith(
+          isGenerating: false,
+          messages: [
+            _errorMessage(
+              'summary',
+              _formatError(e),
+            ),
+          ],
+        ));
+      }
     }
   }
 

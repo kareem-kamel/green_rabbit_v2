@@ -13,6 +13,11 @@ class ChatbotRepository {
     return _aiService.summarizeContent(targetId, type, url: url);
   }
 
+  // Summarize content with stream
+  Stream<String> summarizeContentStream(String targetId, String type, {String? url, CancelToken? cancelToken}) {
+    return _aiService.summarizeContentStream(targetId, type, url: url, cancelToken: cancelToken);
+  }
+
   // Get AI usage statistics
   Future<AIUsageStats> getUsageStats() {
     return _aiService.getUsageStats();
