@@ -23,6 +23,8 @@ class _MainWrapperState extends ConsumerState<MainWrapper> {
   @override
   void initState() {
     super.initState();
+    // The calculator starts in its own internal 'hidden' state (peek mode) 
+    // by default, so it's not intrusive on startup.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showGlobalCalculator.value = true;
     });
