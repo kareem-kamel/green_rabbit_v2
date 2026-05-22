@@ -1,3 +1,5 @@
+import '../../../../core/constants/app_constants.dart';
+
 class MarketInstrument {
   final String id;
   final String symbol;
@@ -50,7 +52,7 @@ class MarketInstrument {
         // 2. Check common nested parents (often APIs wrap data in these)
         for (final parent in ['stats', 'quote', 'instrument', 'price', 'volume', 'info', 'data', 'details', 'summary', 'item']) {
           if (json.containsKey(parent) && json[parent] is Map) {
-            final parentMap = json[parent] as Map<String, dynamic>;
+            final parentMap = Map<String, dynamic>.from(json[parent] as Map);
             if (parentMap.containsKey(key) && parentMap[key] != null) return parentMap[key];
           }
         }
@@ -87,12 +89,17 @@ class MarketInstrument {
       return null;
     }
 
+    final parsedSymbol = (findValue(['symbol', 'symbolName', 'ticker']) ?? '').toString();
+    final parsedExchange = findValue(['exchange', 'exchangeName', 'primaryExchange'])?.toString();
+    final parsedName = (findValue(['name', 'displayName', 'shortName', 'longName']) ?? '').toString();
+    final displayName = AppConstants.getInstrumentDisplayName(parsedSymbol, parsedName, parsedExchange);
+
     return MarketInstrument(
       id: (findValue(['id', 'instrumentId', 'uuid']) ?? '').toString(),
-      symbol: (findValue(['symbol', 'symbolName', 'ticker']) ?? '').toString(),
-      name: (findValue(['name', 'displayName', 'shortName', 'longName']) ?? '').toString(),
+      symbol: parsedSymbol,
+      name: displayName,
       type: (json['type'] ?? json['instrumentType'] ?? json['assetClass'] ?? findValue(['type', 'assetClass']))?.toString() ?? '',
-      exchange: findValue(['exchange', 'exchangeName', 'primaryExchange'])?.toString(),
+      exchange: parsedExchange,
       sector: findValue(['sector', 'sectorName', 'category'])?.toString(),
       currency: findValue(['currency', 'currencyCode', 'quoteCurrency'])?.toString(),
       price: toDouble(findValue(['price', 'currentPrice', 'lastPrice', 'last', 'close', 'current', 'rate', 'priceUsd'])),

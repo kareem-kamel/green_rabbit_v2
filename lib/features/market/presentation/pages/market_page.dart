@@ -14,6 +14,8 @@ import '../providers/market_providers.dart';
 import '../../data/models/market_instrument.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
 import 'package:green_rabbit/features/market/presentation/pages/search_page.dart';
+import 'package:green_rabbit/core/widgets/ai_service_carousel.dart';
+import 'package:green_rabbit/features/chatbot/presentation/screens/chatbot_screen.dart';
 
 class MarketPage extends ConsumerStatefulWidget {
   const MarketPage({super.key});
@@ -376,16 +378,35 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                 ],
               ),
               const Spacer(),
-              Text(
-                instrument.name,
-                style: TextStyle(
+              (() {
+                final words = instrument.name.trim().split(RegExp(r'\s+'));
+                final style = TextStyle(
                   color: theme.textTheme.bodyLarge?.color,
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+                );
+                return words.length > 1
+                    ? Wrap(
+                        spacing: 4,
+                        runSpacing: 4,
+                        children: words.map((word) => Text(
+                          word,
+                          style: style,
+                          maxLines: 1,
+                          softWrap: false,
+                        )).toList(),
+                      )
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          instrument.name,
+                          style: style,
+                          maxLines: 1,
+                          softWrap: false,
+                        ),
+                      );
+              })(),
               const SizedBox(height: 4),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -437,17 +458,36 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      instrument.name,
-                      style: TextStyle(
+                    (() {
+                      final words = instrument.name.trim().split(RegExp(r'\s+'));
+                      final style = TextStyle(
                         color: theme.textTheme.bodyLarge?.color,
                         fontSize: 20,
                         fontWeight: FontWeight.w400,
                         letterSpacing: 0.5,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                      );
+                      return words.length > 1
+                          ? Wrap(
+                              spacing: 4,
+                              runSpacing: 4,
+                              children: words.map((word) => Text(
+                                word,
+                                style: style,
+                                maxLines: 1,
+                                softWrap: false,
+                              )).toList(),
+                            )
+                          : FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                instrument.name,
+                                style: style,
+                                maxLines: 1,
+                                softWrap: false,
+                              ),
+                            );
+                    })(),
                     const SizedBox(height: 4),
                     Row(
                       children: [
@@ -572,57 +612,65 @@ class _AIServiceCarouselState extends State<AIServiceCarousel> {
                 itemCount: _items.length,
                 itemBuilder: (context, index) {
                   final item = _items[index];
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: Theme.of(context).brightness == Brightness.dark 
-                            ? [const Color(0xFF2E246A), const Color(0xFF1B1839)]
-                            : [AppColors.primaryPurple, const Color(0xFF6366F1)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const ChatBotScreen()),
+                      );
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: Theme.of(context).brightness == Brightness.dark 
+                              ? [const Color(0xFF2E246A), const Color(0xFF1B1839)]
+                              : [AppColors.primaryPurple, const Color(0xFF6366F1)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
                       ),
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: iconSize,
-                          height: iconSize,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE2E8F0),
-                            borderRadius: BorderRadius.circular(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: iconSize,
+                            height: iconSize,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE2E8F0),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            padding: const EdgeInsets.all(12),
+                            child: Image.asset(
+                              item['image'],
+                              fit: BoxFit.contain,
+                            ),
                           ),
-                          padding: const EdgeInsets.all(12),
-                          child: Image.asset(
-                            item['image'],
-                            fit: BoxFit.contain,
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item['title'],
+                                  style: TextStyle(color: Colors.white, fontSize: constraints.maxWidth > 600 ? 22 : 18, fontWeight: FontWeight.bold),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  item['desc'],
+                                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: constraints.maxWidth > 600 ? 15 : 13, height: 1.4),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item['title'],
-                                style: TextStyle(color: Colors.white, fontSize: constraints.maxWidth > 600 ? 22 : 18, fontWeight: FontWeight.bold),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                item['desc'],
-                                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: constraints.maxWidth > 600 ? 15 : 13, height: 1.4),
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   );
                 },

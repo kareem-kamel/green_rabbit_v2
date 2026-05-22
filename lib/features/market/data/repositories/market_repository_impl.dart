@@ -7,7 +7,7 @@ abstract class MarketRepository {
   Future<MarketInstrumentDetail> getInstrumentDetails(String id);
   Future<Map<String, dynamic>> getInstrumentChart(String id, {String? period, String? interval});
   Future<MarketInstrumentStats> getInstrumentStats(String id, {String? interval});
-  Future<List<MarketNewsArticle>> getInstrumentNews(String id);
+  Future<List<MarketNewsArticle>> getInstrumentNews(String id, {String? type});
   Future<List<MarketInstrument>> getTrendingInstruments();
   Stream<Map<String, dynamic>> getMarketStream(List<String> instruments);
 }
@@ -38,8 +38,8 @@ class MarketRepositoryImpl implements MarketRepository {
   }
 
   @override
-  Future<List<MarketNewsArticle>> getInstrumentNews(String id) async {
-    return _remoteDataSource.getInstrumentNews(id);
+  Future<List<MarketNewsArticle>> getInstrumentNews(String id, {String? type}) async {
+    return _remoteDataSource.getInstrumentNews(id, type: type);
   }
 
   @override

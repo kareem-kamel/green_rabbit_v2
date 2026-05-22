@@ -25,9 +25,14 @@ final trendingInstrumentsProvider = FutureProvider.autoDispose<List<MarketInstru
   return ref.watch(marketRepositoryProvider).getTrendingInstruments();
 });
 
-final instrumentNewsProvider = FutureProvider.autoDispose.family<List<MarketNewsArticle>, String>((ref, id) async {
-  debugPrint('📰 [DEBUG] Riverpod instrumentNewsProvider called with ID: $id');
-  return ref.watch(marketRepositoryProvider).getInstrumentNews(id);
+final instrumentNewsProvider = FutureProvider.autoDispose.family<List<MarketNewsArticle>, String>((ref, param) async {
+  // Expected param format: "instrumentId|type" or just "instrumentId"
+  final parts = param.split('|');
+  final id = parts[0];
+  final type = parts.length > 1 ? parts[1] : null;
+  
+  debugPrint('📰 [DEBUG] Riverpod instrumentNewsProvider called with ID: $id, type: $type');
+  return ref.watch(marketRepositoryProvider).getInstrumentNews(id, type: type);
 });
 
 final instrumentStatsProvider = FutureProvider.autoDispose.family<MarketInstrumentStats, String>((ref, param) async {

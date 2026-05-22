@@ -15,7 +15,7 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  String _selectedCategory = 'economic'; // Reverted to economic as requested
+  String _selectedCategory = 'earnings'; // Changed to earnings as economic is not supported
   String _selectedTab = 'this_week'; // Track selected tab
   final Set<String> _expandedDates = {}; // Track expanded sections
   CalendarFilterSettings _filterSettings = CalendarFilterSettings();
@@ -33,10 +33,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
     _fetchData();
   }
 
+  static const Map<String, String> _countryIsoMap = {
+    'Albania': 'AL',
+    'Angola': 'AO',
+    'Egypt': 'EG',
+    'United States': 'US',
+    'United Kingdom': 'GB',
+    'Germany': 'DE',
+    'France': 'FR',
+    'Japan': 'JP',
+    'China': 'CN',
+    'India': 'IN',
+    'Canada': 'CA',
+    'Australia': 'AU',
+    'Brazil': 'BR',
+    'Mexico': 'MX',
+  };
+
   void _fetchData() {
     String? countryParam;
     if (_filterSettings.countrySelection == 'custom' && _filterSettings.selectedCountries.isNotEmpty) {
-      countryParam = _filterSettings.selectedCountries.join(',');
+      countryParam = _filterSettings.selectedCountries
+          .map((c) => _countryIsoMap[c] ?? c)
+          .join(',');
     } else if (_filterSettings.countrySelection == 'all') {
       countryParam = 'all';
     }
@@ -260,12 +279,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Divider(color: Colors.grey),
-            _buildCategoryItem("Economic Calendar", 'economic', Icons.calendar_month_outlined),
             _buildCategoryItem("Earnings Calendar", 'earnings', Icons.monetization_on_outlined),
             _buildCategoryItem("Dividend Calendar", 'dividends', Icons.money_outlined),
+            _buildCategoryItem("Splits Calendar", 'splits', Icons.call_split_outlined),
             _buildCategoryItem("IPO Calendar", 'ipo', Icons.calendar_today_outlined),
-            _buildCategoryItem("Holiday Calendar", 'splits', Icons.beach_access_outlined),
           ],
         ),
       ),
@@ -376,7 +393,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ),
           ),
         ),
-        if (isExpanded) ...day.events.map((e) => CalendarEventCard(event: e)),
+        if (isExpanded) ...day.events.map((e) => CalendarEventCard(event: e, category: _selectedCategory)),
         const SizedBox(height: 16),
       ],
     );

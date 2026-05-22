@@ -60,6 +60,26 @@ class CalendarCubit extends Cubit<CalendarState> {
       if (response['success'] == true) {
         final data = response['data'];
         final currentTab = data['tab'] ?? tab;
+
+        // Debug prints: print up to three items for this calendar
+        final List<dynamic> allRawEvents = [];
+        if (data.containsKey('days')) {
+          for (var day in data['days']) {
+            if (day['events'] != null) {
+              allRawEvents.addAll(day['events']);
+            }
+          }
+        } else if (data.containsKey('events')) {
+          allRawEvents.addAll(data['events'] ?? []);
+        }
+
+        print("---------------- CALENDAR DATA DEBUG PRINT ----------------");
+        print("Category: $category | Tab: $currentTab | Total items: ${allRawEvents.length}");
+        final itemsToPrint = allRawEvents.take(3).toList();
+        for (int i = 0; i < itemsToPrint.length; i++) {
+          print("Item ${i + 1}: ${itemsToPrint[i]}");
+        }
+        print("-----------------------------------------------------------");
         
         if (data.containsKey('days')) {
           // Week based

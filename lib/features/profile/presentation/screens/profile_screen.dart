@@ -295,31 +295,40 @@ class ProfileScreen extends StatelessWidget {
                                                     mainAxisAlignment: MainAxisAlignment
                                                         .spaceBetween,
                                                     children: [
-                                                      Row(
-                                                        children: [
-                                                          Icon(Icons
-                                                              .lock_outline,
-                                                              color: Theme
-                                                                  .of(context)
-                                                                  .brightness ==
-                                                                  Brightness
-                                                                      .dark
-                                                                  ? Colors.white
-                                                                  .withOpacity(
-                                                                  0.4)
-                                                                  : Colors
-                                                                  .black26,
-                                                              size: 14),
-                                                          const SizedBox(
-                                                              width: 4),
-                                                          const Text(
-                                                            'Limited AI access',
-                                                            style: TextStyle(
-                                                                color: AppColors
-                                                                    .textGrey,
-                                                                fontSize: 12),
-                                                          ),
-                                                        ],
+                                                      GestureDetector(
+                                                        onTap: () {
+                                                          Navigator.push(
+                                                              context,
+                                                              MaterialPageRoute(
+                                                                  builder: (
+                                                                      _) => const SubscriptionScreen()));
+                                                        },
+                                                        child: Row(
+                                                          children: [
+                                                            Icon(Icons
+                                                                .lock_outline,
+                                                                color: Theme
+                                                                    .of(context)
+                                                                    .brightness ==
+                                                                    Brightness
+                                                                        .dark
+                                                                    ? Colors.white
+                                                                    .withOpacity(
+                                                                    0.4)
+                                                                    : Colors
+                                                                    .black26,
+                                                                size: 14),
+                                                            const SizedBox(
+                                                                width: 4),
+                                                            const Text(
+                                                              'Limited AI access',
+                                                              style: TextStyle(
+                                                                  color: AppColors
+                                                                      .textGrey,
+                                                                  fontSize: 12),
+                                                            ),
+                                                          ],
+                                                        ),
                                                       ),
                                                       GestureDetector(
                                                         onTap: () {

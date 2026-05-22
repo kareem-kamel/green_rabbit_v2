@@ -83,7 +83,7 @@ Future<void> init() async {
   );
 
   // Subscriptions
-  sl.registerLazySingleton(() => SubscriptionRepository());
+  sl.registerLazySingleton(() => SubscriptionRepository(sl<ApiClient>()));
   sl.registerFactory<SubscriptionCubit>(
     () => SubscriptionCubit(repository: sl<SubscriptionRepository>()),
   );

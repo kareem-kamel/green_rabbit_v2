@@ -1,3 +1,5 @@
+import '../../../../core/constants/app_constants.dart';
+
 class MarketInstrumentDetail {
   final String id;
   final String symbol;
@@ -60,10 +62,15 @@ class MarketInstrumentDetail {
       return null;
     }
 
+    final parsedSymbol = (findValue(['symbol', 'symbolName', 'ticker']) ?? '').toString();
+    final parsedExchange = findValue(['exchange', 'exchangeName', 'primaryExchange'])?.toString();
+    final parsedName = (findValue(['name', 'displayName', 'shortName', 'longName']) ?? '').toString();
+    final displayName = AppConstants.getInstrumentDisplayName(parsedSymbol, parsedName, parsedExchange);
+
     return MarketInstrumentDetail(
       id: (findValue(['id', 'instrumentId', 'uuid']) ?? '').toString(),
-      symbol: (findValue(['symbol', 'symbolName', 'ticker']) ?? '').toString(),
-      name: (findValue(['name', 'displayName', 'shortName', 'longName']) ?? '').toString(),
+      symbol: parsedSymbol,
+      name: displayName,
       type: (json['type'] ?? json['instrumentType'] ?? findValue(['type', 'assetClass']))?.toString() ?? '',
       exchange: findValue(['exchange', 'exchangeName', 'primaryExchange'])?.toString(),
       sector: findValue(['sector', 'sectorName', 'category'])?.toString(),
@@ -287,10 +294,14 @@ class RelatedInstrument {
   });
 
   factory RelatedInstrument.fromJson(Map<String, dynamic> json) {
+    final symbolStr = json['symbol'].toString();
+    final nameStr = json['name'].toString();
+    final displayName = AppConstants.getInstrumentDisplayName(symbolStr, nameStr, null);
+
     return RelatedInstrument(
       id: json['id'].toString(),
-      symbol: json['symbol'].toString(),
-      name: json['name'].toString(),
+      symbol: symbolStr,
+      name: displayName,
       changePercent: (json['changePercent'] as num?)?.toDouble(),
     );
   }
@@ -315,15 +326,15 @@ class MarketInstrumentStats {
 
   factory MarketInstrumentStats.fromJson(Map<String, dynamic> json) {
     return MarketInstrumentStats(
-      performance: PerformanceInfo.fromJson((json['performance'] is Map ? json['performance'] : {}) as Map<String, dynamic>),
-      volatility: VolatilityInfo.fromJson((json['volatility'] is Map ? json['volatility'] : {}) as Map<String, dynamic>),
-      technicals: TechnicalsInfo.fromJson((json['technicals'] is Map ? json['technicals'] : {}) as Map<String, dynamic>),
-      analystRatings: json['analystRatings'] is Map ? AnalystRatings.fromJson(json['analystRatings'] as Map<String, dynamic>) : null,
-      dividends: json['dividends'] is Map ? DividendsInfo.fromJson(json['dividends'] as Map<String, dynamic>) : null,
+      performance: PerformanceInfo.fromJson(Map<String, dynamic>.from(json['performance'] is Map ? json['performance'] as Map : {})),
+      volatility: VolatilityInfo.fromJson(Map<String, dynamic>.from(json['volatility'] is Map ? json['volatility'] as Map : {})),
+      technicals: TechnicalsInfo.fromJson(Map<String, dynamic>.from(json['technicals'] is Map ? json['technicals'] as Map : {})),
+      analystRatings: json['analystRatings'] is Map ? AnalystRatings.fromJson(Map<String, dynamic>.from(json['analystRatings'] as Map)) : null,
+      dividends: json['dividends'] is Map ? DividendsInfo.fromJson(Map<String, dynamic>.from(json['dividends'] as Map)) : null,
       earningsHistory: json['earningsHistory'] is List
           ? (json['earningsHistory'] as List)
-              .whereType<Map<String, dynamic>>()
-              .map((e) => EarningsResult.fromJson(e))
+              .whereType<Map>()
+              .map((e) => EarningsResult.fromJson(Map<String, dynamic>.from(e)))
               .toList()
           : [],
     );
@@ -410,7 +421,7 @@ class TechnicalsInfo {
       overallSignal: json['marketBias']?['overallSignal']?.toString(),
       interval: json['interval']?.toString(),
       maSummarySignal: json['movingAverages']?['summarySignal']?.toString(),
-      pivotPoints: json['pivotPoints'] as Map<String, dynamic>?,
+      pivotPoints: json['pivotPoints'] is Map ? Map<String, dynamic>.from(json['pivotPoints'] as Map) : null,
       movingAverages: json['movingAverages']?['data'] as List?,
       indicators: json['indicators'] as List?,
     );
@@ -435,7 +446,7 @@ class AnalystRatings {
       consensus: json['consensus']?.toString(),
       targetMean: (json['targetMean'] as num?)?.toDouble(),
       numberOfAnalysts: json['numberOfAnalysts'] as int?,
-      distribution: json['distribution'] as Map<String, dynamic>?,
+      distribution: json['distribution'] is Map ? Map<String, dynamic>.from(json['distribution'] as Map) : null,
     );
   }
 }
