@@ -372,7 +372,7 @@ class ProfileScreen extends StatelessWidget {
                                                   0}', 'Comments'),
                                           _buildStat(context,
                                               '${user.stats?.totalWatchlists ??
-                                                  0}', 'Watchlists'),
+                                                  0}', 'Favorites'),
                                           _buildStat(context,
                                               '${user.stats?.memberSinceDays ??
                                                   0}', 'Days Active'),

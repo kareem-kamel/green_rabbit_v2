@@ -90,7 +90,7 @@ class _MainWrapperState extends ConsumerState<MainWrapper> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.bookmark_outline),
-            label: 'Watchlist',
+            label: 'Favorites',
           ),
           BottomNavigationBarItem(icon: SizedBox.shrink(), label: ''),
           BottomNavigationBarItem(

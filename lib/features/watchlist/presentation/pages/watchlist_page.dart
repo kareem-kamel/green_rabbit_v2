@@ -8,6 +8,15 @@ import '../providers/watchlist_providers.dart';
 import 'package:green_rabbit/features/chatbot/presentation/screens/chatbot_screen.dart';
 import '../../../../shared/widgets/main_wrapper.dart';
 
+import 'package:green_rabbit/features/news/presentation/cubit/news_cubit.dart';
+import 'package:green_rabbit/features/news/presentation/cubit/news_state.dart';
+import 'package:green_rabbit/features/news/data/models/news_model.dart';
+import 'package:green_rabbit/features/news/presentation/screens/news_detail_screen.dart';
+import 'package:green_rabbit/core/utils/image_utils.dart';
+import 'package:flutter_bloc/flutter_bloc.dart' as bloc;
+import 'package:shimmer/shimmer.dart';
+import '../../../profile/presentation/screens/profile_screen.dart';
+
 class WatchlistPage extends ConsumerWidget {
   const WatchlistPage({super.key});
 
@@ -42,7 +51,7 @@ class WatchlistPage extends ConsumerWidget {
                       const SizedBox(height: 24),
                       _buildTrackedSection(context, ref, watchlistState),
                       const SizedBox(height: 32),
-                      _buildNewsSection(context),
+                      _buildNewsSection(context, ref),
                       const SizedBox(height: 100), // Added safe margin above bottom nav
                     ],
                   ),
@@ -56,6 +65,13 @@ class WatchlistPage extends ConsumerWidget {
   }
 
   Widget _buildHeader(BuildContext context, WidgetRef ref, WatchlistState state) {
+    String watchlistName = state.selectedWatchlist?.name ?? '';
+    if (watchlistName.toLowerCase() == 'my watchlist' || watchlistName.toLowerCase() == 'default watchlist') {
+      watchlistName = 'My Favorites';
+    } else {
+      watchlistName = watchlistName.replaceAll(RegExp('watchlist', caseSensitive: false), 'Favorites');
+    }
+
     return Row(
       children: [
         Expanded(
@@ -63,12 +79,12 @@ class WatchlistPage extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Watchlist',
+                'Favorites',
                 style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 24, fontWeight: FontWeight.bold),
               ),
-              if (state.selectedWatchlist != null)
+              if (watchlistName.isNotEmpty)
                 Text(
-                  state.selectedWatchlist!.name,
+                  watchlistName,
                   style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -84,7 +100,15 @@ class WatchlistPage extends ConsumerWidget {
           ),
         _headerIcon(context, Icons.filter_alt_outlined),
         const SizedBox(width: 12),
-        _headerIcon(context, Icons.menu),
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            );
+          },
+          child: _headerIcon(context, Icons.menu),
+        ),
       ],
     );
   }
@@ -141,7 +165,7 @@ class WatchlistPage extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'AI Watchlist Summarize',
+                        'AI Favorites Summarize',
                         style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -236,7 +260,7 @@ class WatchlistPage extends ConsumerWidget {
                     ref.read(watchlistProvider.notifier).toggleInstrument(instrument);
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('${instrument.symbol} removed from watchlist'),
+                        content: Text('${instrument.symbol} removed from favorites'),
                         backgroundColor: AppColors.error.withOpacity(0.8),
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -286,17 +310,25 @@ class WatchlistPage extends ConsumerWidget {
         children: [
           const Padding(
             padding: EdgeInsets.all(20),
-            child: Text('My Watchlists', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            child: Text('My Favorites', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
           ),
-          ...state.watchlists.map((w) => ListTile(
-            leading: Icon(Icons.list, color: state.selectedWatchlist?.id == w.id ? AppColors.primary : Colors.grey),
-            title: Text(w.name, style: const TextStyle(color: Colors.white)),
-            trailing: Text('${w.instrumentsCount} items', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-            onTap: () {
-              ref.read(watchlistProvider.notifier).selectWatchlist(w);
-              Navigator.pop(context);
-            },
-          )),
+          ...state.watchlists.map((w) {
+            String wName = w.name;
+            if (wName.toLowerCase() == 'my watchlist' || wName.toLowerCase() == 'default watchlist') {
+              wName = 'My Favorites';
+            } else {
+              wName = wName.replaceAll(RegExp('watchlist', caseSensitive: false), 'Favorites');
+            }
+            return ListTile(
+              leading: Icon(Icons.list, color: state.selectedWatchlist?.id == w.id ? AppColors.primary : Colors.grey),
+              title: Text(wName, style: const TextStyle(color: Colors.white)),
+              trailing: Text('${w.instrumentsCount} items', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              onTap: () {
+                ref.read(watchlistProvider.notifier).selectWatchlist(w);
+                Navigator.pop(context);
+              },
+            );
+          }),
           const SizedBox(height: 20),
         ],
       ),
@@ -334,7 +366,7 @@ class WatchlistPage extends ConsumerWidget {
           ),
           const SizedBox(height: 32),
           Text(
-            'Build your watchlist',
+            'Build your favorites',
             style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
@@ -404,7 +436,7 @@ class WatchlistPage extends ConsumerWidget {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: logoUrl != null && logoUrl.isNotEmpty
-                ? Image.network(logoUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallbackIcon(name))
+                ? Image.network(ImageUtils.getSafeImageUrl(logoUrl), fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallbackIcon(name))
                 : _fallbackIcon(name),
             ),
           ),
@@ -463,7 +495,7 @@ class WatchlistPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildNewsSection(BuildContext context) {
+  Widget _buildNewsSection(BuildContext context, WidgetRef ref) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -479,25 +511,55 @@ class WatchlistPage extends ConsumerWidget {
               ),
             ),
             TextButton(
-              onPressed: () {},
+              onPressed: () {
+                // Navigate to News tab (index 3)
+                ref.read(navigationIndexProvider.notifier).state = 3;
+              },
               child: const Text('View all', style: TextStyle(color: AppColors.primary)),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        _newsItem(
-          context,
-          'NVIDIA',
-          'The United States is bracing for a winter storm that will impact the energy sector.',
-          'Reuters . 3 hours ago',
-          'https://upload.wikimedia.org/wikipedia/sco/thumb/2/21/Nvidia_logo.svg/1200px-Nvidia_logo.svg.png',
+        bloc.BlocBuilder<NewsCubit, NewsState>(
+          builder: (context, state) {
+            if (state is NewsLoading) {
+              return Column(
+                children: List.generate(3, (index) => const Padding(
+                  padding: EdgeInsets.only(bottom: 12.0),
+                  child: _NewsSkeletonItem(),
+                )),
+              );
+            }
+            if (state is NewsLoaded) {
+              final articles = state.articles.take(3).toList();
+              if (articles.isEmpty) {
+                return const Center(child: Text("No news available", style: TextStyle(color: AppColors.textMuted)));
+              }
+              return Column(
+                children: articles.map((article) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: _newsItem(context, article),
+                )).toList(),
+              );
+            }
+            if (state is NewsError) {
+              return Center(child: Text(state.message, style: const TextStyle(color: AppColors.error)));
+            }
+            return const SizedBox.shrink();
+          },
         ),
       ],
     );
   }
 
-  Widget _newsItem(BuildContext context, String source, String title, String meta, String imageUrl) {
+  Widget _newsItem(BuildContext context, NewsArticle article) {
     return AppCard(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => NewsDetailScreen(article: article)),
+        );
+      },
       padding: const EdgeInsets.all(12),
       child: Column(
         children: [
@@ -505,17 +567,26 @@ class WatchlistPage extends ConsumerWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(imageUrl, width: 90, height: 90, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: AppColors.surfaceLight, width: 90, height: 90)),
+                child: Image.network(
+                  ImageUtils.getSafeImageUrl(article.smallImage),
+                  width: 90, 
+                  height: 90, 
+                  fit: BoxFit.cover, 
+                  errorBuilder: (_, __, ___) => Container(color: AppColors.surfaceLight, width: 90, height: 90, child: const Icon(Icons.image_not_supported, color: AppColors.textMuted)),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('ATCOa -0.47% ATLCY -0.22', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
-                    const SizedBox(height: 6),
+                    if (article.tickers.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(article.tickers.join(', '), style: const TextStyle(color: AppColors.textMuted, fontSize: 11, fontWeight: FontWeight.bold)),
+                      ),
                     Text(
-                      title,
+                      article.title,
                       style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 14, fontWeight: FontWeight.w600, height: 1.4),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
@@ -525,16 +596,16 @@ class WatchlistPage extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            '$source . 3 hours ago', 
+                            '${article.sourceName} . ${article.timeAgo}', 
                             style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const Spacer(),
+                        const SizedBox(width: 8),
                         const Icon(Icons.mode_comment_outlined, color: AppColors.textMuted, size: 14),
                         const SizedBox(width: 4),
-                        const Text('2', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                        Text('${article.commentCount}', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
                       ],
                     ),
                   ],
@@ -543,6 +614,78 @@ class WatchlistPage extends ConsumerWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _NewsSkeletonItem extends StatelessWidget {
+  const _NewsSkeletonItem();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.grey[900]! : Colors.grey[300]!;
+    final highlightColor = isDark ? Colors.grey[800]! : Colors.grey[100]!;
+
+    return AppCard(
+      padding: const EdgeInsets.all(12),
+      child: Shimmer.fromColors(
+        baseColor: baseColor,
+        highlightColor: highlightColor,
+        child: Row(
+          children: [
+            Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 60,
+                    height: 10,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: double.infinity,
+                    height: 14,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    height: 14,
+                    color: Colors.white,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 10,
+                        color: Colors.white,
+                      ),
+                      const Spacer(),
+                      Container(
+                        width: 20,
+                        height: 10,
+                        color: Colors.white,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

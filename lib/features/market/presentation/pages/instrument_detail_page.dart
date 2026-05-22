@@ -2379,7 +2379,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
-                  '${instrument.name} ${instrument.symbol} successfully added to watchlist',
+                  '${instrument.name} ${instrument.symbol} successfully added to favorites',
                   style: const TextStyle(color: Colors.white, fontSize: 13),
                 ),
               ),
