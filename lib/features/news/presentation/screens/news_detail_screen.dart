@@ -29,6 +29,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   bool _isExpanded = false;
   NewsArticle? _fullArticle;
   bool _isLoadingDetail = false;
+  bool _showAllRelated = false;
 
   List<CommentModel> _comments = [];
   bool _isLoadingComments = false;
@@ -338,7 +339,10 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                   _buildArticleBody(),
                   const SizedBox(height: 16),
 
-                  _buildSeeMoreButton(),
+                  if ((_fullArticle ?? widget.article).content.length > 200 || 
+                      (_fullArticle ?? widget.article).summary.length > 200)
+                    _buildSeeMoreButton(),
+                  
                   const SizedBox(height: 8),
                   _buildSeparator(),
                   const SizedBox(height: 8),
@@ -390,7 +394,11 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
             ],
 
             // ── Related news
-            _buildSectionHeader("Related News", hasViewAll: true),
+            _buildSectionHeader(
+              "Related News",
+              hasViewAll: true,
+              onViewAll: () => setState(() => _showAllRelated = !_showAllRelated),
+            ),
             BlocBuilder<RelatedNewsCubit, RelatedNewsState>(
               builder: (context, state) {
                 List<NewsArticle> relatedArticles = [];
@@ -430,8 +438,16 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                   );
                 }
 
-                return Column(
-                  children: relatedArticles.map((article) => _buildRelatedItem(article)).toList(),
+                final displayArticles = _showAllRelated 
+                    ? relatedArticles 
+                    : relatedArticles.take(3).toList();
+
+                return AnimatedSize(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                  child: Column(
+                    children: displayArticles.map((article) => _buildRelatedItem(article)).toList(),
+                  ),
                 );
               },
             ),
@@ -456,19 +472,25 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
         ? article.content 
         : (article.summary.isNotEmpty ? article.summary : "No detailed content available for this article.");
 
-    return Text(
-      bodyText,
-      style: TextStyle(
-          fontSize: 16,
-          height: 1.6,
-          color: isDark ? Colors.white70 : Colors.black87),
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      child: Text(
+        bodyText,
+        maxLines: _isExpanded ? null : 4,
+        overflow: _isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+        style: TextStyle(
+            fontSize: 16,
+            height: 1.6,
+            color: isDark ? Colors.white70 : Colors.black87),
+      ),
     );
   }
 
   // ─────────────────────────────────────────────
   //  WIDGET BUILDERS
   // ─────────────────────────────────────────────
-  Widget _buildSectionHeader(String title, {bool hasViewAll = false}) {
+  Widget _buildSectionHeader(String title, {bool hasViewAll = false, VoidCallback? onViewAll}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -483,8 +505,13 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white : Colors.black)),
           if (hasViewAll)
-            const Text("View all",
-                style: TextStyle(color: Colors.blueAccent, fontSize: 14)),
+            GestureDetector(
+              onTap: onViewAll,
+              child: Text(
+                _showAllRelated ? "See less" : "View all",
+                style: const TextStyle(color: Colors.blueAccent, fontSize: 14),
+              ),
+            ),
         ],
       ),
     );
