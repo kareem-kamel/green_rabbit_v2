@@ -51,34 +51,62 @@ class AIService {
   static Future<Exception> handleDioError(DioException e) async {
     if (e.response != null) {
       final responseData = e.response!.data;
+      
+      // Handle Map response (already decoded)
       if (responseData is Map) {
-        if (responseData['success'] == false && responseData['error'] != null) {
-          final err = responseData['error'];
+        final err = responseData['error'] ?? (responseData['success'] == false ? responseData : null);
+        if (err != null && err is Map) {
           return AIException(
             code: err['code']?.toString() ?? 'UNKNOWN_ERROR',
             message: err['message']?.toString() ?? 'An unknown error occurred.',
             details: err['details'] is Map ? Map<String, dynamic>.from(err['details']) : null,
           );
         }
-      } else if (responseData is ResponseBody) {
+      } 
+      // Handle String response (raw JSON from sse_post_stream or elsewhere)
+      else if (responseData is String && responseData.isNotEmpty) {
+        try {
+          final decoded = json.decode(responseData);
+          if (decoded is Map) {
+            final err = decoded['error'] ?? (decoded['success'] == false ? decoded : null);
+            if (err != null && err is Map) {
+              return AIException(
+                code: err['code']?.toString() ?? 'UNKNOWN_ERROR',
+                message: err['message']?.toString() ?? 'An unknown error occurred.',
+                details: err['details'] is Map ? Map<String, dynamic>.from(err['details']) : null,
+              );
+            }
+          }
+        } catch (_) {}
+      }
+      // Handle ResponseBody (stream)
+      else if (responseData is ResponseBody) {
         try {
           final bytes = await responseData.stream.toList();
           final bodyString = utf8.decode(bytes.expand((x) => x).toList());
           final decoded = json.decode(bodyString);
-          if (decoded is Map && decoded['success'] == false && decoded['error'] != null) {
-            final err = decoded['error'];
-            return AIException(
-              code: err['code']?.toString() ?? 'UNKNOWN_ERROR',
-              message: err['message']?.toString() ?? 'An unknown error occurred.',
-              details: err['details'] is Map ? Map<String, dynamic>.from(err['details']) : null,
-            );
+          if (decoded is Map) {
+            final err = decoded['error'] ?? (decoded['success'] == false ? decoded : null);
+            if (err != null && err is Map) {
+              return AIException(
+                code: err['code']?.toString() ?? 'UNKNOWN_ERROR',
+                message: err['message']?.toString() ?? 'An unknown error occurred.',
+                details: err['details'] is Map ? Map<String, dynamic>.from(err['details']) : null,
+              );
+            }
           }
-        } catch (streamErr) {
-          print('Error parsing error stream: $streamErr');
-        }
+        } catch (_) {}
       }
     }
-    return Exception(e.message ?? 'A network error occurred.');
+    
+    // If we reach here, we couldn't parse a structured error from the body.
+    // Try to see if the message itself is useful (we set it in sse_post_stream).
+    final msg = e.message ?? '';
+    if (msg.contains('failed (') && msg.contains(') for')) {
+       return Exception(msg);
+    }
+    
+    return Exception(msg.isNotEmpty ? msg : 'A network error occurred.');
   }
 
   // --- Summarization ---

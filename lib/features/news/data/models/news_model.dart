@@ -331,5 +331,13 @@ class CommentModel {
   final String time;
 
   CommentModel({required this.name, required this.text, required this.time});
+
+  factory CommentModel.fromJson(Map<String, dynamic> json) {
+    return CommentModel(
+      name: (json['author'] is Map ? json['author']['name'] : json['name'])?.toString() ?? 'Anonymous',
+      text: (json['content'] ?? json['text'])?.toString() ?? '',
+      time: (json['time_ago'] ?? json['time'] ?? json['created_at'])?.toString() ?? 'Recently',
+    );
+  }
 }
 

@@ -155,14 +155,14 @@ class _NewsScreenState extends State<NewsScreen> {
 
             final featuredArticle = articles.isNotEmpty ? articles.first : null;
             
-            // Show only the first 9 small articles initially (total 10 with featured)
+            // Show only the first 5 small articles initially (total 6 with featured)
             final initialSmallArticles = articles.length > 1 
-                ? articles.sublist(1, articles.length > 10 ? 10 : articles.length) 
+                ? articles.sublist(1, articles.length > 6 ? 6 : articles.length) 
                 : <NewsArticle>[];
                 
             // The rest of the news
-            final remainingArticles = articles.length > 10 
-                ? articles.sublist(10) 
+            final remainingArticles = articles.length > 6 
+                ? articles.sublist(6) 
                 : <NewsArticle>[];
 
             return SingleChildScrollView(
@@ -218,14 +218,22 @@ class _NewsScreenState extends State<NewsScreen> {
                     _buildSeparator(),
                     const SizedBox(height: 16),
 
-                    // Initial small articles (up to 4)
+                    // Initial articles
                     ...initialSmallArticles.map((article) => _buildSmallArticle(context, article)).toList(),
 
-                    // All News section (the rest)
-                    if (_showAllNews)
-                      ...remainingArticles.map((article) => _buildSmallArticle(context, article)).toList(),
+                    // Animated rest of the news
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeInOut,
+                      child: Column(
+                        children: [
+                          if (_showAllNews)
+                            ...remainingArticles.map((article) => _buildSmallArticle(context, article)).toList(),
+                        ],
+                      ),
+                    ),
 
-                    if (articles.length > 10)
+                    if (articles.length > 6)
                       Padding(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         child: Center(

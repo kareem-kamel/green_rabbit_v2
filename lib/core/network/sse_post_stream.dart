@@ -80,6 +80,16 @@ Stream<String> _webSseLines({
       if (kDebugMode) {
         print('[CHAT_STREAM] web error ${response.statusCode} $uri body=$errText');
       }
+      
+      // Try to see if it's a valid JSON error
+      String? errorMessage;
+      try {
+        final decoded = json.decode(errText);
+        if (decoded is Map && decoded['error'] != null) {
+          errorMessage = decoded['error']['message']?.toString();
+        }
+      } catch (_) {}
+
       throw DioException(
         requestOptions: RequestOptions(path: uri.toString()),
         response: Response(
@@ -88,7 +98,7 @@ Stream<String> _webSseLines({
           data: errText,
         ),
         type: DioExceptionType.badResponse,
-        message: 'Chat stream failed (${response.statusCode}) for $uri',
+        message: errorMessage ?? 'Chat stream failed (${response.statusCode}) for $uri',
       );
     }
 
