@@ -21,11 +21,17 @@ class RelatedNewsCubit extends Cubit<RelatedNewsState> {
 
   RelatedNewsCubit({required this.repository}) : super(RelatedNewsInitial());
 
-  Future<void> fetchRelatedNews(String id) async {
+  void reset() => emit(RelatedNewsInitial());
+
+  Future<void> fetchRelatedNews(
+    String id, {
+    String? type,
+    List<NewsArticle> fallback = const [],
+  }) async {
     emit(RelatedNewsLoading());
     try {
-      final articles = await repository.fetchRelatedNews(id);
-      emit(RelatedNewsLoaded(articles));
+      final articles = await repository.fetchRelatedNews(id, type: type);
+      emit(RelatedNewsLoaded(articles.isNotEmpty ? articles : fallback));
     } catch (e) {
       emit(RelatedNewsError(e.toString()));
     }

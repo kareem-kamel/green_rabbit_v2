@@ -43,6 +43,7 @@ dependencies:
 
   # Networking & Security
   dio: ^5.9.2            # Newest Stable
+  http: ^1.4.0           # True SSE streaming on Flutter web (Dio buffers on web)
   retrofit: ^4.4.1       # Newest Stable
   json_annotation: ^4.9.0
   flutter_secure_storage: ^10.0.0

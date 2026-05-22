@@ -13,12 +13,14 @@ final ValueNotifier<bool> showGlobalCalculator = ValueNotifier<bool>(false);
 double _globalPrincipal = 1000.0;
 double _globalAnnualRate = 10.0;
 int _globalMonths = 12;
+bool _globalStandardIsAnnual = true;
 
 // Persistent state for Stock Calculator
 MarketInstrument? _globalSelectedStock;
 double _globalStockShares = 10;
 double _globalStockAnnualRate = 15.0;
 int _globalStockMonths = 60;
+bool _globalStockIsAnnual = true;
 
 class GlobalCalculatorOverlay extends StatefulWidget {
   const GlobalCalculatorOverlay({super.key});
@@ -30,7 +32,7 @@ class GlobalCalculatorOverlay extends StatefulWidget {
 class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
   double _xOffset = 0.0;
   bool _isHidden = false;
-  bool _isBottomSheetOpen = false;
+  bool _isPageOpen = false;
 
   void _openCalculator() async {
     if (_isHidden) {
@@ -45,20 +47,20 @@ class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
     if (context == null) return;
     
     setState(() {
-      _isBottomSheetOpen = true;
+      _isPageOpen = true;
     });
 
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const _InvestmentCalculatorSheet(),
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const InvestmentCalculatorPage(),
+      ),
     );
 
-    // This runs after the bottom sheet is closed
+    // This runs after the page is popped
     if (mounted) {
       setState(() {
-        _isBottomSheetOpen = false;
+        _isPageOpen = false;
       });
     }
   }
@@ -68,7 +70,7 @@ class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
     return ValueListenableBuilder<bool>(
       valueListenable: showGlobalCalculator,
       builder: (context, show, child) {
-        if (!show || _isBottomSheetOpen) return const SizedBox.shrink();
+        if (!show || _isPageOpen) return const SizedBox.shrink();
 
         return Positioned(
           bottom: 80, // Above bottom nav bar
@@ -135,14 +137,14 @@ class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
   }
 }
 
-class _InvestmentCalculatorSheet extends ConsumerStatefulWidget {
-  const _InvestmentCalculatorSheet();
+class InvestmentCalculatorPage extends ConsumerStatefulWidget {
+  const InvestmentCalculatorPage({super.key});
 
   @override
-  ConsumerState<_InvestmentCalculatorSheet> createState() => _InvestmentCalculatorSheetState();
+  ConsumerState<InvestmentCalculatorPage> createState() => _InvestmentCalculatorPageState();
 }
 
-class _InvestmentCalculatorSheetState extends ConsumerState<_InvestmentCalculatorSheet> with SingleTickerProviderStateMixin {
+class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   late TextEditingController _principalController;
   late TextEditingController _rateController;
@@ -174,75 +176,70 @@ class _InvestmentCalculatorSheetState extends ConsumerState<_InvestmentCalculato
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: EdgeInsets.only(
-        top: 20,
-        left: 20,
-        right: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20, // Handles keyboard
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0F111A) : Colors.grey[50],
+      appBar: AppBar(
+        title: Row(
           children: [
-            // Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.calculate, color: AppColors.primaryPurple),
-                    const SizedBox(width: 8),
-                    Text(
-                      "Investment Calc",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                    ),
-                  ],
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Icon(Icons.close, color: isDark ? Colors.white54 : Colors.black54),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            
-            // Tab Bar
-            TabBar(
-              controller: _tabController,
-              indicatorColor: AppColors.primaryPurple,
-              labelColor: AppColors.primaryPurple,
-              unselectedLabelColor: Colors.grey,
-              onTap: (index) => setState(() {}),
-              tabs: const [
-                Tab(text: "Standard Calc"),
-                Tab(text: "Stock Calc"),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Tab Content
-            AnimatedSize(
-              duration: const Duration(milliseconds: 200),
-              child: _tabController.index == 0 ? _buildStandardTab(isDark) : _buildStockTab(isDark),
+            const Icon(Icons.calculate, color: AppColors.primaryPurple),
+            const SizedBox(width: 8),
+            Text(
+              "Investment Calculator",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black,
+              ),
             ),
           ],
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new, color: isDark ? Colors.white70 : Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            top: 10,
+            left: 20,
+            right: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Tab Bar
+              TabBar(
+                controller: _tabController,
+                indicatorColor: AppColors.primaryPurple,
+                labelColor: AppColors.primaryPurple,
+                unselectedLabelColor: Colors.grey,
+                onTap: (index) => setState(() {}),
+                tabs: const [
+                  Tab(text: "Stock Calculator"),
+                  Tab(text: "Standard Calculator"),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Tab Content
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                child: _tabController.index == 0 ? _buildStockTab(isDark) : _buildStandardTab(isDark),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildStandardTab(bool isDark) {
-    double futureValue = _globalPrincipal * pow((1 + (_globalAnnualRate / 100)), _globalMonths / 12);
+    double futureValue = _globalPrincipal *
+        pow(1 + (_globalStandardIsAnnual ? (_globalAnnualRate / 1200) : (_globalAnnualRate / 100)), _globalMonths);
     double profit = futureValue - _globalPrincipal;
 
     return Column(
@@ -259,8 +256,18 @@ class _InvestmentCalculatorSheetState extends ConsumerState<_InvestmentCalculato
           isDark: isDark,
         ),
         const SizedBox(height: 16),
+        _buildReturnTypeToggle(
+          isAnnual: _globalStandardIsAnnual,
+          onChanged: (val) {
+            setState(() {
+              _globalStandardIsAnnual = val;
+            });
+          },
+          isDark: isDark,
+        ),
+        const SizedBox(height: 12),
         _buildInputField(
-          label: "Expected Annual Return (%)",
+          label: _globalStandardIsAnnual ? "Expected Annual Return (%)" : "Expected Monthly Return (%)",
           controller: _rateController,
           onChanged: (val) {
             setState(() {
@@ -271,7 +278,7 @@ class _InvestmentCalculatorSheetState extends ConsumerState<_InvestmentCalculato
         ),
         const SizedBox(height: 16),
         Text(
-          "Duration: ${_globalMonths < 12 ? '$_globalMonths Months' : '${(_globalMonths / 12).toStringAsFixed(1)} Years'}",
+          "Duration: ${_formatDuration(_globalMonths)}",
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -281,8 +288,8 @@ class _InvestmentCalculatorSheetState extends ConsumerState<_InvestmentCalculato
         Slider(
           value: _globalMonths.toDouble(),
           min: 1,
-          max: 120,
-          divisions: 119,
+          max: 132,
+          divisions: 131,
           activeColor: AppColors.primaryPurple,
           onChanged: (val) {
             setState(() {
@@ -396,8 +403,18 @@ class _InvestmentCalculatorSheetState extends ConsumerState<_InvestmentCalculato
             isDark: isDark,
           ),
           const SizedBox(height: 16),
+          _buildReturnTypeToggle(
+            isAnnual: _globalStockIsAnnual,
+            onChanged: (val) {
+              setState(() {
+                _globalStockIsAnnual = val;
+              });
+            },
+            isDark: isDark,
+          ),
+          const SizedBox(height: 12),
           _buildInputField(
-            label: "Expected Annual Return (%)",
+            label: _globalStockIsAnnual ? "Expected Annual Return (%)" : "Expected Monthly Return (%)",
             controller: _stockRateController,
             onChanged: (val) {
               setState(() {
@@ -408,7 +425,7 @@ class _InvestmentCalculatorSheetState extends ConsumerState<_InvestmentCalculato
           ),
           const SizedBox(height: 16),
           Text(
-            "Duration: ${_globalStockMonths < 12 ? '$_globalStockMonths Months' : '${(_globalStockMonths / 12).toStringAsFixed(1)} Years'}",
+            "Duration: ${_formatDuration(_globalStockMonths)}",
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -418,8 +435,8 @@ class _InvestmentCalculatorSheetState extends ConsumerState<_InvestmentCalculato
           Slider(
             value: _globalStockMonths.toDouble(),
             min: 1,
-            max: 120,
-            divisions: 119,
+            max: 132,
+            divisions: 131,
             activeColor: AppColors.primaryPurple,
             onChanged: (val) {
               setState(() {
@@ -432,7 +449,8 @@ class _InvestmentCalculatorSheetState extends ConsumerState<_InvestmentCalculato
             builder: (context) {
               final double stockPrice = _globalSelectedStock!.price ?? 0.0;
               double initialInvestment = _globalStockShares * stockPrice;
-              double futureValue = initialInvestment * pow((1 + (_globalStockAnnualRate / 100)), _globalStockMonths / 12);
+              double futureValue = initialInvestment *
+                  pow(1 + (_globalStockIsAnnual ? (_globalStockAnnualRate / 1200) : (_globalStockAnnualRate / 100)), _globalStockMonths);
               double profit = futureValue - initialInvestment;
               
               return Column(
@@ -452,6 +470,18 @@ class _InvestmentCalculatorSheetState extends ConsumerState<_InvestmentCalculato
         ],
       ],
     );
+  }
+
+  String _formatDuration(int totalMonths) {
+    if (totalMonths < 12) {
+      return "$totalMonths ${totalMonths == 1 ? 'Month' : 'Months'}";
+    }
+    final years = totalMonths ~/ 12;
+    final months = totalMonths % 12;
+    if (months == 0) {
+      return "$years ${years == 1 ? 'Year' : 'Years'}";
+    }
+    return "$years.$months Years";
   }
 
   Widget _buildResultCard(double futureValue, double profit, bool isDark) {
@@ -544,6 +574,73 @@ class _InvestmentCalculatorSheetState extends ConsumerState<_InvestmentCalculato
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildReturnTypeToggle({
+    required bool isAnnual,
+    required ValueChanged<bool> onChanged,
+    required bool isDark,
+  }) {
+    return Container(
+      height: 36,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1F26) : Colors.grey[200],
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.all(2),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(true),
+              child: Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isAnnual 
+                      ? (isDark ? AppColors.primaryPurple : Colors.white) 
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  "Annual Return",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isAnnual 
+                        ? (isDark ? Colors.white : Colors.black) 
+                        : (isDark ? Colors.white54 : Colors.black54),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(false),
+              child: Container(
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: !isAnnual 
+                      ? (isDark ? AppColors.primaryPurple : Colors.white) 
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  "Monthly Return",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: !isAnnual 
+                        ? (isDark ? Colors.white : Colors.black) 
+                        : (isDark ? Colors.white54 : Colors.black54),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

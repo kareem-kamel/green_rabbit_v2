@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:green_rabbit/core/constants/app_constants.dart';
 import 'package:green_rabbit/core/network/api_client.dart';
+import 'package:green_rabbit/core/network/sse_post_stream.dart';
 import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 
 class AIException implements Exception {
@@ -115,8 +118,11 @@ class AIService {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data['success'] == true) {
-          return AIUsageStats.fromJson(data['data']);
+        if (data is Map<String, dynamic> && data['success'] == true) {
+          final payload = data['data'];
+          if (payload is Map<String, dynamic>) {
+            return AIUsageStats.fromJson(payload);
+          }
         }
       }
       throw Exception('Failed to get usage stats');
@@ -138,9 +144,17 @@ class AIService {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data['success'] == true && data['data'] is List) {
-          final List list = data['data'];
-          return list.map((item) => Conversation.fromJson(item as Map<String, dynamic>)).toList();
+        if (data is Map<String, dynamic> && data['success'] == true) {
+          final payload = data['data'];
+          List<dynamic> list = [];
+          if (payload is List) {
+            list = payload;
+          } else if (payload is Map<String, dynamic>) {
+            list = payload['conversations'] as List? ?? [];
+          }
+          return list
+              .map((item) => Conversation.fromJson(item as Map<String, dynamic>))
+              .toList();
         }
       }
       return [];
@@ -201,9 +215,17 @@ class AIService {
 
       if (response.statusCode == 200) {
         final data = response.data;
-        if (data['success'] == true && data['data'] is List) {
-          final List list = data['data'];
-          return list.map((item) => ChatMessage.fromJson(item as Map<String, dynamic>)).toList();
+        if (data is Map<String, dynamic> && data['success'] == true) {
+          final payload = data['data'];
+          List<dynamic> list = [];
+          if (payload is List) {
+            list = payload;
+          } else if (payload is Map<String, dynamic>) {
+            list = payload['messages'] as List? ?? [];
+          }
+          return list
+              .map((item) => ChatMessage.fromJson(item as Map<String, dynamic>))
+              .toList();
         }
       }
       return [];
@@ -249,9 +271,148 @@ class AIService {
     }
   }
 
-  Stream<String> sendMessageStream(String conversationId, String content, {List<ChatMessage> history = const []}) async* {
+  bool _isStreamDoneEvent(Map decoded) {
+    final type = decoded['type']?.toString().toLowerCase();
+    return type == 'done' ||
+        type == 'end' ||
+        type == 'complete' ||
+        type == 'finished';
+  }
+
+  String? _extractStreamText(dynamic decoded) {
+    if (decoded == null) return null;
+    if (decoded is String) return decoded.isEmpty ? null : decoded;
+    if (decoded is! Map) return null;
+
+    final map = Map<String, dynamic>.from(decoded);
+
+    if (map['success'] == false && map['error'] != null) {
+      final err = map['error'];
+      if (err is Map) {
+        throw AIException(
+          code: err['code']?.toString() ?? 'STREAM_ERROR',
+          message: err['message']?.toString() ?? 'AI stream error',
+        );
+      }
+    }
+
+    if (_isStreamDoneEvent(map)) return null;
+
+    if (map['success'] == true && map['data'] != null) {
+      final nested = _extractStreamText(map['data']);
+      if (nested != null) return nested;
+    }
+
+    final type = map['type']?.toString().toLowerCase();
+    if (type != null &&
+        type != 'done' &&
+        type != 'end' &&
+        type != 'error' &&
+        type != 'message_start' &&
+        type != 'start') {
+      final piece = map['content'] ??
+          map['text'] ??
+          map['delta'] ??
+          map['token'] ??
+          map['value'] ??
+          map['chunk'];
+      if (piece != null && piece is! Map && piece is! List) {
+        return piece.toString();
+      }
+      if (piece is Map) {
+        return _extractStreamText(piece);
+      }
+    }
+
+    final choices = map['choices'];
+    if (choices is List && choices.isNotEmpty && choices.first is Map) {
+      final choice = Map<String, dynamic>.from(choices.first as Map);
+      final delta = choice['delta'];
+      if (delta is Map && delta['content'] != null) {
+        return delta['content'].toString();
+      }
+      if (choice['text'] != null) return choice['text'].toString();
+    }
+
+    if (map['content'] != null && map['content'] is! Map && map['content'] is! List) {
+      return map['content'].toString();
+    }
+    if (map['text'] != null) return map['text'].toString();
+
+    final message = map['message'];
+    if (message is Map) {
+      final nested = _extractStreamText(message);
+      if (nested != null) return nested;
+    }
+
+    final assistant = map['assistant_message'] ?? map['assistantMessage'];
+    if (assistant is Map) {
+      final nested = _extractStreamText(assistant);
+      if (nested != null) return nested;
+    }
+
+    return null;
+  }
+
+  /// Pass through API tokens; [ChatCubit] applies ChatGPT-style typewriter pacing.
+  Stream<String> _streamPieces(String text) async* {
+    if (text.isEmpty) return;
+    yield text;
+  }
+
+  Stream<String> _parseSsePayload(String payload, String eventType) async* {
+    final trimmed = payload.trim();
+    if (trimmed.isEmpty || trimmed == '[DONE]') return;
+
+    if (eventType == 'error') {
+      try {
+        final decoded = json.decode(trimmed);
+        if (decoded is Map) {
+          final code = decoded['code']?.toString() ?? 'STREAM_ERROR';
+          final message =
+              decoded['message']?.toString() ?? 'Stream error occurred';
+          throw AIException(code: code, message: message);
+        }
+      } catch (e) {
+        if (e is AIException) rethrow;
+      }
+      throw AIException(code: 'STREAM_ERROR', message: trimmed);
+    }
+
     try {
-      final url = '$_conversationsEndpoint/$conversationId/messages?stream=true';
+      final decoded = json.decode(trimmed);
+      if (decoded is Map) {
+        if (decoded.containsKey('code') &&
+            decoded.containsKey('message') &&
+            decoded['success'] != true) {
+          throw AIException(
+            code: decoded['code']?.toString() ?? 'STREAM_ERROR',
+            message: decoded['message']?.toString() ?? 'Stream error',
+          );
+        }
+        if (_isStreamDoneEvent(decoded)) return;
+        final text = _extractStreamText(decoded);
+        if (text != null && text.isNotEmpty) {
+          yield* _streamPieces(text);
+        }
+        return;
+      }
+    } catch (e) {
+      if (e is AIException) rethrow;
+    }
+
+    yield* _streamPieces(trimmed);
+  }
+
+  Stream<String> sendMessageStream(
+    String conversationId,
+    String content, {
+    List<ChatMessage> history = const [],
+    CancelToken? cancelToken,
+  }) async* {
+    try {
+      final path =
+          '$_conversationsEndpoint/$conversationId/messages?stream=true';
       final messagesJson = history.map((m) => m.toJson()).toList();
       final data = {
         'content': content,
@@ -259,67 +420,68 @@ class AIService {
         'metadata': {
           'temperature': 0.7,
           'maxTokens': 1000,
-        }
+        },
       };
-      
-      final response = await _apiClient.dio.post(
-        url,
-        data: data,
-        options: Options(
-          headers: _getHeaders(),
-          responseType: ResponseType.stream,
+
+      final sseHeaders = {
+        ..._getHeaders(),
+        'Accept': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+      };
+
+      var eventType = '';
+      var tokenEvents = 0;
+
+      final lineStream = openSsePostLineStream(
+        resolveToken: _apiClient.resolveAuthToken,
+        baseUrl: AppConstants.apiBaseUrl,
+        path: path,
+        body: data,
+        extraHeaders: sseHeaders,
+        cancelToken: cancelToken,
+        dioPostStream: (p, d, token, headers) => _apiClient.postStreamResponse(
+          p,
+          data: d,
+          cancelToken: token,
+          headers: headers,
         ),
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final ResponseBody stream = response.data;
-        bool isErrorEvent = false;
-        await for (final chunk in utf8.decoder.bind(stream.stream)) {
-          final lines = chunk.split('\n');
-          for (final line in lines) {
-            final trimmedLine = line.trim();
-            if (trimmedLine.isEmpty) continue;
-            
-            if (trimmedLine.startsWith('event: error')) {
-              isErrorEvent = true;
-              continue;
-            }
-            
-            try {
-              if (trimmedLine.startsWith('data:')) {
-                final cleanedLine = trimmedLine.replaceFirst('data:', '').trim();
-                if (cleanedLine == '[DONE]') return;
-                
-                final decoded = json.decode(cleanedLine);
-                if (isErrorEvent || (decoded is Map && decoded.containsKey('code') && decoded.containsKey('message'))) {
-                  final code = decoded['code']?.toString() ?? 'STREAM_ERROR';
-                  final message = decoded['message']?.toString() ?? 'Stream error occurred';
-                  throw AIException(code: code, message: message);
-                }
-                
-                final type = decoded['type']?.toString();
-                
-                if (type == 'token') {
-                  final text = decoded['content']?.toString() ?? '';
-                  if (text.isNotEmpty) {
-                    final words = text.split(RegExp(r'(?<=\s)|(?=\s)'));
-                    for (final word in words) {
-                      yield word;
-                      await Future.delayed(const Duration(milliseconds: 1));
-                    }
-                  }
-                } else if (type == 'done') {
-                  return; 
-                }
-              }
-            } catch (e) {
-              if (e is AIException) rethrow;
-              print('Error decoding stream line: $e');
-            }
+      await for (final line in lineStream) {
+        if (line.isEmpty) {
+          eventType = '';
+          continue;
+        }
+
+        if (line.startsWith('event:')) {
+          eventType = line.substring(6).trim();
+          continue;
+        }
+
+        if (line.startsWith('data:')) {
+          final payload = line.replaceFirst(RegExp(r'^data:\s*'), '');
+          await for (final piece in _parseSsePayload(payload, eventType)) {
+            tokenEvents++;
+            yield piece;
+          }
+          continue;
+        }
+
+        if (line.startsWith('{')) {
+          await for (final piece in _parseSsePayload(line, eventType)) {
+            tokenEvents++;
+            yield piece;
           }
         }
       }
+
+      if (kDebugMode) {
+        print('[CHAT_STREAM] parsed token events=$tokenEvents (platform=${kIsWeb ? 'web' : 'io'})');
+      }
     } catch (e) {
+      if (e is DioException && CancelToken.isCancel(e)) {
+        return;
+      }
       if (e is AIException) rethrow;
       if (e is DioException) {
         throw await handleDioError(e);

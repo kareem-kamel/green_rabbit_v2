@@ -84,4 +84,30 @@ class ApiClient {
   }
 
   Dio get dio => _dio;
+
+  Future<String?> resolveAuthToken() async {
+    var token = await _storage.read(key: AppConstants.keyAccessToken);
+    if (token == null || token.isEmpty) {
+      token = AppConstants.apiToken;
+    }
+    return token;
+  }
+
+  Future<Response<dynamic>> postStreamResponse(
+    String path, {
+    required Map<String, dynamic> data,
+    CancelToken? cancelToken,
+    Map<String, String> headers = const {},
+  }) {
+    return _dio.post(
+      path,
+      data: data,
+      cancelToken: cancelToken,
+      options: Options(
+        responseType: ResponseType.stream,
+        receiveTimeout: const Duration(minutes: 5),
+        headers: headers,
+      ),
+    );
+  }
 }

@@ -5,15 +5,31 @@ class AppConstants {
 
   static const String appName = 'Green Rabbit';
   static const String baseUrl = 'https://green-rabbit-backend-api.up.railway.app/api/';
-  
+
   static String get apiBaseUrl => baseUrl;
+
+  /// Joins [apiBaseUrl] and [path] without a double slash (Dio tolerates it; http does not).
+  static Uri apiUri(String path) {
+    final base = apiBaseUrl.endsWith('/')
+        ? apiBaseUrl.substring(0, apiBaseUrl.length - 1)
+        : apiBaseUrl;
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    return Uri.parse('$base$normalizedPath');
+  }
   
   static bool get useMockApi => false;
   static String? get apiToken => dotenv.get('API_TOKEN', fallback: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI4N2Y3MDI4MC0wNWQzLTQwOTAtOTRmZS00MjVjNGIyOGY5Y2UiLCJlbWFpbCI6ImFobWVkNDExMTQ0QGdtYWlsLmNvbSIsInRpZXIiOiJmcmVlIiwibGFuZyI6ImVuIiwidHYiOjEsImlhdCI6MTc3NjIxMjE4MiwiZXhwIjoxNzc2MjE1NzgyfQ.2TYV_VMZ9yZeMfT5KHKHtkhUZRqp4lQFU9hHsK7mUWo');
 
   // Endpoints
   static const String newsEndpoint = '/news';
-  static const String relatedNewsEndpoint = '/news/related';
+  static String newsDetailEndpoint(String id) => '/news/$id';
+  static String newsRelatedEndpoint(String id) => '/news/$id/related';
+  static String newsFavoriteEndpoint(String id) => '/news/$id/favorite';
+  static const String newsFavoritesListEndpoint = '/news/favorites';
+
+  /// News provider keys for ?type= on favorite / favorites / related APIs.
+  /// All three are used; if stock/crypto fail upstream, the app retries other types.
+  static const List<String> newsInstrumentTypes = ['forex', 'crypto', 'stock'];
   static const String aiSummarizeEndpoint = '/ai/summarize';
   static const String aiUsageEndpoint = '/ai/usage';
   static const String aiChatConversationsEndpoint = '/ai/chat/conversations';

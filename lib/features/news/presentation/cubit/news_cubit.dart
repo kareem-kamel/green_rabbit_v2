@@ -8,20 +8,20 @@ class NewsCubit extends Cubit<NewsState> {
   NewsCubit({required this.repository}) : super(NewsInitial());
 
   // THIS NAME MUST MATCH WHAT YOU TYPE IN MAIN.DART
-  Future<void> fetchNewsFeed() async {
+  Future<void> fetchNewsFeed({int limit = 10}) async {
     try {
       emit(NewsLoading());
-      final articles = await repository.fetchNewsFeed();
+      final articles = await repository.fetchNewsFeed(limit: limit);
       emit(NewsLoaded(articles));
     } catch (e) {
       emit(NewsError("Error: ${e.toString()}"));
     }
   }
 
-  Future<void> fetchFavoriteNews() async {
+  Future<void> fetchFavoriteNews({int limit = 10}) async {
     try {
       emit(NewsLoading());
-      final articles = await repository.fetchFavoriteArticles();
+      final articles = await repository.fetchFavoriteArticles(limit: limit);
       emit(NewsLoaded(articles));
     } catch (e) {
       emit(NewsError("Error: ${e.toString()}"));
@@ -39,7 +39,7 @@ class NewsCubit extends Cubit<NewsState> {
       }).toList();
 
       if (isFavoritesTab && !isBookmarked) {
-        updatedArticles.removeWhere((article) => article.id == articleId);
+        updatedArticles.removeWhere((article) => article?.id == articleId);
       }
 
       emit(NewsLoaded(updatedArticles));
