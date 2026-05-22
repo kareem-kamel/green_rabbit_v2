@@ -9,8 +9,8 @@ class ChatbotRepository {
   ChatbotRepository(this._aiService);
 
   // Summarize content
-  Future<AISummary> summarizeContent(String targetId, String type) {
-    return _aiService.summarizeContent(targetId, type);
+  Future<AISummary> summarizeContent(String targetId, String type, {String? url}) {
+    return _aiService.summarizeContent(targetId, type, url: url);
   }
 
   // Get AI usage statistics

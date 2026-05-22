@@ -93,6 +93,41 @@ class ChatCubit extends Cubit<ChatState> {
     ));
   }
 
+  Future<void> summarize(String entityId, String entityType, {String? url}) async {
+    emit(state.copyWith(
+      isGenerating: true,
+      hasMessages: true,
+      messages: [],
+    ));
+
+    try {
+      final summary = await repository.summarizeContent(entityId, entityType, url: url);
+      
+      final summaryMessage = ChatMessage(
+        id: 'summary_${DateTime.now().millisecondsSinceEpoch}',
+        conversationId: '',
+        role: 'assistant',
+        content: summary.summary,
+        createdAt: DateTime.now(),
+      );
+
+      emit(state.copyWith(
+        messages: [summaryMessage],
+        isGenerating: false,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        isGenerating: false,
+        messages: [
+          _errorMessage(
+            '',
+            _formatError(e),
+          ),
+        ],
+      ));
+    }
+  }
+
   Future<void> deleteConversation(String id) async {
     try {
       final success = await repository.deleteConversation(id);

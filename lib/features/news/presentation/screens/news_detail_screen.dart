@@ -296,7 +296,9 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => ChatBotScreen(
-                                  initialPrompt: "Tell me more about this news: ${widget.article.title}",
+                                  summaryId: widget.article.id,
+                                  summaryType: 'news_article',
+                                  summaryUrl: widget.article.url,
                                 ),
                               ),
                             );
@@ -328,7 +330,9 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => ChatBotScreen(
-                            initialPrompt: "Summarize this article: ${widget.article.title}\n\n${widget.article.snippet}",
+                            summaryId: widget.article.id,
+                            summaryType: 'news_article',
+                            summaryUrl: widget.article.url,
                           ),
                         ),
                       );

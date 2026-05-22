@@ -110,7 +110,7 @@ class AIService {
   }
 
   // --- Summarization ---
-  Future<AISummary> summarizeContent(String targetId, String type) async {
+  Future<AISummary> summarizeContent(String targetId, String type, {String? url}) async {
     try {
       final response = await _apiClient.dio.post(
         _summarizeEndpoint,
@@ -118,6 +118,7 @@ class AIService {
         data: {
           'targetId': targetId,
           'type': type,
+          if (url != null && url.isNotEmpty) 'url': url,
         },
       );
 
