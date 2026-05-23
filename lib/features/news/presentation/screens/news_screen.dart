@@ -573,7 +573,9 @@ class _NewsScreenState extends State<NewsScreen> {
             context,
             MaterialPageRoute(
               builder: (_) => ChatBotScreen(
-                initialPrompt: "Tell me more about this news: ${article.title}",
+                summaryId: article.id,
+                summaryType: 'news_article',
+                summaryUrl: article.url,
               ),
             ),
           );
@@ -721,13 +723,6 @@ class _NewsScreenState extends State<NewsScreen> {
                             style: const TextStyle(
                                 color: AppColors.textGrey, fontSize: 11)),
                       ),
-                      const SizedBox(width: 8),
-                      const Icon(Icons.mode_comment_outlined,
-                          color: AppColors.textGrey, size: 14),
-                      const SizedBox(width: 4),
-                      Text("${article.commentCount}",
-                          style: const TextStyle(
-                              color: AppColors.textGrey, fontSize: 11)),
                     ],
                   ),
                 ],

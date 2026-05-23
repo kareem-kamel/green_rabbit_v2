@@ -421,7 +421,10 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const ChatBotScreen(),
+                  builder: (_) => ChatBotScreen(
+                    summaryId: detail.id,
+                    summaryType: 'instrument',
+                  ),
                 ),
               );
             },

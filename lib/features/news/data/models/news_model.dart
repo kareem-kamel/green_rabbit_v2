@@ -69,6 +69,9 @@ class NewsArticle {
     // Handle nested article in detail response
     final articleData = json.containsKey('article') ? json['article'] : json;
     
+    // Debug print for comment count mapping
+    // print('DEBUG: Mapping article ${articleData['id']}. Raw comment_count: ${articleData['comment_count']}, commentCount: ${articleData['commentCount']}');
+    
     String articleType = articleData['type']?.toString() ?? '';
     final relatedSymbols = articleData['related_symbols'] as List?;
     if (relatedSymbols != null) {
@@ -101,7 +104,15 @@ class NewsArticle {
       publishedAt: articleData['publishedAt'] ?? articleData['published_at']?.toString() ?? '',
       updatedAt: articleData['updated_at']?.toString() ?? '',
       timeAgo: articleData['time_ago']?.toString() ?? '',
-      commentCount: articleData['comment_count'] ?? 0,
+      commentCount: int.tryParse(articleData['comment_count']?.toString() ?? '') ?? 
+                    int.tryParse(articleData['commentCount']?.toString() ?? '') ??
+                    int.tryParse(articleData['comments_count']?.toString() ?? '') ??
+                    int.tryParse(articleData['commentsCount']?.toString() ?? '') ??
+                    articleData['comment_count'] ?? 
+                    articleData['commentCount'] ?? 
+                    articleData['comments_count'] ?? 
+                    articleData['commentsCount'] ?? 
+                    0,
       isBookmarked: articleData['is_bookmarked'] ?? articleData['is_favorited'] ?? false,
       url: (articleData['url'] ?? articleData['external_url'] ?? articleData['link'])?.toString() ?? '',
       sentiment: articleData['sentiment']?.toString() ?? '',
@@ -326,17 +337,78 @@ class RelatedSymbol {
 }
 
 class CommentModel {
+  final String id;
   final String name;
+  final String? avatarUrl;
   final String text;
   final String time;
+  final int likesCount;
+  final bool isLiked;
 
-  CommentModel({required this.name, required this.text, required this.time});
+  CommentModel({
+    required this.id,
+    required this.name,
+    this.avatarUrl,
+    required this.text,
+    required this.time,
+    this.likesCount = 0,
+    this.isLiked = false,
+  });
 
   factory CommentModel.fromJson(Map<String, dynamic> json) {
+    // Debug print to see what the backend is sending
+    // print('DEBUG: Comment JSON: $json');
+    
+    String name = 'Anonymous';
+    String? avatar;
+
+    if (json['author'] is Map) {
+      final author = json['author'] as Map;
+      name = (author['fullName'] ?? author['name'] ?? author['username'] ?? 'Anonymous').toString();
+      avatar = (author['avatarUrl'] ?? author['profilePicture'])?.toString();
+    } else if (json['author'] is String && json['author'].toString().isNotEmpty) {
+      // If author is just a string, it might be the name or ID. 
+      // But usually if it's an ID, there's another field for name.
+      name = json['author'].toString();
+    }
+    
+    // Fallbacks if name is still 'Anonymous' or empty
+    if (name == 'Anonymous' || name.isEmpty) {
+      name = (json['fullName'] ?? json['name'] ?? json['authorName'] ?? 'Anonymous').toString();
+    }
+
+    if (avatar == null || avatar.isEmpty) {
+      avatar = (json['avatarUrl'] ?? json['profilePicture'] ?? json['authorAvatar'])?.toString();
+    }
+
     return CommentModel(
-      name: (json['author'] is Map ? json['author']['name'] : json['name'])?.toString() ?? 'Anonymous',
+      id: json['id']?.toString() ?? json['_id']?.toString() ?? '',
+      name: name,
+      avatarUrl: avatar,
       text: (json['content'] ?? json['text'])?.toString() ?? '',
       time: (json['time_ago'] ?? json['time'] ?? json['created_at'])?.toString() ?? 'Recently',
+      likesCount: json['likesCount'] ?? json['likes'] ?? 0,
+      isLiked: json['isLiked'] ?? json['is_liked'] ?? json['hasLiked'] ?? json['userHasLiked'] ?? false,
+    );
+  }
+
+  CommentModel copyWith({
+    String? id,
+    String? name,
+    String? avatarUrl,
+    String? text,
+    String? time,
+    int? likesCount,
+    bool? isLiked,
+  }) {
+    return CommentModel(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      text: text ?? this.text,
+      time: time ?? this.time,
+      likesCount: likesCount ?? this.likesCount,
+      isLiked: isLiked ?? this.isLiked,
     );
   }
 }

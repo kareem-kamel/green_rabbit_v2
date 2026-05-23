@@ -8,6 +8,8 @@ import '../../data/repositories/news_repository.dart';
 import '../cubit/related_news_cubit.dart';
 import '../cubit/news_cubit.dart';
 import '../../../chatbot/presentation/screens/chatbot_screen.dart';
+import '../../../profile/presentation/cubit/profile_cubit.dart';
+import '../../../profile/presentation/cubit/profile_state.dart';
 import '../../../../core/di/injection_container.dart' as di;
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/utils/image_utils.dart';
@@ -34,6 +36,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   bool _isLoadingDetail = false;
   bool _showAllRelated = false;
   bool _showAllAnalysis = false;
+  bool _showAllComments = false;
 
   List<CommentModel> _comments = [];
   bool _isLoadingComments = false;
@@ -101,6 +104,15 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
   void _postComment() async {
     final text = _commentController.text.trim();
     if (text.isNotEmpty) {
+      String userName = "You";
+      String? userAvatar;
+
+      final profileState = context.read<ProfileCubit>().state;
+      if (profileState is ProfileLoaded) {
+        userName = profileState.user.fullName;
+        userAvatar = profileState.user.avatarUrl;
+      }
+
       _commentController.clear();
       FocusScope.of(context).unfocus();
       
@@ -109,9 +121,13 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
         _comments.insert(
           0,
           CommentModel(
-            name: "You",
+            id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+            name: userName,
+            avatarUrl: userAvatar,
             text: text,
             time: "Just now",
+            likesCount: 0,
+            isLiked: false,
           ),
         );
       });
@@ -131,6 +147,37 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
         }
       } else {
         _loadComments();
+      }
+    }
+  }
+
+  void _toggleLikeComment(CommentModel comment) async {
+    final index = _comments.indexWhere((c) => c.id == comment.id);
+    if (index == -1) return;
+
+    final isLiked = comment.isLiked;
+    final newLikesCount = isLiked ? comment.likesCount - 1 : comment.likesCount + 1;
+
+    setState(() {
+      _comments[index] = comment.copyWith(
+        isLiked: !isLiked,
+        likesCount: newLikesCount < 0 ? 0 : newLikesCount,
+      );
+    });
+
+    final success = isLiked
+        ? await di.sl<NewsRepository>().unlikeComment(comment.id)
+        : await di.sl<NewsRepository>().likeComment(comment.id);
+
+    if (!success) {
+      // Revert on failure
+      if (mounted) {
+        setState(() {
+          _comments[index] = comment;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to update like. Please try again.")),
+        );
       }
     }
   }
@@ -384,8 +431,44 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                   ),
                 ),
               )
-            else
-              ..._comments.map((c) => _buildCommentCard(c)),
+            else ...[
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 400),
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  return SizeTransition(
+                    sizeFactor: animation,
+                    axisAlignment: -1.0,
+                    child: FadeTransition(
+                      opacity: animation,
+                      child: child,
+                    ),
+                  );
+                },
+                child: Column(
+                  key: ValueKey("comments_list_${_showAllComments}"),
+                  children: (_showAllComments ? _comments : _comments.take(3))
+                      .map((c) => _buildCommentCard(c))
+                      .toList(),
+                ),
+              ),
+              if (_comments.length > 3)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Center(
+                    child: TextButton(
+                      onPressed: () => setState(() => _showAllComments = !_showAllComments),
+                      child: Text(
+                        _showAllComments ? "See less" : "See more",
+                        style: const TextStyle(
+                          color: Colors.blueAccent,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
             const SizedBox(height: 8),
             _buildSeparator(),
             const SizedBox(height: 8),
@@ -635,39 +718,51 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C2128) : Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? Colors.white10 : Colors.grey[300]!),
-      ),
-      child: Row(
-        children: [
-          const CircleAvatar(
-            radius: 16,
-            backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=me'),
+    return BlocBuilder<ProfileCubit, ProfileState>(
+      builder: (context, state) {
+        String? avatarUrl;
+        if (state is ProfileLoaded) {
+          avatarUrl = state.user.avatarUrl;
+        }
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C2128) : Colors.grey[100],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isDark ? Colors.white10 : Colors.grey[300]!),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: TextField(
-              controller: _commentController,
-              onSubmitted: (_) => _postComment(),
-              style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 14),
-              decoration: InputDecoration(
-                hintText: "Add a comment...",
-                hintStyle: TextStyle(color: isDark ? Colors.grey : Colors.black54),
-                border: InputBorder.none,
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: isDark ? AppColors.cardBg : Colors.grey[200],
+                backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                    ? NetworkImage(avatarUrl)
+                    : const NetworkImage('https://i.pravatar.cc/150?u=me'),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _commentController,
+                  onSubmitted: (_) => _postComment(),
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: "Add a comment...",
+                    hintStyle: TextStyle(color: isDark ? Colors.grey : Colors.black54),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.send_rounded, color: Colors.blueAccent, size: 22),
+                onPressed: _postComment,
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(Icons.send_rounded, color: Colors.blueAccent, size: 22),
-            onPressed: _postComment,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -691,7 +786,13 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
               CircleAvatar(
                 radius: 14,
                 backgroundColor: isDark ? AppColors.cardBg : Colors.grey[200],
-                child: Text(comment.name[0], style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 10)),
+                backgroundImage: comment.avatarUrl != null && comment.avatarUrl!.isNotEmpty
+                    ? NetworkImage(comment.avatarUrl!)
+                    : null,
+                child: comment.avatarUrl == null || comment.avatarUrl!.isEmpty
+                    ? Text(comment.name.isNotEmpty ? comment.name[0] : '?',
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 10))
+                    : null,
               ),
               const SizedBox(width: 10),
               Text(comment.name,
@@ -712,16 +813,29 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              const Icon(Icons.reply_outlined, size: 16, color: Colors.grey),
-              const SizedBox(width: 4),
-              const Text("Reply", style: TextStyle(color: Colors.grey, fontSize: 12)),
-              const SizedBox(width: 20),
-              const Icon(Icons.thumb_up_outlined, size: 16, color: Colors.grey),
-              const SizedBox(width: 4),
-              Text("12",
-                  style: TextStyle(
-                      color: isDark ? Colors.grey : Colors.grey[600],
-                      fontSize: 12)),
+              GestureDetector(
+                onTap: () => _toggleLikeComment(comment),
+                child: Row(
+                  children: [
+                    Icon(
+                      comment.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+                      size: 16,
+                      color: comment.isLiked ? Colors.blueAccent : Colors.grey,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      comment.likesCount.toString(),
+                      style: TextStyle(
+                        color: comment.isLiked
+                            ? Colors.blueAccent
+                            : (isDark ? Colors.grey : Colors.grey[600]),
+                        fontSize: 12,
+                        fontWeight: comment.isLiked ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ],

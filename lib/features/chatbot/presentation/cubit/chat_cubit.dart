@@ -214,11 +214,18 @@ class ChatCubit extends Cubit<ChatState> {
   /// Backend may send deltas (append) or cumulative content (replace).
   String _mergeStreamChunk(String current, String incoming) {
     if (incoming.isEmpty) return current;
-    if (current.isEmpty) return incoming;
-    if (incoming.length >= current.length && incoming.startsWith(current)) {
-      return incoming;
+    
+    // Strip "TL;DR" if it appears at the start of the first chunk
+    String processedIncoming = incoming;
+    if (current.isEmpty) {
+      processedIncoming = incoming.replaceFirst(RegExp(r'^(TL;DR[:\s-]*|Summary[:\s-]*)', caseSensitive: false), '');
     }
-    return current + incoming;
+
+    if (current.isEmpty) return processedIncoming;
+    if (processedIncoming.length >= current.length && processedIncoming.startsWith(current)) {
+      return processedIncoming;
+    }
+    return current + processedIncoming;
   }
 
   void _cancelRevealTimer() {
