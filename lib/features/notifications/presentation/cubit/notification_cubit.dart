@@ -15,12 +15,41 @@ class NotificationCubit extends Cubit<NotificationState> {
       // Sort notifications by date descending
       notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       emit(state.copyWith(isLoading: false, notifications: notifications));
+      await fetchUnreadCount();
     } catch (e) {
       emit(state.copyWith(isLoading: false, error: e.toString()));
     }
   }
 
+  Future<void> fetchUnreadCount() async {
+    try {
+      final count = await repository.fetchUnreadCount();
+      emit(state.copyWith(unreadCount: count));
+    } catch (e) {
+      // Ignore count fetch errors
+    }
+  }
+
+  Future<void> registerFcmToken({
+    required String fcmToken,
+    required String deviceType,
+    required String deviceId,
+  }) async {
+    try {
+      await repository.registerDeviceToken(
+        fcmToken: fcmToken,
+        deviceType: deviceType,
+        deviceId: deviceId,
+      );
+    } catch (e) {
+      // Ignore FCM registration errors
+    }
+  }
+
   Future<void> markAsRead(String id) async {
+    // Determine if the notification was unread
+    final wasUnread = state.notifications.any((n) => n.id == id && !n.isRead);
+
     // Optimistic UI update
     final updatedNotifications = state.notifications.map((n) {
       if (n.id == id) {
@@ -36,7 +65,11 @@ class NotificationCubit extends Cubit<NotificationState> {
       }
       return n;
     }).toList();
-    emit(state.copyWith(notifications: updatedNotifications));
+    
+    emit(state.copyWith(
+      notifications: updatedNotifications,
+      unreadCount: wasUnread ? (state.unreadCount > 0 ? state.unreadCount - 1 : 0) : state.unreadCount,
+    ));
 
     final success = await repository.markAsRead(id);
     if (!success) {
@@ -58,7 +91,11 @@ class NotificationCubit extends Cubit<NotificationState> {
         createdAt: n.createdAt,
       );
     }).toList();
-    emit(state.copyWith(notifications: updatedNotifications));
+    
+    emit(state.copyWith(
+      notifications: updatedNotifications,
+      unreadCount: 0,
+    ));
 
     final success = await repository.markAllAsRead();
     if (!success) {
@@ -67,9 +104,14 @@ class NotificationCubit extends Cubit<NotificationState> {
   }
 
   Future<void> deleteNotification(String id) async {
+    final wasUnread = state.notifications.any((n) => n.id == id && !n.isRead);
+
     // Optimistic UI update
     final updatedNotifications = state.notifications.where((n) => n.id != id).toList();
-    emit(state.copyWith(notifications: updatedNotifications));
+    emit(state.copyWith(
+      notifications: updatedNotifications,
+      unreadCount: wasUnread ? (state.unreadCount > 0 ? state.unreadCount - 1 : 0) : state.unreadCount,
+    ));
 
     final success = await repository.deleteNotification(id);
     if (!success) {

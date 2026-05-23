@@ -16,6 +16,7 @@ import 'package:green_rabbit/core/utils/image_utils.dart';
 import 'package:flutter_bloc/flutter_bloc.dart' as bloc;
 import 'package:shimmer/shimmer.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
+import '../widgets/watchlist_skeleton_loader.dart';
 
 class WatchlistPage extends ConsumerWidget {
   const WatchlistPage({super.key});
@@ -25,7 +26,7 @@ class WatchlistPage extends ConsumerWidget {
     final watchlistState = ref.watch(watchlistProvider);
 
     if (watchlistState.isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const WatchlistSkeletonLoader();
     }
 
     return SafeArea(
