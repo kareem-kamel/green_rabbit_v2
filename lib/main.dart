@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:green_rabbit/core/theme/app_theme.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/auth_state.dart';
@@ -18,6 +19,7 @@ import 'package:green_rabbit/features/notifications/presentation/cubit/notificat
 import 'package:green_rabbit/features/news/presentation/screens/deep_link_article_handler.dart';
 
 import 'package:green_rabbit/features/onboarding/presentation/screens/onboarding_screen.dart';
+import 'core/network/api_client.dart';
 import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
 import 'core/di/injection_container.dart' as di;
 
@@ -26,8 +28,22 @@ final GlobalKey<NavigatorState> globalNavigatorKey =
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   await dotenv.load(fileName: ".env");
   await di.init();
+
+  // Set up 401 Unauthorized handler to automatically logout and redirect to login screen
+  di.sl<ApiClient>().onUnauthorized = () {
+    final context = globalNavigatorKey.currentContext;
+    if (context != null) {
+      try {
+        BlocProvider.of<AuthCubit>(context).logout();
+      } catch (e) {
+        debugPrint("Error performing automatic logout: $e");
+      }
+    }
+  };
+
   runApp(const ProviderScope(child: GreenRabbitApp()));
 }
 

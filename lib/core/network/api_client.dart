@@ -9,6 +9,7 @@ class ApiClient {
   final Dio _dio;
   final FlutterSecureStorage _storage;
   final Logger _logger;
+  VoidCallback? onUnauthorized;
 
   ApiClient({
     required Dio dio,
@@ -70,6 +71,7 @@ class ApiClient {
           _logger.e('API Error Response: ${e.response?.data}');
           if (e.response?.statusCode == 401) {
             _logger.w('Unauthorized: 401 Error');
+            onUnauthorized?.call();
           }
           return handler.next(e);
         },

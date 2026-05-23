@@ -29,12 +29,14 @@ class CalendarEvent {
   final String? ipoValue; // for ipo
   final int? shares; // for ipo
   final MarketInstrument? instrument;
+  final String? country;
 
   // Economic specific fields (from image)
   final String? actual;
   final String? forecast;
   final String? previous;
   final int? impact; // 1, 2, 3 stars
+  final int? importance; // returned by API for all categories
 
   CalendarEvent({
     required this.symbol,
@@ -63,10 +65,12 @@ class CalendarEvent {
     this.revenueEstimate,
     this.revenueActual,
     this.instrument,
+    this.country,
     this.actual,
     this.forecast,
     this.previous,
     this.impact,
+    this.importance,
   });
 
   factory CalendarEvent.fromJson(Map<String, dynamic> json) {
@@ -76,31 +80,33 @@ class CalendarEvent {
       exchange: json['exchange'],
       currency: json['currency'],
       time: json['time'],
-      epsEstimate: (json['epsEstimate'] as num?)?.toDouble(),
-      epsActual: (json['epsActual'] as num?)?.toDouble(),
-      difference: (json['difference'] as num?)?.toDouble(),
-      surprisePercent: (json['surprisePercent'] as num?)?.toDouble(),
-      amount: (json['amount'] as num?)?.toDouble(),
+      epsEstimate: _toDouble(json['epsEstimate']),
+      epsActual: _toDouble(json['epsActual']),
+      difference: _toDouble(json['difference']),
+      surprisePercent: _toDouble(json['surprisePercent']),
+      amount: _toDouble(json['amount']),
       description: json['description'],
-      ratio: (json['ratio'] as num?)?.toDouble(),
-      fromFactor: json['fromFactor'] as num?,
-      toFactor: json['toFactor'] as num?,
-      priceRangeLow: (json['priceRangeLow'] as num?)?.toDouble(),
-      priceRangeHigh: (json['priceRangeHigh'] as num?)?.toDouble(),
-      offerPrice: (json['offerPrice'] as num?)?.toDouble(),
-      shares: json['shares'] as int?,
-      dividendYield: (json['dividendYield'] as num?)?.toDouble(),
+      ratio: _toDouble(json['ratio']),
+      fromFactor: _toNum(json['fromFactor']),
+      toFactor: _toNum(json['toFactor']),
+      priceRangeLow: _toDouble(json['priceRangeLow']),
+      priceRangeHigh: _toDouble(json['priceRangeHigh']),
+      offerPrice: _toDouble(json['offerPrice']),
+      shares: _toInt(json['shares']),
+      dividendYield: _toDouble(json['dividendYield']),
       paymentDate: json['paymentDate']?.toString(),
       dividendType: json['dividendType']?.toString(),
-      lastPrice: (json['lastPrice'] as num?)?.toDouble(),
+      lastPrice: _toDouble(json['lastPrice']),
       ipoValue: json['ipoValue']?.toString(),
-      revenueEstimate: (json['revenueEstimate'] as num?)?.toDouble(),
-      revenueActual: (json['revenueActual'] as num?)?.toDouble(),
+      revenueEstimate: _toDouble(json['revenueEstimate']),
+      revenueActual: _toDouble(json['revenueActual']),
       instrument: json['instrument'] != null ? MarketInstrument.fromJson(json['instrument']) : null,
+      country: json['country']?.toString(),
       actual: json['actual']?.toString(),
       forecast: json['forecast']?.toString(),
       previous: json['previous']?.toString(),
-      impact: json['impact'] as int?,
+      impact: _toInt(json['impact']),
+      importance: _toInt(json['importance']),
     );
   }
 }
@@ -128,4 +134,25 @@ class CalendarDay {
           .toList(),
     );
   }
+}
+
+double? _toDouble(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value);
+  return null;
+}
+
+int? _toInt(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value);
+  return null;
+}
+
+num? _toNum(dynamic value) {
+  if (value == null) return null;
+  if (value is num) return value;
+  if (value is String) return num.tryParse(value);
+  return null;
 }

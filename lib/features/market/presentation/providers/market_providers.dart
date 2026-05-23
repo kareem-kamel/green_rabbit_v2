@@ -21,8 +21,8 @@ final instrumentDetailsProvider = FutureProvider.autoDispose.family<MarketInstru
   return ref.watch(marketRepositoryProvider).getInstrumentDetails(id);
 });
 
-final trendingInstrumentsProvider = FutureProvider.autoDispose<List<MarketInstrument>>((ref) async {
-  return ref.watch(marketRepositoryProvider).getTrendingInstruments();
+final trendingInstrumentsProvider = FutureProvider.autoDispose.family<List<MarketInstrument>, String?>((ref, type) async {
+  return ref.watch(marketRepositoryProvider).getTrendingInstruments(type: type);
 });
 
 final instrumentNewsProvider = FutureProvider.autoDispose.family<List<MarketNewsArticle>, String>((ref, param) async {
