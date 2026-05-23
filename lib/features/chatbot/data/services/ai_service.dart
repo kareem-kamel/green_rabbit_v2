@@ -84,6 +84,7 @@ class AIService {
         try {
           final bytes = await responseData.stream.toList();
           final bodyString = utf8.decode(bytes.expand((x) => x).toList());
+          print('DEBUG: AI API Error Body: $bodyString'); // Added debug print
           final decoded = json.decode(bodyString);
           if (decoded is Map) {
             final err = decoded['error'] ?? (decoded['success'] == false ? decoded : null);
@@ -95,7 +96,9 @@ class AIService {
               );
             }
           }
-        } catch (_) {}
+        } catch (e) {
+          print('DEBUG: Error parsing AI error body: $e');
+        }
       }
     }
     
@@ -171,13 +174,25 @@ class AIService {
 
       String eventType = 'message';
       await for (final line in lineStream) {
+        if (line.isEmpty) {
+          eventType = 'message';
+          continue;
+        }
+
         if (line.startsWith('event:')) {
           eventType = line.substring(6).trim();
           continue;
         }
+
         if (line.startsWith('data:')) {
           final payload = line.substring(5).trim();
           yield* _parseSsePayload(payload, eventType);
+          eventType = 'message';
+          continue;
+        }
+
+        if (line.startsWith('{')) {
+          yield* _parseSsePayload(line, eventType);
           eventType = 'message';
         }
       }
@@ -418,7 +433,15 @@ class AIService {
     if (map['content'] != null && map['content'] is! Map && map['content'] is! List) {
       return map['content'].toString();
     }
-    if (map['text'] != null) return map['text'].toString();
+    if (map['text'] != null && map['text'] is! Map && map['text'] is! List) {
+      return map['text'].toString();
+    }
+    if (map['summary'] != null && map['summary'] is! Map && map['summary'] is! List) {
+      return map['summary'].toString();
+    }
+    if (map['result'] != null && map['result'] is! Map && map['result'] is! List) {
+      return map['result'].toString();
+    }
 
     final message = map['message'];
     if (message is Map) {
