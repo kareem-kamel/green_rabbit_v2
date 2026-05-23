@@ -12,8 +12,8 @@ class CalendarFilterSettings {
     this.countrySelection = 'all',
     List<String>? selectedCountries,
     List<int>? selectedImportance,
-  })  : selectedCountries = selectedCountries ?? [],
-        selectedImportance = selectedImportance ?? [1, 2, 3];
+  }) : selectedCountries = selectedCountries ?? [],
+       selectedImportance = selectedImportance ?? [1, 2, 3];
 
   CalendarFilterSettings copyWith({
     String? countrySelection,
@@ -59,7 +59,11 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
         ),
         title: const Text(
           "Calendar Filter",
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         actions: [
           IconButton(
@@ -79,12 +83,20 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
           children: [
             const Text(
               "Select Counties",
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w400),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+              ),
             ),
             const SizedBox(height: 16),
-            _buildOptionCard("Default", _settings.countrySelection == 'default', () {
-              setState(() => _settings.countrySelection = 'default');
-            }),
+            _buildOptionCard(
+              "Default",
+              _settings.countrySelection == 'default',
+              () {
+                setState(() => _settings.countrySelection = 'default');
+              },
+            ),
             _buildOptionCard("All", _settings.countrySelection == 'all', () {
               setState(() => _settings.countrySelection = 'all');
             }),
@@ -105,14 +117,20 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
                   setState(() => _settings.selectedCountries = result);
                 }
               },
-              subtitle: _settings.countrySelection == 'custom' 
-                ? (_settings.selectedCountries.isEmpty ? "Select countries..." : _settings.selectedCountries.join(', ')) 
-                : null,
+              subtitle: _settings.countrySelection == 'custom'
+                  ? (_settings.selectedCountries.isEmpty
+                        ? "Select countries..."
+                        : _settings.selectedCountries.join(', '))
+                  : null,
             ),
             const SizedBox(height: 32),
             const Text(
               "Set Importance",
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w400),
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+              ),
             ),
             const SizedBox(height: 16),
             _buildImportanceCard("Low", 1),
@@ -128,9 +146,17 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.secondaryBlue,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: const Text("Apply Filter", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  "Apply Filter",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -140,7 +166,12 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
     );
   }
 
-  Widget _buildOptionCard(String title, bool isSelected, VoidCallback onTap, {String? subtitle}) {
+  Widget _buildOptionCard(
+    String title,
+    bool isSelected,
+    VoidCallback onTap, {
+    String? subtitle,
+  }) {
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -157,11 +188,14 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(color: Colors.white, fontSize: 15)),
+                  Text(
+                    title,
+                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                  ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 4),
                     Text(
-                      subtitle, 
+                      subtitle,
                       style: const TextStyle(color: Colors.grey, fontSize: 12),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -207,7 +241,9 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 2),
                   child: Image.asset(
-                    importance > index ? 'assets/rabbit_highlighted.png' : 'assets/rabbit_dark.png',
+                    importance > index
+                        ? 'assets/rabbit_highlighted.png'
+                        : 'assets/rabbit_dark.png',
                     width: 14,
                     height: 14,
                   ),
@@ -216,10 +252,15 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 15)),
+              child: Text(
+                title,
+                style: const TextStyle(color: Colors.white, fontSize: 15),
+              ),
             ),
             Icon(
-              isSelected ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+              isSelected
+                  ? Icons.check_box_rounded
+                  : Icons.check_box_outline_blank_rounded,
               color: Colors.white,
             ),
           ],
