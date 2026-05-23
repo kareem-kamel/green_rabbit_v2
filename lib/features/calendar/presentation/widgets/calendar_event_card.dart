@@ -115,9 +115,9 @@ class CalendarEventCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Left Column (Flag/Currency + Rabbits)
+            // Left Column (Flag/Currency/Rabbits)
             SizedBox(
-              width: 70, // Fixed width for alignment
+              width: 85, // Increased width to ensure rabbits and currency fit perfectly
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -135,30 +135,28 @@ class CalendarEventCard extends StatelessWidget {
                           color: Colors.grey[800],
                         ),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
                       Text(
                         event.currency ?? 'USD',
-                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w400),
+                        style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w400),
                       ),
                     ],
                   ),
-                  // Importance (Rabbits)
-                  if (event.impact != null) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: List.generate(3, (index) {
-                        final isHighlighted = (event.impact ?? 1) > index;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 3),
-                          child: Image.asset(
-                            isHighlighted ? 'assets/rabbit_highlighted.png' : 'assets/rabbit_dark.png',
-                            width: 12,
-                            height: 12,
-                          ),
-                        );
-                      }),
-                    ),
-                  ],
+                  const SizedBox(height: 12),
+                  Row(
+                    children: List.generate(3, (index) {
+                      final activeCount = _getActiveRabbits();
+                      final isHighlighted = activeCount > index;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 2),
+                        child: Image.asset(
+                          isHighlighted ? 'assets/rabbit_highlighted.png' : 'assets/rabbit_dark.png',
+                          width: 16, // slightly larger for visibility
+                          height: 16,
+                        ),
+                      );
+                    }),
+                  ),
                 ],
               ),
             ),
@@ -433,5 +431,48 @@ class CalendarEventCard extends StatelessWidget {
       return "Amount: ${event.amount}";
     }
     return event.description ?? '';
+  }
+
+  int _getActiveRabbits() {
+    // Economic events
+    if (event.impact != null) {
+      return event.impact!;
+    }
+
+    // Earnings
+    if (category == 'earnings' || event.surprisePercent != null) {
+      final surprise = event.surprisePercent ?? 0.0;
+      if (surprise >= 5.0) return 3; // High positive surprise
+      if (surprise >= 0.0) return 2; // Met or slightly beat
+      return 1; // Missed expectations
+    }
+
+    // Dividends
+    if (category == 'dividends' || event.dividendYield != null) {
+      final yieldVal = event.dividendYield ?? 0.0;
+      if (yieldVal >= 4.0) return 3; // High yield
+      if (yieldVal >= 1.5) return 2; // Average yield
+      return 1; // Low yield
+    }
+
+    // IPOs
+    if (category == 'ipo') {
+      final shares = event.shares ?? 0;
+      if (shares >= 20000000) return 3; // Large IPO
+      if (shares >= 5000000) return 2; // Mid IPO
+      return 1; // Small IPO
+    }
+
+    // Splits
+    if (category == 'splits') {
+      if (event.fromFactor != null && event.toFactor != null) {
+        if (event.toFactor! >= 3) return 3; // Major split (e.g. 3-for-1 or more)
+        if (event.toFactor! > 1) return 2; // Standard split
+      }
+      return 1;
+    }
+
+    // Default fallback
+    return 1;
   }
 }

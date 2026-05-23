@@ -23,6 +23,14 @@ class NewsRepository {
       if (response.statusCode == 200) {
         final decodedData = response.data;
         if (decodedData is Map<String, dynamic> && decodedData['success'] == true) {
+          // Debug print to check raw article data for comment counts
+          if (decodedData['data'] != null && decodedData['data']['articles'] is List) {
+            final firstArticle = decodedData['data']['articles'].first;
+            print('DEBUG: News Feed Raw Article Keys: ${firstArticle.keys}');
+            print('DEBUG: News Feed First Article comment_count: ${firstArticle['comment_count']}');
+            print('DEBUG: News Feed First Article commentCount: ${firstArticle['commentCount']}');
+          }
+          
           final newsResponse = NewsResponse.fromJson(decodedData);
           print('DEBUG: fetchNewsFeed successfully loaded ${newsResponse.articles.length} articles');
           return newsResponse.articles;
@@ -302,6 +310,12 @@ class NewsRepository {
         final decodedData = response.data;
         if (decodedData is Map<String, dynamic> && decodedData['success'] == true) {
           final List list = decodedData['data'] is List ? decodedData['data'] : (decodedData['data']?['comments'] ?? []);
+          
+          // Debug first comment to see isLiked field
+          if (list.isNotEmpty) {
+            print('DEBUG: fetchComments - First comment raw data: ${list.first}');
+          }
+          
           return list.map((c) => CommentModel.fromJson(Map<String, dynamic>.from(c))).toList();
         }
       } else if (response.statusCode == 404) {
@@ -339,6 +353,33 @@ class NewsRepository {
         print('DEBUG: Dio Error Status: ${e.response?.statusCode}');
         print('DEBUG: Dio Error Data: ${e.response?.data}');
       }
+      return false;
+    }
+  }
+
+  Future<bool> likeComment(String commentId) async {
+    try {
+      final response = await _apiClient.dio.post('/comments/$commentId/like');
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      if (e is DioException) {
+        final data = e.response?.data;
+        if (data is Map && data['message']?.toString().contains('already_liked') == true) {
+          print('DEBUG: likeComment - Already liked on backend, treating as success');
+          return true;
+        }
+      }
+      print('DEBUG: likeComment error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> unlikeComment(String commentId) async {
+    try {
+      final response = await _apiClient.dio.delete('/comments/$commentId/like');
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      print('DEBUG: unlikeComment error: $e');
       return false;
     }
   }

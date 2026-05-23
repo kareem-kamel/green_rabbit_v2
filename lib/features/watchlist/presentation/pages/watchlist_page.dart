@@ -134,7 +134,7 @@ class WatchlistPage extends ConsumerWidget {
             MaterialPageRoute(
               builder: (context) => ChatBotScreen(
                 summaryId: state.selectedWatchlist!.id,
-                summaryType: 'watch_list',
+                summaryType: 'watchlist',
               ),
             ),
           );
@@ -614,10 +614,6 @@ class WatchlistPage extends ConsumerWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.mode_comment_outlined, color: AppColors.textMuted, size: 14),
-                        const SizedBox(width: 4),
-                        Text('${article.commentCount}', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
                       ],
                     ),
                   ],
@@ -682,12 +678,6 @@ class _NewsSkeletonItem extends StatelessWidget {
                     children: [
                       Container(
                         width: 80,
-                        height: 10,
-                        color: Colors.white,
-                      ),
-                      const Spacer(),
-                      Container(
-                        width: 20,
                         height: 10,
                         color: Colors.white,
                       ),
