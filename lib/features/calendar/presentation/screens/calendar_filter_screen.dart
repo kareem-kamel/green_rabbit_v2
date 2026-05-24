@@ -30,8 +30,9 @@ class CalendarFilterSettings {
 
 class CalendarFilterScreen extends StatefulWidget {
   final CalendarFilterSettings initialSettings;
+  final String category;
 
-  const CalendarFilterScreen({super.key, required this.initialSettings});
+  const CalendarFilterScreen({super.key, required this.initialSettings, required this.category});
 
   @override
   State<CalendarFilterScreen> createState() => _CalendarFilterScreenState();
@@ -123,19 +124,21 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
                         : _settings.selectedCountries.join(', '))
                   : null,
             ),
-            const SizedBox(height: 32),
-            const Text(
-              "Set Importance",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w400,
+            if (widget.category != 'ipo') ...[
+              const SizedBox(height: 32),
+              const Text(
+                "Set Importance",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            _buildImportanceCard("Low", 1),
-            _buildImportanceCard("Medium", 2),
-            _buildImportanceCard("High", 3),
+              const SizedBox(height: 16),
+              _buildImportanceCard("Low", 1),
+              _buildImportanceCard("Medium", 2),
+              _buildImportanceCard("High", 3),
+            ],
             const Spacer(),
             SizedBox(
               width: double.infinity,
