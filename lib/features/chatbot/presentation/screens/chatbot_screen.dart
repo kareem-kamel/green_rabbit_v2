@@ -195,35 +195,54 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       backgroundColor: AppColors.scaffoldBg,
       elevation: 0,
       toolbarHeight: 72,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 40),
-        onPressed: () => Navigator.pop(context),
+      leading: _buildAppBarIcon(
+        assetPath: 'assets/icons/exitchat.png',
+        onTap: () => Navigator.pop(context),
       ),
-      title: const Text(
-        "Chatbot AI",
-        style: TextStyle(
-            color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600),
+      title: const FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          "Financial Advisor",
+          style: TextStyle(
+              color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+        ),
       ),
       actions: [
-        IconButton(
-          icon: Image.asset(
-            'assets/icons/editchat.png',
-            width: 44,
-            height: 44,
-            fit: BoxFit.contain,
-          ),
-          onPressed: () => cubit.startNewChat(),
+        _buildAppBarIcon(
+          assetPath: 'assets/icons/edit.png',
+          onTap: () => cubit.startNewChat(),
         ),
-        IconButton(
-          icon: Image.asset(
-            'assets/icons/allchat.png',
-            width: 44,
-            height: 44,
-            fit: BoxFit.contain,
-          ),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        const SizedBox(width: 10),
+        _buildAppBarIcon(
+          assetPath: 'assets/icons/ic_round-menu.png',
+          size: 28,
+          onTap: () => _scaffoldKey.currentState?.openDrawer(),
         ),
+        const SizedBox(width: 16),
       ],
+    );
+  }
+
+  Widget _buildAppBarIcon({required String assetPath, double size = 22, required VoidCallback onTap}) {
+    return Center(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1C1F26),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Image.asset(
+            assetPath,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+          ),
+        ),
+      ),
     );
   }
 
@@ -257,7 +276,13 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.edit_note, color: Colors.white),
+              leading: Image.asset(
+                'assets/icons/edit.png',
+                width: 20,
+                height: 20,
+                color: Colors.white,
+                filterQuality: FilterQuality.high,
+              ),
               title: const Text("New Chat",
                   style: TextStyle(color: Colors.white, fontSize: 15)),
               onTap: () {
@@ -265,9 +290,22 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 context.read<ChatCubit>().startNewChat();
               },
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text("Your Chats", style: TextStyle(color: Colors.grey, fontSize: 12)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Image.asset(
+                    'assets/icons/ic_round-menu.png',
+                    width: 16,
+                    height: 16,
+                    color: Colors.grey,
+                    filterQuality: FilterQuality.high,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text("Your Chats",
+                      style: TextStyle(color: Colors.grey, fontSize: 12)),
+                ],
+              ),
             ),
             Expanded(
               child: ListView.builder(
@@ -335,7 +373,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           const SizedBox(height: 24),
           _buildRabbitLogo(),
           const SizedBox(height: 32),
-          _buildAIGreetingBubble("Hi, you can ask me anything about markets"),
+          _buildAIGreetingBubble("Hi, I'm your Financial Advisor. You can ask me anything about markets"),
           const SizedBox(height: 16),
           _buildSuggestionBox(cubit),
         ],
@@ -383,8 +421,27 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   }
 
   Widget _buildSuggestionBox(ChatCubit cubit) {
-    final List<String> suggestions = [
-      "Bullish Trends", "Market Analysis", "Top Stocks", "Crypto News", "Strategy",
+    final List<Map<String, String>> suggestions = [
+      {
+        "label": "Show me Top Stocks",
+        "query": "Provide a detailed report on today's top performing stocks and trending market instruments."
+      },
+      {
+        "label": "Latest Crypto News",
+        "query": "Search for the most recent cryptocurrency market news and provide a detailed summary of significant events affecting Bitcoin, Ethereum, and major altcoins today."
+      },
+      {
+        "label": "Bullish Trends",
+        "query": "What are the current bullish trends in the stock and crypto markets that I should be aware of?"
+      },
+      {
+        "label": "Market Analysis",
+        "query": "Provide a comprehensive market analysis for today's trading session."
+      },
+      {
+        "label": "Trading Strategy",
+        "query": "Suggest a high-probability trading strategy for the current market conditions."
+      },
     ];
     return Container(
       width: double.infinity,
@@ -415,7 +472,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             alignment: WrapAlignment.center,
             children: suggestions.map((s) => GestureDetector(
               onTap: () {
-                cubit.sendMessage(s);
+                cubit.sendMessage(s["query"]!);
                 _textController.clear();
               },
               child: Container(
@@ -425,7 +482,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                   borderRadius: BorderRadius.circular(8),
                   color: Colors.white.withOpacity(0.02),
                 ),
-                child: Text(s, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                child: Text(s["label"]!, style: const TextStyle(color: Colors.white, fontSize: 12)),
               ),
             )).toList(),
           ),
@@ -438,26 +495,40 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   //  CHAT HISTORY
   // ─────────────────────────────────────────────
   Widget _buildChatHistory(ChatState state) {
+    // Filter out internal technical messages (e.g. summary triggers) from the UI
+    final visibleMessages = state.messages.where((msg) {
+      if (!msg.isUser) return true;
+      
+      final content = msg.content.trim();
+      // Hide if it's just a URL
+      if (Uri.tryParse(content)?.hasAbsolutePath ?? false) return false;
+      // Hide if it's a UUID/ID or technical trigger
+      if (RegExp(r'^[a-fA-F0-9-]{32,50}$').hasMatch(content)) return false;
+      if (content.contains('targetId:') || content.contains('entityType:') || 
+          content.contains('summaryId:') || content.contains('summaryType:')) return false;
+      
+      return true;
+    }).toList();
+
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      itemCount: state.messages.length + (state.isGenerating ? 2 : 1),
+      itemCount: visibleMessages.length + (state.isGenerating ? 2 : 1),
       itemBuilder: (context, index) {
-        if (index == state.messages.length + (state.isGenerating ? 1 : 0)) {
+        if (index == visibleMessages.length + (state.isGenerating ? 1 : 0)) {
           return _buildCreditsRow(state);
         }
-        if (state.isGenerating && index == state.messages.length) {
+        if (state.isGenerating && index == visibleMessages.length) {
           // Only show a separate typing bubble if the last message is from the user
           // (meaning the assistant placeholder hasn't been added or is still being prepared)
-          final lastMsg = state.messages.last;
-          if (lastMsg.isUser) {
+          if (visibleMessages.isEmpty || visibleMessages.last.isUser) {
             return _buildTypingIndicatorBubble();
           }
           return const SizedBox.shrink();
         }
         
-        final msg = state.messages[index];
-        return _buildMessageBubble(context, msg, state.isGenerating && index == state.messages.length - 1);
+        final msg = visibleMessages[index];
+        return _buildMessageBubble(context, msg, state.isGenerating && index == visibleMessages.length - 1);
       },
     );
   }
@@ -703,7 +774,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                         controller: _textController,
                         style: const TextStyle(color: Colors.white, fontSize: 14),
                         decoration: const InputDecoration(
-                          hintText: "Ask AI",
+                          hintText: "Ask Financial Advisor",
                           hintStyle: TextStyle(color: Colors.grey),
                           border: InputBorder.none,
                           isDense: true,

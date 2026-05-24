@@ -172,7 +172,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             title: 'Free Trial',
             features: const [
               'Limited AI access',
-              'AI Chatbot (5 Free Credits / day)',
+              'Financial Advisor (5 Free Credits / day)',
               'AI News Summaries',
               'Ads included',
             ],

@@ -15,7 +15,7 @@ class _AIServiceCarouselState extends State<AIServiceCarousel> {
 
   final List<Map<String, dynamic>> _items = [
     {
-      'title': 'AI Trading Assistant',
+      'title': 'Ask AI Assistant',
       'desc': 'Understand prices, indicators, and news with AI-powered explanations',
       'image': 'assets/component_1.png',
     },

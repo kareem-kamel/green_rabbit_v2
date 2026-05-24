@@ -21,11 +21,29 @@ class CreateAlertSheet extends StatefulWidget {
 
 class _CreateAlertSheetState extends State<CreateAlertSheet> {
   late TextEditingController _priceController;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
     _priceController = TextEditingController();
+  }
+
+  void _showError(String message) {
+    // Dismiss keyboard so user can see the error clearly at the top
+    FocusScope.of(context).unfocus();
+    
+    setState(() {
+      _errorMessage = message;
+    });
+    // Auto-hide error after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _errorMessage = null;
+        });
+      }
+    });
   }
 
   @override
@@ -60,6 +78,29 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
               Center(
                 child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
               ),
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.error_outline, color: Colors.redAccent, size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          _errorMessage!,
+                          style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               const Center(child: Text("Create Alert", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
               const SizedBox(height: 24),
@@ -206,8 +247,23 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
       ),
       child: ElevatedButton(
         onPressed: () {
-          double? targetPrice = double.tryParse(_priceController.text);
-          if (targetPrice == null) return;
+          final priceText = _priceController.text.trim();
+          if (priceText.isEmpty) {
+            _showError("Please enter a value");
+            return;
+          }
+
+          double? targetPrice = double.tryParse(priceText);
+          if (targetPrice == null) {
+            _showError("Invalid value format");
+            return;
+          }
+
+          // Validation: Alert price cannot be the same as current market price
+          if (state.selectedTab == "Price" && targetPrice == widget.lastPrice) {
+            _showError("Alert price cannot be the same as the current market price (${widget.lastPrice})");
+            return;
+          }
           
           String type = "price_above";
           if (state.selectedTab == "Price") {

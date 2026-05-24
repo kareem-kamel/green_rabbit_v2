@@ -11,13 +11,24 @@ class NewsRepository {
   String get _endpoint => AppConstants.newsEndpoint;
 
   // THIS NAME MUST MATCH THE CUBIT CALL
-  Future<List<NewsArticle>> fetchNewsFeed({int page = 1, int limit = 20}) async {
+  Future<List<NewsArticle>> fetchNewsFeed({int page = 1, int limit = 20, String? category}) async {
     try {
-      print('DEBUG: Calling fetchNewsFeed endpoint: $_endpoint');
-      final response = await _apiClient.dio.get(_endpoint, queryParameters: {
+      final queryParameters = <String, dynamic>{
         'page': page,
         'limit': limit,
-      });
+      };
+      
+      if (category != null && category.toLowerCase() != 'featured') {
+        if (category.toLowerCase() == 'popular') {
+          queryParameters['sort'] = 'popular';
+          queryParameters['type'] = 'popular';
+        } else {
+          queryParameters['type'] = category.toLowerCase();
+        }
+      }
+
+      print('DEBUG: Calling fetchNewsFeed endpoint: $_endpoint query=$queryParameters');
+      final response = await _apiClient.dio.get(_endpoint, queryParameters: queryParameters);
       print('DEBUG: fetchNewsFeed response status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
