@@ -105,7 +105,7 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
               const Center(child: Text("Create Alert", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
               const SizedBox(height: 24),
               Text(widget.assetName, style: const TextStyle(color: Colors.white, fontSize: 16)),
-              Text(state.selectedTab == "Price" ? "Last Price ${widget.lastPrice}" : "Last Change", 
+              Text(state.selectedTab == "Price" ? "Last Price ${widget.lastPrice.toStringAsFixed(2)}" : "Last Change", 
                    style: const TextStyle(color: Colors.grey, fontSize: 13)),
               const SizedBox(height: 20),
               _buildTabPicker(cubit, state.selectedTab),
@@ -215,7 +215,7 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
         filled: true,
         fillColor: Colors.white.withOpacity(0.05),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-        hintText: selectedTab == "Charge %" ? "13" : lastPrice.toString(),
+        hintText: selectedTab == "Charge %" ? "13" : lastPrice.toStringAsFixed(2),
         hintStyle: const TextStyle(color: Colors.white38),
       ),
     );
@@ -261,7 +261,7 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
 
           // Validation: Alert price cannot be the same as current market price
           if (state.selectedTab == "Price" && targetPrice == widget.lastPrice) {
-            _showError("Alert price cannot be the same as the current market price (${widget.lastPrice})");
+            _showError("Alert price cannot be the same as the current market price (${widget.lastPrice.toStringAsFixed(2)})");
             return;
           }
           
