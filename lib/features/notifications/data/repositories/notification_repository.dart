@@ -54,4 +54,36 @@ class NotificationRepository {
       return false;
     }
   }
+
+  Future<bool> registerDeviceToken({
+    required String fcmToken,
+    required String deviceType,
+    required String deviceId,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        AppConstants.userFcmToken,
+        data: {
+          'fcmToken': fcmToken,
+          'deviceType': deviceType,
+          'deviceId': deviceId,
+        },
+      );
+      return response.statusCode == 200 && response.data['success'] == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<int> fetchUnreadCount() async {
+    try {
+      final response = await _apiClient.dio.get('${AppConstants.notificationsEndpoint}/unread-count');
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data['data']['count'] ?? 0;
+      }
+      return 0;
+    } catch (e) {
+      return 0;
+    }
+  }
 }

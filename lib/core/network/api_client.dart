@@ -14,6 +14,7 @@ class ApiClient {
   final Dio _dio;
   final FlutterSecureStorage _storage;
   final Logger _logger;
+  VoidCallback? onUnauthorized;
 
   ApiClient({
     required Dio dio,
