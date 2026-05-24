@@ -11,6 +11,12 @@ class AuthLoading extends AuthState {}
 
 class AuthFirstTime extends AuthState {}
 
+// Emitted when a user has registered but needs to verify their email
+class AuthNeedsVerification extends AuthState {}
+
+// Emitted when a user has logged in successfully, but needs to complete the Preferences flow
+class AuthNeedsPreferences extends AuthState {}
+
 class AuthSuccess extends AuthState {
   // final UserModel user;
   // AuthSuccess({required this.user});

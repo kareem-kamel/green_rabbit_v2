@@ -22,6 +22,12 @@ import 'package:green_rabbit/features/market/presentation/pages/search_page.dart
 import 'package:green_rabbit/core/utils/image_utils.dart';
 import 'package:green_rabbit/features/chatbot/presentation/screens/chatbot_screen.dart';
 import 'package:green_rabbit/features/profile/presentation/screens/subscription_screen.dart';
+import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:green_rabbit/features/profile/presentation/cubit/profile_cubit.dart';
+import 'package:green_rabbit/features/profile/presentation/cubit/profile_state.dart';
+import 'package:green_rabbit/features/news/data/models/news_model.dart';
+import 'package:shimmer/shimmer.dart';
 
 class InstrumentDetailPage extends ConsumerStatefulWidget {
   final String instrumentId;
@@ -43,10 +49,120 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   String _selectedTechnicalInterval = '15m';
   DateTimeRange? _selectedDateRange;
 
+  List<CommentModel> _comments = [];
+  bool _isLoadingComments = false;
+  bool _showAllComments = false;
+
+  Future<void> _loadComments() async {
+    setState(() {
+      _isLoadingComments = true;
+    });
+    try {
+      final comments = await ref.read(marketRepositoryProvider).fetchComments(
+        widget.instrumentId,
+      );
+      if (mounted) {
+        setState(() {
+          _comments = comments;
+          _isLoadingComments = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingComments = false;
+        });
+      }
+    }
+  }
+
+  void _postComment() async {
+    final text = _commentController.text.trim();
+    if (text.isNotEmpty) {
+      String userName = "You";
+      String? userAvatar;
+
+      final profileState = context.read<ProfileCubit>().state;
+      if (profileState is ProfileLoaded) {
+        userName = profileState.user.fullName;
+        userAvatar = profileState.user.avatarUrl;
+      }
+
+      _commentController.clear();
+      FocusScope.of(context).unfocus();
+      
+      // Optimistic UI update
+      setState(() {
+        _comments.insert(
+          0,
+          CommentModel(
+            id: 'temp_${DateTime.now().millisecondsSinceEpoch}',
+            name: userName,
+            avatarUrl: userAvatar,
+            text: text,
+            time: "Just now",
+            likesCount: 0,
+            isLiked: false,
+          ),
+        );
+      });
+
+      final success = await ref.read(marketRepositoryProvider).postComment(
+        widget.instrumentId,
+        text,
+      );
+
+      if (!success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Failed to post comment. Please try again.")),
+          );
+          _loadComments();
+        }
+      } else {
+        _loadComments();
+      }
+    }
+  }
+
+  void _toggleLikeComment(CommentModel comment) async {
+    final index = _comments.indexWhere((c) => c.id == comment.id);
+    if (index == -1) return;
+
+    final isLiked = comment.isLiked;
+    final newLikesCount = isLiked ? comment.likesCount - 1 : comment.likesCount + 1;
+
+    setState(() {
+      _comments[index] = comment.copyWith(
+        isLiked: !isLiked,
+        likesCount: newLikesCount < 0 ? 0 : newLikesCount,
+      );
+    });
+
+    final success = isLiked
+        ? await ref.read(marketRepositoryProvider).unlikeComment(comment.id)
+        : await ref.read(marketRepositoryProvider).likeComment(comment.id);
+
+    if (!success) {
+      // Revert on failure
+      if (mounted) {
+        setState(() {
+          _comments[index] = comment;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to update like. Please try again.")),
+        );
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 8, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadComments();
+    });
   }
 
   @override
@@ -57,7 +173,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
 
   @override
   Widget build(BuildContext context) {
-    final detailAsync = ref.watch(instrumentDetailsProvider(widget.instrumentId));
+    final detailAsync = ref.watch(liveInstrumentDetailProvider(widget.instrumentId));
 
     return OrientationBuilder(
       builder: (context, orientation) {
@@ -79,7 +195,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   PreferredSizeWidget _buildAppBar() {
-    final detailAsync = ref.watch(instrumentDetailsProvider(widget.instrumentId));
+    final detailAsync = ref.watch(liveInstrumentDetailProvider(widget.instrumentId));
     final isFavorite = ref.watch(isInstrumentInWatchlistProvider(widget.instrumentId));
 
     return AppBar(
@@ -878,7 +994,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     return ListView(
       padding: const EdgeInsets.symmetric(vertical: 20),
       children: [
-        _buildCommentsSection(detail),
+        _buildCommentsSection(detail, isTab: true),
       ],
     );
   }
@@ -1435,7 +1551,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     );
   }
 
-  Widget _buildCommentsSection(MarketInstrumentDetail detail) {
+  Widget _buildCommentsSection(MarketInstrumentDetail detail, {bool isTab = false}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1445,87 +1561,238 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Comments', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
-              InkWell(
-                onTap: () => _tabController.animateTo(6), // Comments tab (index 6)
-                child: Text('View all', style: TextStyle(color: AppColors.primary, fontSize: 14)),
-              ),
+              if (!isTab)
+                InkWell(
+                  onTap: () => _tabController.animateTo(6), // Comments tab (index 6)
+                  child: Text('View all', style: TextStyle(color: AppColors.primary, fontSize: 14)),
+                ),
             ],
           ),
         ),
-        Container(
-          margin: const EdgeInsets.fromLTRB(AppTheme.paddingM, 0, AppTheme.paddingM, 16),
-          padding: const EdgeInsets.all(12),
+        _buildCommentInput(),
+        const SizedBox(height: 8),
+        if (_isLoadingComments && _comments.isEmpty)
+          Column(
+            children: List.generate(2, (index) => _buildSkeletonComment()),
+          )
+        else if (_comments.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: Text(
+                "No comments yet. Be the first to comment!",
+                style: TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+            ),
+          )
+        else ...[
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 400),
+            transitionBuilder: (Widget child, Animation<double> animation) {
+              return SizeTransition(
+                sizeFactor: animation,
+                axisAlignment: -1.0,
+                child: FadeTransition(
+                  opacity: animation,
+                  child: child,
+                ),
+              );
+            },
+            child: Column(
+              key: ValueKey("comments_list_${isTab || _showAllComments}"),
+              children: (isTab || _showAllComments ? _comments : _comments.take(3))
+                  .map((c) => _buildCommentCard(c))
+                  .toList(),
+            ),
+          ),
+          if (!isTab && _comments.length > 3)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM, vertical: 8),
+              child: Center(
+                child: TextButton(
+                  onPressed: () => setState(() => _showAllComments = !_showAllComments),
+                  child: Text(
+                    _showAllComments ? "See less" : "See more",
+                    style: const TextStyle(
+                      color: Colors.blueAccent,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCommentInput() {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return BlocBuilder<ProfileCubit, ProfileState>(
+      builder: (context, state) {
+        String? avatarUrl;
+        if (state is ProfileLoaded) {
+          avatarUrl = state.user.avatarUrl;
+        }
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
+            color: isDark ? const Color(0xFF1C2128) : Colors.grey[100],
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isDark ? Colors.white10 : Colors.grey[300]!),
           ),
           child: Row(
             children: [
-              const CircleAvatar(
-                radius: 20,
-                backgroundImage: NetworkImage('https://i.pravatar.cc/150?u=me'),
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: isDark ? AppColors.cardBg : Colors.grey[200],
+                backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                    ? NetworkImage(avatarUrl)
+                    : const NetworkImage('https://i.pravatar.cc/150?u=me'),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Container(
-                  height: 44,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.border.withOpacity(0.3)),
+                child: TextField(
+                  controller: _commentController,
+                  onSubmitted: (_) => _postComment(),
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: "Add a comment...",
+                    hintStyle: TextStyle(color: isDark ? Colors.grey : Colors.black54),
+                    border: InputBorder.none,
                   ),
-                  alignment: Alignment.centerLeft,
-                  child: const Text('Write a comment here...!', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.send_rounded, color: Colors.blueAccent, size: 22),
+                onPressed: _postComment,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCommentCard(CommentModel comment) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM, vertical: 6),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C2128) : Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: isDark ? null : Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: isDark ? AppColors.cardBg : Colors.grey[200],
+                backgroundImage: comment.avatarUrl != null && comment.avatarUrl!.isNotEmpty
+                    ? NetworkImage(comment.avatarUrl!)
+                    : null,
+                child: comment.avatarUrl == null || comment.avatarUrl!.isEmpty
+                    ? Text(comment.name.isNotEmpty ? comment.name[0] : '?',
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 10))
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Text(comment.name,
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: isDark ? Colors.white : Colors.black)),
+              const Spacer(),
+              Text(comment.time, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(comment.text,
+              style: TextStyle(
+                  fontSize: 14,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                  height: 1.4)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () => _toggleLikeComment(comment),
+                child: Row(
+                  children: [
+                    Icon(
+                      comment.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+                      size: 16,
+                      color: comment.isLiked ? Colors.blueAccent : Colors.grey,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      comment.likesCount.toString(),
+                      style: TextStyle(
+                        color: comment.isLiked
+                            ? Colors.blueAccent
+                            : (isDark ? Colors.grey : Colors.grey[600]),
+                        fontSize: 12,
+                        fontWeight: comment.isLiked ? FontWeight.bold : FontWeight.normal,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSkeletonComment() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.grey[800]! : Colors.grey[300]!;
+    final highlightColor = isDark ? Colors.grey[700]! : Colors.grey[100]!;
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM, vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(width: 80, height: 12, color: Colors.white),
+                  const SizedBox(height: 8),
+                  Container(width: double.infinity, height: 14, color: Colors.white),
+                  const SizedBox(height: 4),
+                  Container(width: 150, height: 14, color: Colors.white),
+                ],
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-        ... (detail.comments ?? []).map((comment) => Container(
-          margin: const EdgeInsets.fromLTRB(AppTheme.paddingM, 0, AppTheme.paddingM, 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  CircleAvatar(radius: 20, backgroundImage: NetworkImage(comment.avatar ?? '')),
-                  const SizedBox(width: 12),
-                  Text(comment.user, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 8),
-                  Text(comment.time, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                  const Spacer(),
-                  const Icon(Icons.more_horiz, color: AppColors.textSecondary, size: 20),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                comment.text,
-                style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 14, height: 1.4),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  const Icon(Icons.mode_comment_outlined, color: AppColors.textSecondary, size: 18),
-                  const SizedBox(width: 8),
-                  const Text('Replies (2)', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-                  const Spacer(),
-                  const Icon(Icons.thumb_up_alt_outlined, color: AppColors.textSecondary, size: 20),
-                  const SizedBox(width: 20),
-                  const Icon(Icons.thumb_down_alt_outlined, color: AppColors.textSecondary, size: 20),
-                ],
-              ),
-            ],
-          ),
-        )),
-      ],
+      ),
     );
   }
 
@@ -2387,12 +2654,19 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'View all',
-                style: TextStyle(
-                  color: Color(0xFF4072FF),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
+              GestureDetector(
+                onTap: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ref.read(navigationIndexProvider.notifier).state = 1;
+                  Navigator.popUntil(context, (route) => route.isFirst);
+                },
+                child: const Text(
+                  'View all',
+                  style: TextStyle(
+                    color: Color(0xFF4072FF),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ),
             ],
@@ -2493,6 +2767,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
             TextButton(
               onPressed: () {
                 ref.invalidate(instrumentDetailsProvider(widget.instrumentId));
+                ref.invalidate(liveInstrumentDetailProvider(widget.instrumentId));
               },
               child: const Text(
                 'Retry Connection',

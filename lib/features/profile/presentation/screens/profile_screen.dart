@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
-import '../../../onboarding/presentation/screens/onboarding_screen.dart';
+import '../../../auth/presentation/screens/login_screen.dart';
 import '../cubit/profile_state.dart';
 import '../widgets/profile_list_item.dart';
 import '../../../subscriptions/presentation/cubit/subscription_cubit.dart';
@@ -655,7 +655,7 @@ class ProfileScreen extends StatelessWidget {
                   onPressed: () {
                     context.read<AuthCubit>().logout();
                     Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const OnboardingScreen()),
+                      MaterialPageRoute(builder: (_) => const LoginScreen(isFromSignup: false)),
                       (route) => false,
                     );
                   },

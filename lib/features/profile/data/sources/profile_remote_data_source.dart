@@ -33,14 +33,14 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
   @override
   Future<UserProfileModel> getProfile() async {
-    final response = await apiClient.dio.get(AppConstants.userMe);
+    final response = await apiClient.dio.get(AppConstants.deleteUser);
     return UserProfileModel.fromJson(response.data['data']['user']);
   }
 
   @override
   Future<UserProfileModel> updateProfile({String? fullName, String? country, String? phone}) async {
     final response = await apiClient.dio.put(
-      AppConstants.userMe,
+      AppConstants.deleteUser,
       data: {
         if (fullName != null) 'fullName': fullName,
         if (country != null) 'country': country,
@@ -95,7 +95,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   @override
   Future<void> deleteAccount({required String password, required String reason, String? feedback}) async {
     await apiClient.dio.delete(
-      AppConstants.userMe,
+      AppConstants.deleteUser,
       data: {
         'password': password,
         'reason': reason,

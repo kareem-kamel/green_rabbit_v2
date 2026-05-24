@@ -4,6 +4,11 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logger/logger.dart';
 import '../constants/app_constants.dart';
 import 'mock_interceptor.dart'; // TODO: DELETE THIS AND THE INTERCEPTOR BELOW TO REVERT TO LIVE API
+import 'package:flutter/material.dart';
+import '../../main.dart';
+import '../di/injection_container.dart' as di;
+import '../../features/auth/presentation/cubit/auth_cubit.dart';
+import '../../features/auth/presentation/screens/login_screen.dart';
 
 class ApiClient {
   final Dio _dio;
@@ -69,10 +74,29 @@ class ApiClient {
           _logger.e(
               'API Error [${e.response?.statusCode}] for ${e.requestOptions.uri}: ${e.message}');
           _logger.e('API Error Response: ${e.response?.data}');
-          if (e.response?.statusCode == 401) {
-            _logger.w('Unauthorized: 401 Error');
-            onUnauthorized?.call();
+          
+          final isUnauthorized = e.response?.statusCode == 401;
+          bool isUserNotFound = false;
+          if (e.response?.data != null && e.response?.data is Map) {
+            final data = e.response?.data as Map;
+            if (data['error'] != null && data['error'] is Map) {
+              isUserNotFound = data['error']['code'] == 'USER_NOT_FOUND';
+            }
           }
+          
+          if (isUnauthorized || isUserNotFound) {
+            _logger.w('Unauthorized or User Not Found: Auto-logging out');
+            try {
+               di.sl<AuthCubit>().clearLocalSession();
+               globalNavigatorKey.currentState?.pushAndRemoveUntil(
+                 MaterialPageRoute(builder: (_) => const LoginScreen(isFromSignup: false)),
+                 (route) => false,
+               );
+            } catch (err) {
+               _logger.e('Error during auto-logout: $err');
+            }
+          }
+          
           return handler.next(e);
         },
       ),

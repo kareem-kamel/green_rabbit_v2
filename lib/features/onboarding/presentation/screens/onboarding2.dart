@@ -5,12 +5,10 @@ import 'package:green_rabbit/features/onboarding/presentation/widgets/onboarding
 
 class OnboardingPageTwo extends StatelessWidget {
   final VoidCallback onGetStarted;
-  final VoidCallback onJoinAsGuest;
 
   const OnboardingPageTwo({
     super.key,
     required this.onGetStarted,
-    required this.onJoinAsGuest,
   });
 
   @override
@@ -91,16 +89,6 @@ class OnboardingPageTwo extends StatelessWidget {
 
                 // Get Started Button
                 AppButton(label: 'Get Started', onPressed: onGetStarted),
-                /*
-                const SizedBox(height: 14),
-
-                // Join As A Guest Button
-                AppButton(
-                  label: 'Join As A Guest',
-                  onPressed: onJoinAsGuest,
-                  style: AppButtonStyle.outline,
-                ),
-                */
               ],
             ),
           ),

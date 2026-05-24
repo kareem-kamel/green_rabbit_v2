@@ -4,7 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:green_rabbit/core/widgets/primary_button.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/verify_otp_screen.dart';
-import 'package:green_rabbit/features/auth/presentation/widget/social_auth.dart';
+import 'package:green_rabbit/features/auth/presentation/widget/social_login_section.dart';
 import '../widget/auth_text_field.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
@@ -96,7 +96,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       backgroundColor: AppColors.scaffoldBg,
       body: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
-          if (state is AuthSuccess) {
+          if (state is AuthNeedsVerification) {
             // 1. Optional: Show a quick success message
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -265,52 +265,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 40),
 
-                      // ── 6. Login With Divider ──────────────────────────
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: Divider(color: Colors.white24, thickness: 1),
-                          ),
-                          const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              'Login With',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                          const Expanded(
-                            child: Divider(color: Colors.white24, thickness: 1),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // ── 7. Social Buttons ──────────────────────────────
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SocialButton(
-                            svgPath:
-                                'assets/icons/google_icon.svg', // Use the new SVG property
-
-                            onTap: () {
-                              // TODO: Google sign in
-                            },
-                            size: 24,
-                          ),
-                          const SizedBox(width: 24),
-                          SocialButton(
-                            icon: FontAwesomeIcons.apple,
-                            onTap: () {
-                              // TODO: Apple sign in
-                            },
-                            size: 28,
-                          ),
-                        ],
-                      ),
+                      // ── 6. Social Login Section ──────────────────────────
+                      const SocialLoginSection(text: 'Sign up With'),
                       const SizedBox(height: 40),
 
                       // ── 8. Have an account? ────────────────────────────

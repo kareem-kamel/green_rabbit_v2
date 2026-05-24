@@ -81,6 +81,8 @@ dev_dependencies:
   json_serializable: ^6.9.3
   retrofit_generator: ^9.1.7
   rename: ^3.1.0
+  google_sign_in: ^7.2.0
+
 
 
   # The "flutter_lints" package below contains a set of recommended lints to

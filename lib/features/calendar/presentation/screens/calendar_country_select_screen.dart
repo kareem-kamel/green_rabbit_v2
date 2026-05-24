@@ -37,7 +37,7 @@ class _CalendarCountrySelectScreenState extends State<CalendarCountrySelectScree
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context, _selectedCountries),
+          onPressed: () => Navigator.pop(context),
         ),
         title: TextField(
           style: const TextStyle(color: Colors.white),
@@ -53,34 +53,63 @@ class _CalendarCountrySelectScreenState extends State<CalendarCountrySelectScree
           onChanged: (val) => setState(() => _searchQuery = val),
         ),
       ),
-      body: ListView.separated(
-        padding: const EdgeInsets.all(20),
-        itemCount: filteredCountries.length,
-        separatorBuilder: (context, index) => Divider(color: Colors.grey[800], height: 1),
-        itemBuilder: (context, index) {
-          final country = filteredCountries[index];
-          final isSelected = _selectedCountries.contains(country);
-          return ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(country, style: const TextStyle(color: Colors.white, fontSize: 16)),
-            trailing: GestureDetector(
-              onTap: () {
-                setState(() {
-                  if (isSelected) {
-                    _selectedCountries.remove(country);
-                  } else {
-                    _selectedCountries.add(country);
-                  }
-                });
+      body: Column(
+        children: [
+          Expanded(
+            child: ListView.separated(
+              padding: const EdgeInsets.all(20),
+              itemCount: filteredCountries.length,
+              separatorBuilder: (context, index) => Divider(color: Colors.grey[800], height: 1),
+              itemBuilder: (context, index) {
+                final country = filteredCountries[index];
+                final isSelected = _selectedCountries.contains(country);
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(country, style: const TextStyle(color: Colors.white, fontSize: 16)),
+                  onTap: () {
+                    setState(() {
+                      if (isSelected) {
+                        _selectedCountries.remove(country);
+                      } else {
+                        _selectedCountries.add(country);
+                      }
+                    });
+                  },
+                  trailing: Icon(
+                    isSelected ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                );
               },
-              child: Icon(
-                isSelected ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
-                color: Colors.white,
-                size: 28,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context, _selectedCountries);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.secondaryBlue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text(
+                  "Done",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }

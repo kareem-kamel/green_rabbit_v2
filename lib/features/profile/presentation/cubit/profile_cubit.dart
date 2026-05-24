@@ -82,7 +82,7 @@ class ProfileCubit extends Cubit<ProfileState> {
         reason: reason,
         feedback: feedback,
       );
-      // Since the user is logged out after deletion, the app should handle navigation to Login
+      emit(ProfileDeleted());
     } catch (e) {
       emit(ProfileError(e.toString()));
     }

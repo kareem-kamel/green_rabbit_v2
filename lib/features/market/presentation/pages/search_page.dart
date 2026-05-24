@@ -7,7 +7,8 @@ import '../../../../shared/widgets/app_search_field.dart';
 import '../providers/market_providers.dart';
 import '../../data/models/market_instrument.dart';
 import 'instrument_detail_page.dart';
-import '../../../watchlist/presentation/providers/watchlist_providers.dart';
+import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
+import 'package:green_rabbit/features/watchlist/presentation/providers/watchlist_providers.dart';
 
 class SearchPage extends ConsumerStatefulWidget {
   const SearchPage({super.key});
@@ -294,12 +295,19 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'View all',
-                style: TextStyle(
-                  color: Color(0xFF4072FF),
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
+              GestureDetector(
+                onTap: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ref.read(navigationIndexProvider.notifier).state = 1;
+                  Navigator.popUntil(context, (route) => route.isFirst);
+                },
+                child: const Text(
+                  'View all',
+                  style: TextStyle(
+                    color: Color(0xFF4072FF),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ),
             ],

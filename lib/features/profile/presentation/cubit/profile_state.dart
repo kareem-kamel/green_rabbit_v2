@@ -20,3 +20,5 @@ class ProfileUpdateSuccess extends ProfileState {
     final String message;
     ProfileUpdateSuccess(this.message);
 }
+
+class ProfileDeleted extends ProfileState {}
