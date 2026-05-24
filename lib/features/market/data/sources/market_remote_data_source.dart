@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/api_client.dart';
+import 'package:green_rabbit/features/news/data/models/news_model.dart';
 import '../models/market_instrument.dart';
 import '../models/market_instrument_detail.dart';
 
@@ -14,6 +17,10 @@ abstract class MarketRemoteDataSource {
   Future<List<MarketNewsArticle>> getInstrumentNews(String id, {String? type});
   Future<List<MarketInstrument>> getTrendingInstruments({String? type});
   Stream<Map<String, dynamic>> getMarketStream(List<String> instruments);
+  Future<List<CommentModel>> fetchComments(String instrumentId);
+  Future<bool> postComment(String instrumentId, String text);
+  Future<bool> likeComment(String commentId);
+  Future<bool> unlikeComment(String commentId);
 }
 
 class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
@@ -348,60 +355,185 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
 
   @override
   Stream<Map<String, dynamic>> getMarketStream(List<String> instruments) async* {
-    final url = AppConstants.marketStream;
-    final queryParams = {
-      'instruments': instruments.join(','),
-    };
+    final token = await _apiClient.resolveAuthToken();
+    
+    int retryDelaySec = 1;
+    const int maxRetryDelaySec = 60;
+    
+    while (true) {
+      DateTime lastHeartbeatReceived = DateTime.now();
+      http.Client? client;
+      Timer? monitorTimer;
+      
+      try {
+        client = http.Client();
+        
+        final queryParams = {
+          'instruments': instruments.join(','),
+          'fields': 'price,change,changePercent,volume,dayHigh,dayLow,timestamp',
+        };
+        
+        final baseUri = Uri.parse(AppConstants.apiBaseUrl);
+        final fullPath = baseUri.path.endsWith('/') && AppConstants.marketStream.startsWith('/')
+            ? '${baseUri.path.substring(0, baseUri.path.length - 1)}${AppConstants.marketStream}'
+            : (baseUri.path.endsWith('/') || AppConstants.marketStream.startsWith('/')
+                ? '${baseUri.path}${AppConstants.marketStream}'
+                : '${baseUri.path}/${AppConstants.marketStream}');
 
-    debugPrint('\n--- [MARKET SSE CONNECTING] ---');
-    debugPrint('URL: $url');
-    debugPrint('Instruments: ${instruments.join(',')}');
+        final streamUri = Uri(
+          scheme: baseUri.scheme,
+          host: baseUri.host,
+          port: baseUri.port,
+          path: fullPath,
+          queryParameters: queryParams,
+        );
 
+        debugPrint('--- [MARKET SSE HTTP SEND] URL: $streamUri');
+        
+        final request = http.Request('GET', streamUri);
+        request.headers['Accept'] = 'text/event-stream';
+        request.headers['Cache-Control'] = 'no-cache';
+        if (token != null && token.isNotEmpty) {
+          request.headers['Authorization'] = 'Bearer $token';
+        }
+        
+        final response = await client.send(request);
+        
+        if (response.statusCode != 200) {
+          throw Exception('SSE stream connection failed with status code ${response.statusCode}');
+        }
+        
+        // Reset backoff delay on successful connection
+        retryDelaySec = 1;
+        
+        // Monitor heartbeat
+        monitorTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+          final diff = DateTime.now().difference(lastHeartbeatReceived);
+          if (diff > const Duration(seconds: 60)) {
+            debugPrint('⚠️ [SSE] No heartbeat received for ${diff.inSeconds}s (threshold 60s). Reconnecting...');
+            timer.cancel();
+            client?.close();
+          }
+        });
+        
+        final lines = response.stream
+            .cast<List<int>>()
+            .transform(utf8.decoder)
+            .transform(const LineSplitter());
+            
+        String? currentEventType;
+        
+        await for (final line in lines) {
+          if (line.isEmpty) continue;
+          
+          if (line.startsWith('event: ')) {
+            currentEventType = line.substring(7).trim();
+          } else if (line.startsWith('data: ')) {
+            final dataString = line.substring(6).trim();
+            debugPrint('--- [MARKET SSE LINE EVENT: $currentEventType] ---');
+            
+            if (currentEventType == 'heartbeat') {
+              lastHeartbeatReceived = DateTime.now();
+            }
+            
+            try {
+              final Map<String, dynamic> data = jsonDecode(dataString);
+              yield data;
+            } catch (e) {
+              debugPrint('Error decoding SSE data: $e');
+            }
+          }
+        }
+        
+      } catch (e) {
+        debugPrint('❌ Market Stream Error/Disconnect: $e');
+      } finally {
+        monitorTimer?.cancel();
+        client?.close();
+      }
+      
+      // Exponential backoff
+      debugPrint('ℹ️ [SSE] Reconnecting in $retryDelaySec seconds...');
+      await Future.delayed(Duration(seconds: retryDelaySec));
+      retryDelaySec = (retryDelaySec * 2).clamp(1, maxRetryDelaySec);
+    }
+  }
+
+  @override
+  Future<List<CommentModel>> fetchComments(String instrumentId) async {
     try {
-      final response = await _apiClient.dio.get<ResponseBody>(
+      final url = '/comments';
+      final String entityType = "instrument";
+
+      debugPrint('DEBUG: fetchComments for instrument - START');
+
+      final response = await _apiClient.dio.get(
         url,
-        queryParameters: queryParams,
+        queryParameters: {
+          'entityType': entityType,
+          'entityId': instrumentId,
+        },
         options: Options(
-          responseType: ResponseType.stream,
-          headers: {
-            'Accept': 'text/event-stream',
-            'Cache-Control': 'no-cache',
-          },
+          validateStatus: (status) => status == 200 || status == 404,
         ),
       );
 
-      debugPrint('--- [MARKET SSE CONNECTED] ---');
-
-      String? currentEventType;
-
-      // Robust UTF-8 and Line-based stream parsing
-      final stream = response.data!.stream
-          .cast<List<int>>()
-          .transform(utf8.decoder)
-          .transform(const LineSplitter());
-
-      await for (final line in stream) {
-        if (line.isEmpty) {
-          continue;
-        }
-
-        if (line.startsWith('event: ')) {
-          currentEventType = line.substring(7).trim();
-        } else if (line.startsWith('data: ')) {
-          final dataString = line.substring(6).trim();
-          debugPrint('--- [MARKET SSE EVENT: $currentEventType] ---');
-          debugPrint('Data: $dataString');
-
-          try {
-            final Map<String, dynamic> data = jsonDecode(dataString);
-            yield data;
-          } catch (e) {
-            debugPrint('Error decoding SSE data: $e');
-          }
+      if (response.statusCode == 200) {
+        final decodedData = response.data;
+        if (decodedData is Map<String, dynamic> && decodedData['success'] == true) {
+          final List list = decodedData['data'] is List ? decodedData['data'] : (decodedData['data']?['comments'] ?? []);
+          return list.map((c) => CommentModel.fromJson(Map<String, dynamic>.from(c))).toList();
         }
       }
+      return [];
     } catch (e) {
-      debugPrint('❌ Market Stream Error: $e');
+      debugPrint('DEBUG: fetchComments error for instrument: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<bool> postComment(String instrumentId, String text) async {
+    try {
+      final url = '/comments';
+      final String entityType = "instrument";
+
+      final response = await _apiClient.dio.post(url, data: {
+        'entityType': entityType,
+        'entityId': instrumentId,
+        'content': text,
+      });
+
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      debugPrint('DEBUG: postComment error for instrument: $e');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> likeComment(String commentId) async {
+    try {
+      final response = await _apiClient.dio.post('/comments/$commentId/like');
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      if (e is DioException) {
+        final data = e.response?.data;
+        if (data is Map && data['message']?.toString().contains('already_liked') == true) {
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> unlikeComment(String commentId) async {
+    try {
+      final response = await _apiClient.dio.delete('/comments/$commentId/like');
+      return response.statusCode == 200 || response.statusCode == 204;
+    } catch (e) {
+      return false;
     }
   }
 }

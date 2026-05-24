@@ -1,6 +1,7 @@
 import '../models/market_instrument.dart';
 import '../models/market_instrument_detail.dart';
 import '../sources/market_remote_data_source.dart';
+import 'package:green_rabbit/features/news/data/models/news_model.dart';
 
 abstract class MarketRepository {
   Future<List<MarketInstrument>> getMarketOverview(String type, {String? search});
@@ -10,6 +11,10 @@ abstract class MarketRepository {
   Future<List<MarketNewsArticle>> getInstrumentNews(String id, {String? type});
   Future<List<MarketInstrument>> getTrendingInstruments({String? type});
   Stream<Map<String, dynamic>> getMarketStream(List<String> instruments);
+  Future<List<CommentModel>> fetchComments(String instrumentId);
+  Future<bool> postComment(String instrumentId, String text);
+  Future<bool> likeComment(String commentId);
+  Future<bool> unlikeComment(String commentId);
 }
 
 class MarketRepositoryImpl implements MarketRepository {
@@ -50,5 +55,25 @@ class MarketRepositoryImpl implements MarketRepository {
   @override
   Stream<Map<String, dynamic>> getMarketStream(List<String> instruments) {
     return _remoteDataSource.getMarketStream(instruments);
+  }
+
+  @override
+  Future<List<CommentModel>> fetchComments(String instrumentId) async {
+    return _remoteDataSource.fetchComments(instrumentId);
+  }
+
+  @override
+  Future<bool> postComment(String instrumentId, String text) async {
+    return _remoteDataSource.postComment(instrumentId, text);
+  }
+
+  @override
+  Future<bool> likeComment(String commentId) async {
+    return _remoteDataSource.likeComment(commentId);
+  }
+
+  @override
+  Future<bool> unlikeComment(String commentId) async {
+    return _remoteDataSource.unlikeComment(commentId);
   }
 }
