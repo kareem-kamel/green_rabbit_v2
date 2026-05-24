@@ -15,7 +15,8 @@ class AuthRepository {
     if (data is Map) {
       if (data['error'] is Map) {
         // Try to get specific field validation detail first
-        if (data['error']['details'] is Map && data['error']['details'].isNotEmpty) {
+        if (data['error']['details'] is Map &&
+            data['error']['details'].isNotEmpty) {
           return data['error']['details'].values.first.toString();
         }
         if (data['error']['message'] != null) {
@@ -51,7 +52,7 @@ class AuthRepository {
   }
 
   // --- NEW: ONBOARDING HELPERS ---
-  
+
   /// Marks that the user has seen the onboarding slides
   Future<void> setOnboardingComplete() async {
     await storage.write(key: 'isFirstTime', value: 'false');
@@ -71,13 +72,16 @@ class AuthRepository {
       final response = await apiClient.dio.post(
         AppConstants.userOnboarding,
         data: {
-          "experienceLevel": experienceLevel, // Backend expects exactly "Beginner", "Intermediate", or "Expert"
-          "interestedIn": interestedIn.join(','), // Backend expects a comma-separated string, NOT a JSON Array
+          "experienceLevel":
+              experienceLevel, // Backend expects exactly "Beginner", "Intermediate", or "Expert"
+          "interestedIn": interestedIn.join(
+            ',',
+          ), // Backend expects a comma-separated string, NOT a JSON Array
         },
       );
 
       _checkResponseSuccess(response, "Failed to save preferences.");
-      
+
       // Also mark local storage as complete
       await setOnboardingComplete();
     } on DioException catch (e) {
@@ -93,17 +97,22 @@ class AuthRepository {
     required String email,
     required String password,
     required String confirmPassword,
+    String? fullName,
+    String? phone,
+    String? country,
+    // Placeholder until we add a full name field in the UI
   }) async {
     try {
       final response = await apiClient.dio.post(
         AppConstants.register,
         data: {
-          "fullName": "User Name", // Consider passing this as a parameter later
+          "fullName": fullName, // Consider passing this as a parameter later
           "email": email.trim(),
           "password": password,
           "passwordConfirm": confirmPassword,
-          "country": "AE",
-          "phone": "+971501234567",
+          "country":
+              country, // Placeholder until we add a country field in the UI
+          "phone": phone,
           "acceptTerms": true,
           "acceptPrivacy": true,
         },
@@ -111,7 +120,9 @@ class AuthRepository {
 
       _checkResponseSuccess(response, "Registration failed.");
     } on DioException catch (e) {
-      throw Exception(_getErrorMessage(e, 'An error occurred during registration.'));
+      throw Exception(
+        _getErrorMessage(e, 'An error occurred during registration.'),
+      );
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -124,7 +135,7 @@ class AuthRepository {
   }) async {
     try {
       final response = await apiClient.dio.post(
-        AppConstants.verifyEmail, 
+        AppConstants.verifyEmail,
         data: {"email": email, "otp": code},
       );
 
@@ -150,35 +161,56 @@ class AuthRepository {
       );
       debugPrint('AuthRepository: Login request successful');
 
-      _checkResponseSuccess(response, "Login successful, but an error occurred.");
+      _checkResponseSuccess(
+        response,
+        "Login successful, but an error occurred.",
+      );
 
       debugPrint('AuthRepository: Full Response Data: ${response.data}');
-      final responseData = response.data is Map ? (response.data['data'] ?? response.data) : null;
+      final responseData = response.data is Map
+          ? (response.data['data'] ?? response.data)
+          : null;
       debugPrint('AuthRepository: Extracted responseData: $responseData');
 
-      if (responseData is Map && (responseData['accessToken'] != null || responseData['token'] != null)) {
-        final accessToken = responseData['accessToken'] ?? responseData['token'];
-        final refreshToken = responseData['refreshToken'] ?? responseData['refresh_token'];
+      if (responseData is Map &&
+          (responseData['accessToken'] != null ||
+              responseData['token'] != null)) {
+        final accessToken =
+            responseData['accessToken'] ?? responseData['token'];
+        final refreshToken =
+            responseData['refreshToken'] ?? responseData['refresh_token'];
 
         // Save Token
-        await storage.write(key: AppConstants.keyAccessToken, value: accessToken);
-        
+        await storage.write(
+          key: AppConstants.keyAccessToken,
+          value: accessToken,
+        );
+
         // Save Remember Me choice
         await storage.write(key: 'rememberMe', value: rememberMe.toString());
 
         if (refreshToken != null) {
-          await storage.write(key: AppConstants.keyRefreshToken, value: refreshToken);
+          await storage.write(
+            key: AppConstants.keyRefreshToken,
+            value: refreshToken,
+          );
         }
-        
+
         // Mark onboarding as complete once they successfully log in
         await setOnboardingComplete();
         debugPrint('AuthRepository: Login completed');
       } else {
-        debugPrint('AuthRepository: Failed to find token in responseData: $responseData');
-        throw Exception("Login successful, but no access token was found in the response.");
+        debugPrint(
+          'AuthRepository: Failed to find token in responseData: $responseData',
+        );
+        throw Exception(
+          "Login successful, but no access token was found in the response.",
+        );
       }
     } on DioException catch (e) {
-      debugPrint('AuthRepository: DioException caught! Parsing error message...');
+      debugPrint(
+        'AuthRepository: DioException caught! Parsing error message...',
+      );
       final msg = _getErrorMessage(e, 'Invalid email or password.');
       debugPrint('AuthRepository: Parsed error message: $msg');
       throw Exception(msg);
@@ -197,27 +229,42 @@ class AuthRepository {
         data: {"idToken": idToken, "rememberMe": true},
       );
       debugPrint('AuthRepository: Google Login request successful');
+      print('AuthRepository: Full Response Data: ${response.data}');
 
       _checkResponseSuccess(response, "Google sign in failed.");
 
-      final responseData = response.data is Map ? (response.data['data'] ?? response.data) : null;
-      
-      if (responseData is Map && (responseData['accessToken'] != null || responseData['token'] != null)) {
-        final accessToken = responseData['accessToken'] ?? responseData['token'];
-        final refreshToken = responseData['refreshToken'] ?? responseData['refresh_token'];
+      final responseData = response.data is Map
+          ? (response.data['data'] ?? response.data)
+          : null;
+
+      if (responseData is Map &&
+          (responseData['accessToken'] != null ||
+              responseData['token'] != null)) {
+        final accessToken =
+            responseData['accessToken'] ?? responseData['token'];
+        final refreshToken =
+            responseData['refreshToken'] ?? responseData['refresh_token'];
 
         // Save Token
-        await storage.write(key: AppConstants.keyAccessToken, value: accessToken);
+        await storage.write(
+          key: AppConstants.keyAccessToken,
+          value: accessToken,
+        );
         await storage.write(key: 'rememberMe', value: 'true');
 
         if (refreshToken != null) {
-          await storage.write(key: AppConstants.keyRefreshToken, value: refreshToken);
+          await storage.write(
+            key: AppConstants.keyRefreshToken,
+            value: refreshToken,
+          );
         }
-        
+
         await setOnboardingComplete();
         debugPrint('AuthRepository: Google Login completed');
       } else {
-        throw Exception("No access token was found in the Google login response.");
+        throw Exception(
+          "No access token was found in the Google login response.",
+        );
       }
     } on DioException catch (e) {
       final msg = _getErrorMessage(e, 'Google sign in failed.');
@@ -244,11 +291,13 @@ class AuthRepository {
   // --- LOGOUT ---
   Future<void> logout() async {
     try {
-      final refreshToken = await storage.read(key: AppConstants.keyRefreshToken); 
+      final refreshToken = await storage.read(
+        key: AppConstants.keyRefreshToken,
+      );
 
       if (refreshToken != null) {
         await apiClient.dio.post(
-          AppConstants.logout, 
+          AppConstants.logout,
           data: {"refreshToken": refreshToken},
         );
       }
@@ -263,7 +312,7 @@ class AuthRepository {
   Future<void> clearLocalSession() async {
     // Wipe sensitive data, but KEEP 'isFirstTime' so they don't see Onboarding again
     await storage.delete(key: AppConstants.keyAccessToken);
-    await storage.delete(key: AppConstants.keyRefreshToken); 
+    await storage.delete(key: AppConstants.keyRefreshToken);
     await storage.delete(key: 'rememberMe');
   }
 
@@ -303,7 +352,9 @@ class AuthRepository {
 
       _checkResponseSuccess(response, "Failed to reset password.");
     } on DioException catch (e) {
-      throw Exception(_getErrorMessage(e, 'Invalid OTP or error resetting password.'));
+      throw Exception(
+        _getErrorMessage(e, 'Invalid OTP or error resetting password.'),
+      );
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -327,7 +378,9 @@ class AuthRepository {
 
       _checkResponseSuccess(response, "Failed to change password.");
     } on DioException catch (e) {
-      throw Exception(_getErrorMessage(e, 'An error occurred while changing password.'));
+      throw Exception(
+        _getErrorMessage(e, 'An error occurred while changing password.'),
+      );
     } catch (e) {
       throw Exception(e.toString());
     }

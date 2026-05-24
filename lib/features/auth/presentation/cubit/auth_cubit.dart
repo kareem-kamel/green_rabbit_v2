@@ -28,7 +28,8 @@ class AuthCubit extends Cubit<AuthState> {
         // Replace with your Firebase Web Client ID
         // Example:
         // 123456789-abcxyz.apps.googleusercontent.com
-        serverClientId: '1073099404861-c34eifmi16k7sbc4hnra1qp9ectnfti3.apps.googleusercontent.com',
+        serverClientId:
+            '1073099404861-1kj7esvu34nas61v86jb7op1smadmgb8.apps.googleusercontent.com',
       );
 
       debugPrint('Google Sign-In initialized successfully');
@@ -117,9 +118,7 @@ class AuthCubit extends Cubit<AuthState> {
       emit(AuthNeedsVerification());
     } catch (e) {
       emit(
-        AuthFailure(
-          errorMessage: e.toString().replaceAll('Exception: ', ''),
-        ),
+        AuthFailure(errorMessage: e.toString().replaceAll('Exception: ', '')),
       );
     }
   }
@@ -133,21 +132,15 @@ class AuthCubit extends Cubit<AuthState> {
 
     try {
       // Start Google authentication flow
-      final GoogleSignInAccount googleUser =
-          await _googleSignIn.authenticate();
+      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
 
       // Retrieve authentication data
-      final GoogleSignInAuthentication googleAuth =
-          googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
       final String? idToken = googleAuth.idToken;
 
       if (idToken == null || idToken.isEmpty) {
-        emit(
-          AuthFailure(
-            errorMessage: 'Failed to retrieve Google ID token.',
-          ),
-        );
+        emit(AuthFailure(errorMessage: 'Failed to retrieve Google ID token.'));
         return;
       }
 
@@ -159,9 +152,7 @@ class AuthCubit extends Cubit<AuthState> {
       debugPrint('Google Sign-In Error: $e');
 
       emit(
-        AuthFailure(
-          errorMessage: e.toString().replaceAll('Exception: ', ''),
-        ),
+        AuthFailure(errorMessage: e.toString().replaceAll('Exception: ', '')),
       );
     }
   }
@@ -177,7 +168,6 @@ class AuthCubit extends Cubit<AuthState> {
 
       // Optional:
       // await _googleSignIn.disconnect();
-
     } catch (e) {
       debugPrint('Google Sign Out error: $e');
     }
@@ -213,29 +203,18 @@ class AuthCubit extends Cubit<AuthState> {
   // FORGOT PASSWORD
   // --------------------------------------------------
 
-  Future<void> forgotPassword(
-    String email,
-    dynamic apiClient,
-  ) async {
+  Future<void> forgotPassword(String email, dynamic apiClient) async {
     try {
       final response = await apiClient.dio.post(
         AppConstants.forgotPassword,
-        data: {
-          "email": email.trim(),
-        },
+        data: {"email": email.trim()},
       );
 
-      if (response.statusCode != 200 &&
-          response.statusCode != 201) {
+      if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception("Failed to send reset code.");
       }
     } on DioException catch (e) {
-      throw Exception(
-        _getErrorMessage(
-          e,
-          'An error occurred. Try again.',
-        ),
-      );
+      throw Exception(_getErrorMessage(e, 'An error occurred. Try again.'));
     } catch (e) {
       throw Exception(e.toString());
     }
@@ -263,16 +242,12 @@ class AuthCubit extends Cubit<AuthState> {
         },
       );
 
-      if (response.statusCode != 200 &&
-          response.statusCode != 201) {
+      if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception("Failed to reset password.");
       }
     } on DioException catch (e) {
       throw Exception(
-        _getErrorMessage(
-          e,
-          'Invalid OTP or error resetting password.',
-        ),
+        _getErrorMessage(e, 'Invalid OTP or error resetting password.'),
       );
     } catch (e) {
       throw Exception(e.toString());
@@ -299,16 +274,12 @@ class AuthCubit extends Cubit<AuthState> {
         },
       );
 
-      if (response.statusCode != 200 &&
-          response.statusCode != 201) {
+      if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception("Failed to change password.");
       }
     } on DioException catch (e) {
       throw Exception(
-        _getErrorMessage(
-          e,
-          'An error occurred while changing password.',
-        ),
+        _getErrorMessage(e, 'An error occurred while changing password.'),
       );
     } catch (e) {
       throw Exception(e.toString());
@@ -319,12 +290,7 @@ class AuthCubit extends Cubit<AuthState> {
   // ERROR PARSER
   // --------------------------------------------------
 
-  String _getErrorMessage(
-    DioException e,
-    String fallback,
-  ) {
-    return e.response?.data?['error']?['message'] ??
-        e.message ??
-        fallback;
+  String _getErrorMessage(DioException e, String fallback) {
+    return e.response?.data?['error']?['message'] ?? e.message ?? fallback;
   }
 }
