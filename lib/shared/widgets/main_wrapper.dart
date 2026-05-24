@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:green_rabbit/features/chatbot/presentation/screens/chatbot_screen.dart';
 import 'package:green_rabbit/features/news/presentation/screens/news_screen.dart';
 import 'package:green_rabbit/features/calendar/presentation/screens/calendar_screen.dart';
 import '../../features/market/presentation/pages/market_page.dart';
 import '../../features/watchlist/presentation/pages/watchlist_page.dart';
+import '../../features/notifications/data/services/push_notification_service.dart';
+import '../../features/notifications/presentation/cubit/notification_cubit.dart';
 import '../widgets/global_calculator_overlay.dart';
 
 // Provider to manage the current bottom nav index
@@ -27,6 +30,9 @@ class _MainWrapperState extends ConsumerState<MainWrapper> {
     // by default, so it's not intrusive on startup.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showGlobalCalculator.value = true;
+      if (mounted) {
+        PushNotificationService.initialize(context.read<NotificationCubit>());
+      }
     });
   }
 

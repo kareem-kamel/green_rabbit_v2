@@ -6,6 +6,7 @@ import '../cubit/calendar_cubit.dart';
 import '../../data/models/calendar_event.dart';
 import '../widgets/calendar_event_card.dart';
 import 'calendar_filter_screen.dart';
+import '../widgets/calendar_skeleton_loader.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({super.key});
@@ -106,7 +107,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
           children: [
             Expanded(
               child: Text(
-                "${_selectedCategory[0].toUpperCase()}${_selectedCategory.substring(1)} Calendar",
+                _selectedCategory.isEmpty 
+                    ? "Calendar" 
+                    : "${_selectedCategory[0].toUpperCase()}${_selectedCategory.substring(1)} Calendar",
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -186,7 +189,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             ),
                           ),
                           child: Text(
-                            tab[0].toUpperCase() + tab.substring(1).replaceAll('_', ' '),
+                            tab.isEmpty ? '' : tab[0].toUpperCase() + tab.substring(1).replaceAll('_', ' '),
                             style: TextStyle(
                               color: isActive ? Colors.white : Colors.grey,
                               fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
@@ -203,7 +206,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 child: BlocBuilder<CalendarCubit, CalendarState>(
                   builder: (context, state) {
                     if (state is CalendarLoading) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const CalendarSkeletonLoader();
                     } else if (state is CalendarLoaded) {
                       final List<CalendarDay> displayDays = (state.days ?? [
                         CalendarDay(
@@ -213,9 +216,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           events: state.events ?? [],
                         )
                       ]).map((day) {
-                        // Filter events by importance locally
+                        // Filter events by importance locally using safe importance check
                         final filteredEvents = day.events.where((e) {
-                          return _filterSettings.selectedImportance.contains(e.impact ?? 1);
+                          return _filterSettings.selectedImportance.contains(e.importance ?? e.impact ?? 1);
                         }).toList();
                         return CalendarDay(
                           date: day.date,
@@ -234,20 +237,102 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         _expandedDates.add(displayDays.firstWhere((d) => d.events.isNotEmpty).date);
                       }
 
-                      return ListView(
+                      // Flatten the structure for ListView.builder to allow lazy loading and prevent slowness/lag
+                      final List<_CalendarListItem> listItems = [];
+                      
+                      // 1. Title item
+                      final titleText = _formatTabTitle(state.tab);
+                      if (titleText.isNotEmpty) {
+                        listItems.add(_CalendarListTitleItem(titleText));
+                      }
+                      
+                      // 2. Day sections and events
+                      for (final day in displayDays) {
+                        if (day.events.isEmpty) continue;
+                        
+                        final isExpanded = _expandedDates.contains(day.date);
+                        String formattedDate = '';
+                        try {
+                          final date = DateTime.parse(day.date);
+                          formattedDate = "${DateFormat('EEEE').format(date)}, ${DateFormat('MMMM d').format(date)}";
+                        } catch (e) {
+                          formattedDate = day.dayName;
+                        }
+                        
+                        listItems.add(_CalendarListHeaderItem(
+                          day: day,
+                          formattedDate: formattedDate,
+                          isExpanded: isExpanded,
+                        ));
+                        
+                        if (isExpanded) {
+                          for (final event in day.events) {
+                            listItems.add(_CalendarListEventItem(event));
+                          }
+                        }
+                        
+                        listItems.add(const _CalendarListSpacingItem());
+                      }
+                      
+                      listItems.add(const _CalendarListBottomPaddingItem());
+                      
+                      return ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        children: [
-                          // Header title (e.g., "This Week")
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 24),
-                            child: Text(
-                              state.tab.replaceAll('_', ' ').split(' ').map((s) => s[0].toUpperCase() + s.substring(1)).join(' '),
-                              style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          ...displayDays.where((d) => d.events.isNotEmpty).map((day) => _buildDaySection(day)),
-                          const SizedBox(height: 100), // Bottom padding
-                        ],
+                        itemCount: listItems.length,
+                        itemBuilder: (context, index) {
+                          final item = listItems[index];
+                          if (item is _CalendarListTitleItem) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 24),
+                              child: Text(
+                                item.title,
+                                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                              ),
+                            );
+                          } else if (item is _CalendarListHeaderItem) {
+                            return InkWell(
+                              onTap: () {
+                                setState(() {
+                                  if (item.isExpanded) {
+                                    _expandedDates.remove(item.day.date);
+                                  } else {
+                                    _expandedDates.add(item.day.date);
+                                  }
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      item.formattedDate,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Icon(
+                                      item.isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                                      color: Colors.white70,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          } else if (item is _CalendarListEventItem) {
+                            return CalendarEventCard(
+                              event: item.event,
+                              category: _selectedCategory,
+                            );
+                          } else if (item is _CalendarListSpacingItem) {
+                            return const SizedBox(height: 16);
+                          } else if (item is _CalendarListBottomPaddingItem) {
+                            return const SizedBox(height: 100);
+                          }
+                          return const SizedBox.shrink();
+                        },
                       );
                     } else if (state is CalendarError) {
                       // Hide error from user and show "No Events" instead
@@ -397,4 +482,47 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ],
     );
   }
+
+  String _formatTabTitle(String tab) {
+    if (tab.isEmpty) return '';
+    return tab
+        .replaceAll('_', ' ')
+        .split(' ')
+        .where((s) => s.isNotEmpty)
+        .map((s) => s[0].toUpperCase() + s.substring(1))
+        .join(' ');
+  }
+}
+
+abstract class _CalendarListItem {
+  const _CalendarListItem();
+}
+
+class _CalendarListTitleItem extends _CalendarListItem {
+  final String title;
+  const _CalendarListTitleItem(this.title);
+}
+
+class _CalendarListHeaderItem extends _CalendarListItem {
+  final CalendarDay day;
+  final String formattedDate;
+  final bool isExpanded;
+  const _CalendarListHeaderItem({
+    required this.day,
+    required this.formattedDate,
+    required this.isExpanded,
+  });
+}
+
+class _CalendarListEventItem extends _CalendarListItem {
+  final CalendarEvent event;
+  const _CalendarListEventItem(this.event);
+}
+
+class _CalendarListSpacingItem extends _CalendarListItem {
+  const _CalendarListSpacingItem();
+}
+
+class _CalendarListBottomPaddingItem extends _CalendarListItem {
+  const _CalendarListBottomPaddingItem();
 }

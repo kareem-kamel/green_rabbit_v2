@@ -12,7 +12,7 @@ abstract class MarketRemoteDataSource {
   Future<Map<String, dynamic>> getInstrumentChart(String id, {String? period, String? interval});
   Future<MarketInstrumentStats> getInstrumentStats(String id, {String? interval});
   Future<List<MarketNewsArticle>> getInstrumentNews(String id, {String? type});
-  Future<List<MarketInstrument>> getTrendingInstruments();
+  Future<List<MarketInstrument>> getTrendingInstruments({String? type});
   Stream<Map<String, dynamic>> getMarketStream(List<String> instruments);
 }
 
@@ -293,12 +293,20 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
   }
 
   @override
-  Future<List<MarketInstrument>> getTrendingInstruments() async {
+  Future<List<MarketInstrument>> getTrendingInstruments({String? type}) async {
     final url = AppConstants.marketTrending;
+    final queryParams = {
+      if (type != null) 'type': type,
+    };
+    
     debugPrint('\n--- [MARKET API REQUEST] ---');
     debugPrint('URL: $url');
+    if (queryParams.isNotEmpty) debugPrint('Query Params: $queryParams');
 
-      final response = await _apiClient.dio.get(url);
+    final response = await _apiClient.dio.get(
+      url,
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
 
     debugPrint('--- [MARKET TRENDING RESPONSE] ---');
     debugPrint('Status: ${response.statusCode}');

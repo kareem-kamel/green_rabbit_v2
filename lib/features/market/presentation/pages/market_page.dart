@@ -13,8 +13,11 @@ import 'instrument_detail_page.dart';
 import '../providers/market_providers.dart';
 import '../../data/models/market_instrument.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
+import '../../../notifications/presentation/cubit/notification_cubit.dart';
+import '../../../notifications/presentation/cubit/notification_state.dart';
 import 'package:green_rabbit/features/market/presentation/pages/search_page.dart';
 import 'package:green_rabbit/features/chatbot/presentation/screens/chatbot_screen.dart';
+import '../widgets/market_skeleton_loader.dart';
 
 class MarketPage extends ConsumerStatefulWidget {
   const MarketPage({super.key});
@@ -25,7 +28,7 @@ class MarketPage extends ConsumerStatefulWidget {
 
 class _MarketPageState extends ConsumerState<MarketPage> {
   late TextEditingController _searchController;
-  String _selectedType = 'stocks';
+  String _selectedType = 'popular';
 
   @override
   void initState() {
@@ -36,6 +39,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
     // Ensure profile data is loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ProfileCubit>().getProfile();
+      context.read<NotificationCubit>().fetchUnreadCount();
     });
   }
 
@@ -51,10 +55,11 @@ class _MarketPageState extends ConsumerState<MarketPage> {
 
   @override
   Widget build(BuildContext context) {
-    final marketData = ref.watch(marketOverviewProvider(_selectedType));
-    
-    // Use market data based on tab selection
-    final instrumentsAsync = marketData;
+    final instrumentsAsync = _selectedType == 'popular'
+        ? ref.watch(trendingInstrumentsProvider(null))
+        : _selectedType == 'etf'
+            ? ref.watch(trendingInstrumentsProvider('etf'))
+            : ref.watch(marketOverviewProvider(_selectedType));
 
     return SafeArea(
       child: LayoutBuilder(
@@ -88,10 +93,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                         data: (instruments) {
                           return _buildInstrumentList(context, ref, instruments, constraints.maxWidth);
                         },
-                        loading: () => const Center(child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 40),
-                          child: CircularProgressIndicator(),
-                        )),
+                        loading: () => MarketSkeletonLoader(width: constraints.maxWidth),
                         error: (err, stack) => _buildErrorState(ref),
                       ),
                       const SizedBox(height: 100), 
@@ -117,7 +119,15 @@ class _MarketPageState extends ConsumerState<MarketPage> {
           const SizedBox(height: 8),
           const Text('Please check your internet or API settings.', style: TextStyle(color: Colors.grey)),
           TextButton(
-            onPressed: () => ref.refresh(trendingInstrumentsProvider),
+            onPressed: () {
+              if (_selectedType == 'popular') {
+                ref.refresh(trendingInstrumentsProvider(null));
+              } else if (_selectedType == 'etf') {
+                ref.refresh(trendingInstrumentsProvider('etf'));
+              } else {
+                ref.refresh(marketOverviewProvider(_selectedType));
+              }
+            },
             child: const Text('Retry'),
           ),
         ],
@@ -176,15 +186,25 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage()));
+                  BlocBuilder<NotificationCubit, NotificationState>(
+                    builder: (context, state) {
+                      return GestureDetector(
+                        onTap: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const NotificationsPage()),
+                          );
+                          if (context.mounted) {
+                            context.read<NotificationCubit>().fetchUnreadCount();
+                          }
+                        },
+                        child: _headerIcon(
+                          assetPath: 'assets/notification_icon.png',
+                          hasBadge: state.unreadCount > 0,
+                          fallbackIcon: Icons.notifications_none,
+                        ),
+                      );
                     },
-                    child: _headerIcon(
-                      assetPath: 'assets/notification_icon.png',
-                      hasBadge: true,
-                      fallbackIcon: Icons.notifications_none,
-                    ),
                   ),
                   const SizedBox(width: 8),
                   GestureDetector(
@@ -249,11 +269,15 @@ class _MarketPageState extends ConsumerState<MarketPage> {
       child: Row(
         mainAxisAlignment: width > 600 ? MainAxisAlignment.center : MainAxisAlignment.start,
         children: [
+          _tabItem('Popular', type: 'popular'),
+          const SizedBox(width: 12),
           _tabItem('Stocks', type: 'stocks'),
           const SizedBox(width: 12),
           _tabItem('Crypto', type: 'crypto'),
           const SizedBox(width: 12),
           _tabItem('Forex', type: 'forex'),
+          const SizedBox(width: 12),
+          _tabItem('ETFs', type: 'etf'),
         ],
       ),
     );

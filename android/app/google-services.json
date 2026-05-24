@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "963276687646",
+    "project_id": "greenrabbit-app",
+    "storage_bucket": "greenrabbit-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:963276687646:android:e7e9edc2db009610c4210f",
+        "android_client_info": {
+          "package_name": "com.greenrabbit.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB-1VuT28Lvg8Q_kHsr3GhMiMLE_NOlmtc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
