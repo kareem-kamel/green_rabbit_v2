@@ -6,6 +6,7 @@ import 'package:green_rabbit/core/theme/app_theme.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/auth_state.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/login_screen.dart';
+import 'package:green_rabbit/features/auth/presentation/screens/preferences_screen.dart';
 import 'package:green_rabbit/features/subscriptions/presentation/cubit/subscription_cubit.dart';
 import 'package:green_rabbit/features/profile/presentation/cubit/profile_cubit.dart';
 import 'package:green_rabbit/features/profile/presentation/cubit/settings_cubit.dart';
@@ -80,6 +81,10 @@ class GreenRabbitApp extends StatelessWidget {
 
                 if (state is AuthFirstTime) {
                   return const OnboardingScreen(); // ONLY for first install
+                }
+
+                if (state is AuthNeedsPreferences) {
+                  return const PreferencesScreen(); // New Onboarding Flow directly!
                 }
 
                 if (state is AuthSuccess) {

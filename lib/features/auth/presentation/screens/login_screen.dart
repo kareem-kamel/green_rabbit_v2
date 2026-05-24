@@ -8,7 +8,7 @@ import 'package:green_rabbit/features/auth/presentation/screens/register_screen.
 import 'package:green_rabbit/features/auth/presentation/screens/preferences_screen.dart';
 import 'package:green_rabbit/features/auth/presentation/widget/auth_text_field.dart';
 import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
-import 'package:green_rabbit/features/auth/presentation/widget/social_auth.dart';
+import 'package:green_rabbit/features/auth/presentation/widget/social_login_section.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
 
@@ -23,7 +23,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  bool _rememberMe = false;
+  bool _rememberMe = true;
 
   @override
   void dispose() {
@@ -45,23 +45,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 backgroundColor: Colors.red,
               ),
             );
-          } else if (state is AuthSuccess) {
+          } else if (state is AuthSuccess || state is AuthNeedsPreferences) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text('Welcome !'),
+              const SnackBar(
+                content: Text('Welcome!'),
                 backgroundColor: Colors.green,
               ),
             );
-            
-            if (widget.isFromSignup) {
-              Navigator.pushReplacement(
+
+            if (state is AuthNeedsPreferences || widget.isFromSignup) {
+              Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (_) => const PreferencesScreen()),
+                (route) => false,
               );
             } else {
-              Navigator.pushReplacement(
+              Navigator.pushAndRemoveUntil(
                 context,
                 MaterialPageRoute(builder: (_) => const MainWrapper()),
+                (route) => false,
               );
             }
           }
@@ -149,7 +151,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (context) => const ForgotPasswordScreen(),
+                                builder: (context) =>
+                                    const ForgotPasswordScreen(),
                               ),
                             );
                           },
@@ -179,55 +182,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           email: _emailController.text.trim(),
                           password: _passwordController.text.trim(),
                           rememberMe: _rememberMe,
+                          isFromSignup: widget.isFromSignup,
                         );
                       },
                     ),
                     const SizedBox(height: 40),
 
-                    // --- 5. Login With Divider ---
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Divider(color: Colors.white24, thickness: 1),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            'Login With',
-                            style: TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                        const Expanded(
-                          child: Divider(color: Colors.white24, thickness: 1),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // --- 6. Social Media Buttons ---
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        SocialButton(
-                          icon: FontAwesomeIcons.google,
-                          
-                          onTap: () {
-                            // TODO: Google sign in
-                          }, size: 20,
-                        ),
-                        const SizedBox(width: 24),
-                        SocialButton(
-                          icon: FontAwesomeIcons.apple,
-                          
-                          onTap: () {
-                            // TODO: Apple sign in
-                          }, size: 20,
-                        ),
-                      ],
-                    ),
+                    // --- 5. Social Login Section ---
+                    const SocialLoginSection(text: 'Login With'),
                     const SizedBox(height: 48),
 
                     // --- 7. Sign Up Row ---

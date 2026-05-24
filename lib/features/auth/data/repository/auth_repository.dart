@@ -71,8 +71,8 @@ class AuthRepository {
       final response = await apiClient.dio.post(
         AppConstants.userOnboarding,
         data: {
-          "experienceLevel": experienceLevel.toLowerCase(),
-          "interestedIn": interestedIn, // Sent as a JSON Array: ["Crypto", "Stocks"]
+          "experienceLevel": experienceLevel, // Backend expects exactly "Beginner", "Intermediate", or "Expert"
+          "interestedIn": interestedIn.join(','), // Backend expects a comma-separated string, NOT a JSON Array
         },
       );
 
@@ -188,6 +188,45 @@ class AuthRepository {
     }
   }
 
+  // --- GOOGLE SIGN IN ---
+  Future<void> signInWithGoogle(String idToken) async {
+    try {
+      debugPrint('AuthRepository: Attempting Google Login...');
+      final response = await apiClient.dio.post(
+        AppConstants.signInWithGoogle,
+        data: {"idToken": idToken, "rememberMe": true},
+      );
+      debugPrint('AuthRepository: Google Login request successful');
+
+      _checkResponseSuccess(response, "Google sign in failed.");
+
+      final responseData = response.data is Map ? (response.data['data'] ?? response.data) : null;
+      
+      if (responseData is Map && (responseData['accessToken'] != null || responseData['token'] != null)) {
+        final accessToken = responseData['accessToken'] ?? responseData['token'];
+        final refreshToken = responseData['refreshToken'] ?? responseData['refresh_token'];
+
+        // Save Token
+        await storage.write(key: AppConstants.keyAccessToken, value: accessToken);
+        await storage.write(key: 'rememberMe', value: 'true');
+
+        if (refreshToken != null) {
+          await storage.write(key: AppConstants.keyRefreshToken, value: refreshToken);
+        }
+        
+        await setOnboardingComplete();
+        debugPrint('AuthRepository: Google Login completed');
+      } else {
+        throw Exception("No access token was found in the Google login response.");
+      }
+    } on DioException catch (e) {
+      final msg = _getErrorMessage(e, 'Google sign in failed.');
+      throw Exception(msg);
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
   // --- CHECK AUTH STATUS ---
   Future<bool> checkAuthStatus() async {
     final rememberMeStr = await storage.read(key: 'rememberMe');
@@ -216,11 +255,16 @@ class AuthRepository {
     } catch (e) {
       debugPrint('Logout error: $e');
     } finally {
-      // Wipe sensitive data, but KEEP 'isFirstTime' so they don't see Onboarding again
-      await storage.delete(key: AppConstants.keyAccessToken);
-      await storage.delete(key: AppConstants.keyRefreshToken); 
-      await storage.delete(key: 'rememberMe');
+      await clearLocalSession();
     }
+  }
+
+  // --- CLEAR LOCAL SESSION (No API Call) ---
+  Future<void> clearLocalSession() async {
+    // Wipe sensitive data, but KEEP 'isFirstTime' so they don't see Onboarding again
+    await storage.delete(key: AppConstants.keyAccessToken);
+    await storage.delete(key: AppConstants.keyRefreshToken); 
+    await storage.delete(key: 'rememberMe');
   }
 
   // --- FORGOT PASSWORD ---

@@ -5,7 +5,6 @@ import 'package:green_rabbit/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/login_screen.dart';
 import 'package:green_rabbit/features/onboarding/presentation/screens/onboarding2.dart';
 import 'package:green_rabbit/features/onboarding/presentation/screens/onboarding1.dart';
-import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -24,14 +23,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
-  void _skipToLastPage() {
-    _pageController.animateToPage(
-      1,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOut,
-    );
-  }
-
   void _getStarted() {
     Navigator.pushReplacement(
       context,
@@ -42,13 +33,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: const LoginScreen(isFromSignup: false),
             ),
           ),
-    );
-  }
-
-  void _joinAsGuest() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const MainWrapper()),
     );
   }
 
@@ -65,10 +49,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       physics:
           const NeverScrollableScrollPhysics(), // controlled programmatically
       children: [
-        OnboardingPageOne(onNext: _goToNextPage, onSkip: _skipToLastPage),
+        OnboardingPageOne(onNext: _goToNextPage, onSkip: _getStarted),
         OnboardingPageTwo(
           onGetStarted: _getStarted,
-          onJoinAsGuest: _joinAsGuest,
         ),
       ],
     );

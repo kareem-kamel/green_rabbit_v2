@@ -44,6 +44,8 @@ class AppConstants {
   static const String resetPassword = "/auth/reset-password";
   static const String changePassword = "/auth/change-password";
   static const String activateFreeTrial = "auth/activate-free-trial";
+  static const String signInWithGoogle = "auth/google";
+  static const String signInWithApple = "auth/apple";
 
   // Storage Keys
   static const String keyAccessToken = 'access_token';
@@ -68,7 +70,7 @@ class AppConstants {
   static const String marketNews = "market/news";
 
   // Profile / User
-  static const String userMe = "users/me";
+  static const String deleteUser = "users/me";
   static const String userAvatar = "users/me/avatar";
   static const String userPreferences = "users/me/preferences";
   static const String userOnboarding = "users/me/onboarding";
