@@ -215,17 +215,21 @@ class ChatCubit extends Cubit<ChatState> {
   String _mergeStreamChunk(String current, String incoming) {
     if (incoming.isEmpty) return current;
     
-    // Strip "TL;DR" if it appears at the start of the first chunk
-    String processedIncoming = incoming;
+    String merged;
     if (current.isEmpty) {
-      processedIncoming = incoming.replaceFirst(RegExp(r'^(TL;DR[:\s-]*|Summary[:\s-]*)', caseSensitive: false), '');
+      merged = incoming;
+    } else if (incoming.length >= current.length && incoming.startsWith(current)) {
+      merged = incoming;
+    } else {
+      merged = current + incoming;
     }
 
-    if (current.isEmpty) return processedIncoming;
-    if (processedIncoming.length >= current.length && processedIncoming.startsWith(current)) {
-      return processedIncoming;
-    }
-    return current + processedIncoming;
+    // Aggressively strip "TL;DR" or "Summary" from the start of the accumulated text
+    // We do this every time to catch cases where the prefix is split across multiple chunks
+    return merged.replaceFirst(
+      RegExp(r'^\s*([\*#_~]*)\s*(TL;DR|Summary|TLDR)[:\s\-\*]*([\*#_~]*)\s*', caseSensitive: false), 
+      ''
+    );
   }
 
   void _cancelRevealTimer() {

@@ -75,6 +75,12 @@ Stream<String> _webSseLines({
     }
 
     final response = await client.send(request);
+    
+    if (kDebugMode) {
+      print('[CHAT_STREAM] web response status: ${response.statusCode} for $uri');
+      print('[CHAT_STREAM] web response headers: ${response.headers}');
+    }
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
       final errText = await response.stream.bytesToString();
       if (kDebugMode) {
@@ -107,8 +113,10 @@ Stream<String> _webSseLines({
         .transform(const LineSplitter());
 
     var lineIndex = 0;
+    bool hadData = false;
     await for (final line in lines) {
       if (cancelToken?.isCancelled == true) break;
+      hadData = true;
       lineIndex++;
       if (kDebugMode && lineIndex <= 5) {
         print('[CHAT_STREAM] web line#$lineIndex len=${line.length}');
@@ -117,7 +125,7 @@ Stream<String> _webSseLines({
     }
 
     if (kDebugMode) {
-      print('[CHAT_STREAM] web done lines=$lineIndex');
+      print('[CHAT_STREAM] web done lines=$lineIndex (hadData=$hadData)');
     }
   } finally {
     client.close();

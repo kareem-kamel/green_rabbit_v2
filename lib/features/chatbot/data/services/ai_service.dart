@@ -191,10 +191,10 @@ class AIService {
           continue;
         }
 
-        if (line.startsWith('{')) {
-          yield* _parseSsePayload(line, eventType);
-          eventType = 'message';
-        }
+        // If the line is not empty and doesn't start with SSE prefixes,
+        // it might be a raw JSON object or raw text chunk.
+        yield* _parseSsePayload(line, eventType);
+        eventType = 'message';
       }
     } catch (e) {
       if (e is DioException) {
