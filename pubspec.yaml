@@ -117,7 +117,7 @@ flutter:
     - assets/icons/ainewssummary.png
     - assets/icons/aifreetrail.png
     - assets/icons/sparkles-sharp.png
-    - assets/icons/editchat.png
+    - assets/icons/edit.png
     - assets/icons/allchat.png
     - assets/images/
     # - .env

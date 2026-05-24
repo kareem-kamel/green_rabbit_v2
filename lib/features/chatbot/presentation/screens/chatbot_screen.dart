@@ -210,7 +210,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       actions: [
         IconButton(
           icon: Image.asset(
-            'assets/icons/editchat.png',
+            'assets/icons/edit.png',
             width: 44,
             height: 44,
             fit: BoxFit.contain,
@@ -260,7 +260,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               ),
             ),
             ListTile(
-              leading: const Icon(Icons.edit_note, color: Colors.white),
+              leading: Image.asset(
+                'assets/icons/edit.png',
+                width: 24,
+                height: 24,
+                color: Colors.white,
+              ),
               title: const Text("New Chat",
                   style: TextStyle(color: Colors.white, fontSize: 15)),
               onTap: () {
@@ -268,9 +273,21 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 context.read<ChatCubit>().startNewChat();
               },
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Text("Your Chats", style: TextStyle(color: Colors.grey, fontSize: 12)),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Image.asset(
+                    'assets/icons/allchat.png',
+                    width: 18,
+                    height: 18,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text("Your Chats",
+                      style: TextStyle(color: Colors.grey, fontSize: 12)),
+                ],
+              ),
             ),
             Expanded(
               child: ListView.builder(
