@@ -195,9 +195,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       backgroundColor: AppColors.scaffoldBg,
       elevation: 0,
       toolbarHeight: 72,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 40),
-        onPressed: () => Navigator.pop(context),
+      leading: _buildAppBarIcon(
+        assetPath: 'assets/icons/exitchat.png',
+        onTap: () => Navigator.pop(context),
       ),
       title: const FittedBox(
         fit: BoxFit.scaleDown,
@@ -208,25 +208,41 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         ),
       ),
       actions: [
-        IconButton(
-          icon: Image.asset(
-            'assets/icons/edit.png',
-            width: 44,
-            height: 44,
-            fit: BoxFit.contain,
-          ),
-          onPressed: () => cubit.startNewChat(),
+        _buildAppBarIcon(
+          assetPath: 'assets/icons/edit.png',
+          onTap: () => cubit.startNewChat(),
         ),
-        IconButton(
-          icon: Image.asset(
-            'assets/icons/allchat.png',
-            width: 44,
-            height: 44,
-            fit: BoxFit.contain,
-          ),
-          onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+        const SizedBox(width: 10),
+        _buildAppBarIcon(
+          assetPath: 'assets/icons/ic_round-menu.png',
+          size: 28,
+          onTap: () => _scaffoldKey.currentState?.openDrawer(),
         ),
+        const SizedBox(width: 16),
       ],
+    );
+  }
+
+  Widget _buildAppBarIcon({required String assetPath, double size = 22, required VoidCallback onTap}) {
+    return Center(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1C1F26),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Image.asset(
+            assetPath,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+          ),
+        ),
+      ),
     );
   }
 
@@ -262,9 +278,10 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             ListTile(
               leading: Image.asset(
                 'assets/icons/edit.png',
-                width: 24,
-                height: 24,
+                width: 20,
+                height: 20,
                 color: Colors.white,
+                filterQuality: FilterQuality.high,
               ),
               title: const Text("New Chat",
                   style: TextStyle(color: Colors.white, fontSize: 15)),
@@ -278,10 +295,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               child: Row(
                 children: [
                   Image.asset(
-                    'assets/icons/allchat.png',
-                    width: 18,
-                    height: 18,
+                    'assets/icons/ic_round-menu.png',
+                    width: 16,
+                    height: 16,
                     color: Colors.grey,
+                    filterQuality: FilterQuality.high,
                   ),
                   const SizedBox(width: 8),
                   const Text("Your Chats",
@@ -403,8 +421,27 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   }
 
   Widget _buildSuggestionBox(ChatCubit cubit) {
-    final List<String> suggestions = [
-      "Bullish Trends", "Market Analysis", "Top Stocks", "Crypto News", "Strategy",
+    final List<Map<String, String>> suggestions = [
+      {
+        "label": "Show me Top Stocks",
+        "query": "Provide a detailed report on today's top performing stocks and trending market instruments."
+      },
+      {
+        "label": "Latest Crypto News",
+        "query": "Search for the most recent cryptocurrency market news and provide a detailed summary of significant events affecting Bitcoin, Ethereum, and major altcoins today."
+      },
+      {
+        "label": "Bullish Trends",
+        "query": "What are the current bullish trends in the stock and crypto markets that I should be aware of?"
+      },
+      {
+        "label": "Market Analysis",
+        "query": "Provide a comprehensive market analysis for today's trading session."
+      },
+      {
+        "label": "Trading Strategy",
+        "query": "Suggest a high-probability trading strategy for the current market conditions."
+      },
     ];
     return Container(
       width: double.infinity,
@@ -435,7 +472,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             alignment: WrapAlignment.center,
             children: suggestions.map((s) => GestureDetector(
               onTap: () {
-                cubit.sendMessage(s);
+                cubit.sendMessage(s["query"]!);
                 _textController.clear();
               },
               child: Container(
@@ -445,7 +482,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                   borderRadius: BorderRadius.circular(8),
                   color: Colors.white.withOpacity(0.02),
                 ),
-                child: Text(s, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                child: Text(s["label"]!, style: const TextStyle(color: Colors.white, fontSize: 12)),
               ),
             )).toList(),
           ),

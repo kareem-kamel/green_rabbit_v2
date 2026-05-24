@@ -120,7 +120,8 @@ flutter:
     - assets/icons/aifreetrail.png
     - assets/icons/sparkles-sharp.png
     - assets/icons/edit.png
-    - assets/icons/allchat.png
+    - assets/icons/ic_round-menu.png
+    - assets/icons/exitchat.png
     - assets/images/
     # - .env
 
