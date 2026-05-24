@@ -196,7 +196,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       elevation: 0,
       toolbarHeight: 72,
       leading: _buildAppBarIcon(
-        assetPath: 'assets/icons/exitchat.png',
+        icon: Icons.arrow_back_ios_new_rounded,
         onTap: () => Navigator.pop(context),
       ),
       title: const FittedBox(
@@ -209,13 +209,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       ),
       actions: [
         _buildAppBarIcon(
-          assetPath: 'assets/icons/edit.png',
+          icon: Icons.edit_outlined,
+          size: 18,
           onTap: () => cubit.startNewChat(),
         ),
         const SizedBox(width: 10),
         _buildAppBarIcon(
-          assetPath: 'assets/icons/ic_round-menu.png',
-          size: 28,
+          icon: Icons.menu_rounded,
+          size: 18,
           onTap: () => _scaffoldKey.currentState?.openDrawer(),
         ),
         const SizedBox(width: 16),
@@ -223,23 +224,21 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     );
   }
 
-  Widget _buildAppBarIcon({required String assetPath, double size = 22, required VoidCallback onTap}) {
+  Widget _buildAppBarIcon({required IconData icon, double size = 18, required VoidCallback onTap}) {
     return Center(
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(7),
           decoration: BoxDecoration(
             color: const Color(0xFF1C1F26),
             shape: BoxShape.circle,
             border: Border.all(color: Colors.white10),
           ),
-          child: Image.asset(
-            assetPath,
-            width: size,
-            height: size,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
+          child: Icon(
+            icon,
+            color: Colors.white,
+            size: size,
           ),
         ),
       ),
@@ -276,12 +275,10 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               ),
             ),
             ListTile(
-              leading: Image.asset(
-                'assets/icons/edit.png',
-                width: 20,
-                height: 20,
+              leading: const Icon(
+                Icons.edit_outlined,
                 color: Colors.white,
-                filterQuality: FilterQuality.high,
+                size: 20,
               ),
               title: const Text("New Chat",
                   style: TextStyle(color: Colors.white, fontSize: 15)),
@@ -290,16 +287,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 context.read<ChatCubit>().startNewChat();
               },
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
-                  Image.asset(
-                    'assets/icons/ic_round-menu.png',
-                    width: 16,
-                    height: 16,
-                    color: Colors.grey,
-                    filterQuality: FilterQuality.high,
+                  Icon(
+                    Icons.history_rounded,
+                    color: Colors.white70,
+                    size: 20,
                   ),
                   const SizedBox(width: 8),
                   const Text("Your Chats",
@@ -391,6 +386,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           fit: BoxFit.cover,
           width: size,
           height: size,
+          filterQuality: FilterQuality.high,
         ),
       ),
     );
@@ -787,7 +783,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                       onTap: () => cubit.toggleVoiceMode(true),
                       child: const Padding(
                         padding: EdgeInsets.only(left: 4),
-                        child: Icon(Icons.mic_none, color: Color(0xFF8B5CF6), size: 22),
+                        child: Icon(Icons.mic_none, color: Color(0xFF8B5CF6), size: 20),
                       ),
                     ),
                   ],
@@ -800,8 +796,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                   ? () => cubit.stopGenerating()
                   : () => _handleSend(cubit),
               child: Container(
-                height: 48,
-                width: 48,
+                height: 44,
+                width: 44,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: state.isGenerating
@@ -809,8 +805,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                       : const Color(0xFF8B5CF6),
                 ),
                 child: state.isGenerating
-                    ? const Icon(Icons.stop_rounded, color: Colors.white, size: 22)
-                    : const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                    ? const Icon(Icons.stop_rounded, color: Colors.white, size: 20)
+                    : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
               ),
             ),
           ],
@@ -836,11 +832,10 @@ class _SparkIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/icons/sparkles-sharp.png',
-      width: size,
-      height: size,
-      fit: BoxFit.contain,
+    return Icon(
+      Icons.auto_awesome_rounded,
+      size: size,
+      color: const Color(0xFF8B5CF6),
     );
   }
 }
