@@ -156,21 +156,23 @@ class CalendarEventCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: List.generate(3, (index) {
-                      final activeCount = _getActiveRabbits();
-                      final isHighlighted = activeCount > index;
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 2),
-                        child: Image.asset(
-                          isHighlighted ? 'assets/green_rabbit.png' : 'assets/rabbit_dark.png',
-                          width: 16, // slightly larger for visibility
-                          height: 16,
-                        ),
-                      );
-                    }),
-                  ),
+                  if (category != 'ipo') ...[
+                    const SizedBox(height: 12),
+                    Row(
+                      children: List.generate(3, (index) {
+                        final activeCount = _getActiveRabbits();
+                        final isHighlighted = activeCount > index;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 2),
+                          child: Image.asset(
+                            isHighlighted ? 'assets/green_rabbit.png' : 'assets/rabbit_dark.png',
+                            width: 16, // slightly larger for visibility
+                            height: 16,
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
                 ],
               ),
             ),

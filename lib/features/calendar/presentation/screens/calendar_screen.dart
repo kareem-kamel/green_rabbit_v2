@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../profile/presentation/screens/profile_screen.dart';
 import '../cubit/calendar_cubit.dart';
 import '../../data/models/calendar_event.dart';
 import '../widgets/calendar_event_card.dart';
@@ -103,10 +104,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
+        title: InkWell(
+          onTap: () => _showCategoryDialog(),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
                 _selectedCategory.isEmpty 
                     ? "Calendar" 
                     : "${_selectedCategory[0].toUpperCase()}${_selectedCategory.substring(1)} Calendar",
@@ -115,11 +118,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            const Icon(Icons.arrow_drop_down, color: Colors.white, size: 14),
-          ],
+              const Icon(Icons.arrow_drop_down, color: Colors.white, size: 24),
+            ],
+          ),
         ),
         actions: [
           _buildCircularIconButton(
@@ -132,7 +134,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
               final result = await Navigator.push<CalendarFilterSettings>(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => CalendarFilterScreen(initialSettings: _filterSettings),
+                  builder: (context) => CalendarFilterScreen(
+                    initialSettings: _filterSettings,
+                    category: _selectedCategory,
+                  ),
                 ),
               );
               if (result != null) {
@@ -150,7 +155,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
           ),
           _buildCircularIconButton(
             icon: const Icon(Icons.menu, color: Colors.white, size: 20),
-            onPressed: () => _showCategoryDialog(),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              );
+            },
           ),
           const SizedBox(width: 8),
         ],
