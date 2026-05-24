@@ -285,13 +285,41 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
           isDark: isDark,
         ),
         const SizedBox(height: 16),
-        Text(
-          "Duration: ${_formatDuration(_globalMonths)}",
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white70 : Colors.black87,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "Duration: ${_formatDuration(_globalMonths)}",
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
+            ),
+            Row(
+              children: [
+                _buildAdjustButton(
+                  icon: Icons.remove,
+                  onPressed: () {
+                    if (_globalMonths > 1) {
+                      setState(() => _globalMonths--);
+                    }
+                  },
+                  isDark: isDark,
+                ),
+                const SizedBox(width: 8),
+                _buildAdjustButton(
+                  icon: Icons.add,
+                  onPressed: () {
+                    if (_globalMonths < 132) {
+                      setState(() => _globalMonths++);
+                    }
+                  },
+                  isDark: isDark,
+                ),
+              ],
+            ),
+          ],
         ),
         Slider(
           value: _globalMonths.toDouble(),
@@ -432,13 +460,41 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
             isDark: isDark,
           ),
           const SizedBox(height: 16),
-          Text(
-            "Duration: ${_formatDuration(_globalStockMonths)}",
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white70 : Colors.black87,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "Duration: ${_formatDuration(_globalStockMonths)}",
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+              ),
+              Row(
+                children: [
+                  _buildAdjustButton(
+                    icon: Icons.remove,
+                    onPressed: () {
+                      if (_globalStockMonths > 1) {
+                        setState(() => _globalStockMonths--);
+                      }
+                    },
+                    isDark: isDark,
+                  ),
+                  const SizedBox(width: 8),
+                  _buildAdjustButton(
+                    icon: Icons.add,
+                    onPressed: () {
+                      if (_globalStockMonths < 132) {
+                        setState(() => _globalStockMonths++);
+                      }
+                    },
+                    isDark: isDark,
+                  ),
+                ],
+              ),
+            ],
           ),
           Slider(
             value: _globalStockMonths.toDouble(),
@@ -486,10 +542,12 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
     }
     final years = totalMonths ~/ 12;
     final months = totalMonths % 12;
+    final yearStr = "$years ${years == 1 ? 'Year' : 'Years'}";
     if (months == 0) {
-      return "$years ${years == 1 ? 'Year' : 'Years'}";
+      return yearStr;
     }
-    return "$years.$months Years";
+    final monthStr = "$months ${months == 1 ? 'Month' : 'Months'}";
+    return "$yearStr / $monthStr";
   }
 
   Widget _buildResultCard(double futureValue, double profit, bool isDark) {
@@ -582,6 +640,27 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAdjustButton({
+    required IconData icon,
+    required VoidCallback onPressed,
+    required bool isDark,
+  }) {
+    return Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1F26) : Colors.grey[200],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+      ),
+      child: IconButton(
+        padding: EdgeInsets.zero,
+        icon: Icon(icon, size: 18, color: isDark ? Colors.white70 : Colors.black87),
+        onPressed: onPressed,
+      ),
     );
   }
 

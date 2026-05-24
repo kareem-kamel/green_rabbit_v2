@@ -320,7 +320,7 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 
   Widget _buildCategoryRow() {
-    final categories = ["Featured", "Favorites"];
+    final categories = ["Featured", "Popular", "Stocks", "Crypto", "Forex", "Favorites"];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
@@ -386,7 +386,14 @@ class _NewsScreenState extends State<NewsScreen> {
         if (label == "Favorites") {
           context.read<NewsCubit>().fetchFavoriteNews(limit: 20);
         } else {
-          context.read<NewsCubit>().fetchNewsFeed(limit: 20);
+          // Map UI labels to backend 'type' parameters
+          String? categoryParam;
+          if (label == "Stocks") categoryParam = "stock";
+          else if (label == "Crypto") categoryParam = "crypto";
+          else if (label == "Forex") categoryParam = "forex";
+          else if (label == "Popular") categoryParam = "popular";
+          
+          context.read<NewsCubit>().fetchNewsFeed(limit: 20, category: categoryParam);
         }
       },
       child: Container(
@@ -687,7 +694,6 @@ class _NewsScreenState extends State<NewsScreen> {
                       );
                     },
                     child: const AskAIBadge(
-                      iconSize: 12,
                       label: "Ask AI",
                       padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                     ),

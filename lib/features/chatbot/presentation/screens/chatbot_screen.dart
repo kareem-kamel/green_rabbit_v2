@@ -199,10 +199,13 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 40),
         onPressed: () => Navigator.pop(context),
       ),
-      title: const Text(
-        "Chatbot AI",
-        style: TextStyle(
-            color: Colors.white, fontSize: 20, fontWeight: FontWeight.w600),
+      title: const FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          "Financial Advisor",
+          style: TextStyle(
+              color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+        ),
       ),
       actions: [
         IconButton(
@@ -335,7 +338,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           const SizedBox(height: 24),
           _buildRabbitLogo(),
           const SizedBox(height: 32),
-          _buildAIGreetingBubble("Hi, you can ask me anything about markets"),
+          _buildAIGreetingBubble("Hi, I'm your Financial Advisor. You can ask me anything about markets"),
           const SizedBox(height: 16),
           _buildSuggestionBox(cubit),
         ],
@@ -438,26 +441,40 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   //  CHAT HISTORY
   // ─────────────────────────────────────────────
   Widget _buildChatHistory(ChatState state) {
+    // Filter out internal technical messages (e.g. summary triggers) from the UI
+    final visibleMessages = state.messages.where((msg) {
+      if (!msg.isUser) return true;
+      
+      final content = msg.content.trim();
+      // Hide if it's just a URL
+      if (Uri.tryParse(content)?.hasAbsolutePath ?? false) return false;
+      // Hide if it's a UUID/ID or technical trigger
+      if (RegExp(r'^[a-fA-F0-9-]{32,50}$').hasMatch(content)) return false;
+      if (content.contains('targetId:') || content.contains('entityType:') || 
+          content.contains('summaryId:') || content.contains('summaryType:')) return false;
+      
+      return true;
+    }).toList();
+
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      itemCount: state.messages.length + (state.isGenerating ? 2 : 1),
+      itemCount: visibleMessages.length + (state.isGenerating ? 2 : 1),
       itemBuilder: (context, index) {
-        if (index == state.messages.length + (state.isGenerating ? 1 : 0)) {
+        if (index == visibleMessages.length + (state.isGenerating ? 1 : 0)) {
           return _buildCreditsRow(state);
         }
-        if (state.isGenerating && index == state.messages.length) {
+        if (state.isGenerating && index == visibleMessages.length) {
           // Only show a separate typing bubble if the last message is from the user
           // (meaning the assistant placeholder hasn't been added or is still being prepared)
-          final lastMsg = state.messages.last;
-          if (lastMsg.isUser) {
+          if (visibleMessages.isEmpty || visibleMessages.last.isUser) {
             return _buildTypingIndicatorBubble();
           }
           return const SizedBox.shrink();
         }
         
-        final msg = state.messages[index];
-        return _buildMessageBubble(context, msg, state.isGenerating && index == state.messages.length - 1);
+        final msg = visibleMessages[index];
+        return _buildMessageBubble(context, msg, state.isGenerating && index == visibleMessages.length - 1);
       },
     );
   }
@@ -703,7 +720,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                         controller: _textController,
                         style: const TextStyle(color: Colors.white, fontSize: 14),
                         decoration: const InputDecoration(
-                          hintText: "Ask AI",
+                          hintText: "Ask Financial Advisor",
                           hintStyle: TextStyle(color: Colors.grey),
                           border: InputBorder.none,
                           isDense: true,

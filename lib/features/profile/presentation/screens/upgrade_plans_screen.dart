@@ -187,7 +187,7 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
     final price = isYearly ? yearlyPrice : monthlyPrice;
     
     final features = widget.isClassic 
-      ? ['Remove Ads', 'Limited AI access free for 7 day', 'AI Chatbot (5 Free Credits)', 'AI News Summaries for 7 day']
+      ? ['Remove Ads', 'Limited AI access free for 7 day', 'Financial Advisor (5 Free Credits)', 'AI News Summaries for 7 day']
       : ['Priority customer support', 'Real-time AI trading signals', 'Custom alerts & notifications', 'API access for automation', 'Expert community access', 'Unlimited watchlists', 'Advanced charting tools', 'Advanced portfolio tracking'];
 
     return Container(

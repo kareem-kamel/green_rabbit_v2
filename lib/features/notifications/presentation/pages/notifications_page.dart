@@ -214,6 +214,35 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   String _sanitizeBody(NotificationModel notification) {
     final String body = notification.body;
+    final metadataExtra = notification.data.extraFields;
+    final symbol = notification.data.instrumentSymbol ?? 'Asset';
+    
+    // Check for standard price alert type
+    if (notification.type == 'price_alert' || body.contains('target price')) {
+      double? triggeredPrice = _parsePrice(metadataExtra['triggeredPrice'] ?? metadataExtra['price'] ?? metadataExtra['currentPrice'] ?? metadataExtra['current_price']);
+      double? targetPrice = _parsePrice(metadataExtra['targetPrice'] ?? metadataExtra['target'] ?? metadataExtra['target_price']);
+      
+      // Fallback: If not found in extraFields, try to find in AlertCubit matching alert
+      if (targetPrice == null && notification.data.alertId != null) {
+        try {
+          final alerts = context.read<AlertCubit>().state.alerts;
+          final alert = alerts.firstWhere((a) => a.id == notification.data.alertId);
+          targetPrice = alert.targetPrice;
+          triggeredPrice = alert.triggeredPrice;
+        } catch (_) {}
+      }
+
+      if (targetPrice != null && triggeredPrice != null) {
+        final direction = triggeredPrice >= targetPrice ? 'increased' : 'decreased';
+        final arrow = triggeredPrice >= targetPrice ? '↑' : '↓';
+        
+        return '$symbol has $direction to \$${triggeredPrice.toStringAsFixed(2)} $arrow, hitting your target of \$${targetPrice.toStringAsFixed(2)}.';
+      } else if (targetPrice != null) {
+        return '$symbol reached your target price of \$${targetPrice.toStringAsFixed(2)}.';
+      } else if (triggeredPrice != null) {
+        return '$symbol is now at \$${triggeredPrice.toStringAsFixed(2)}.';
+      }
+    }
     
     // Check if the body contains the JavaScript interpolation template bug
     if (body.contains('Number(price)') || body.contains('{Number(') || body.contains('Number(target)')) {
@@ -221,7 +250,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
       double? targetPrice;
       
       // 1. Try to find the values from the metadata extra fields
-      final metadataExtra = notification.data.extraFields;
       triggeredPrice = _parsePrice(metadataExtra['triggeredPrice'] ?? metadataExtra['price'] ?? metadataExtra['currentPrice']);
       targetPrice = _parsePrice(metadataExtra['targetPrice'] ?? metadataExtra['target']);
       
@@ -253,7 +281,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return result;
       } else {
         // Ultimate fallback: Clean it up gracefully to show a user-friendly string
-        final symbol = notification.data.instrumentSymbol ?? 'Asset';
         return '$symbol reached your target price.';
       }
     }

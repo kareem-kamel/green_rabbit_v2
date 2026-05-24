@@ -445,7 +445,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                     child: Image.asset('assets/trade_logo.png', width: 16, height: 16, errorBuilder: (_, __, ___) => const Icon(Icons.psychology, color: Colors.purple, size: 16)),
                   ),
                   const SizedBox(width: 8),
-                  const Text('Analyze AI', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                  const Text('Financial Advisor Analysis', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
                 ],
               ),
             ),
