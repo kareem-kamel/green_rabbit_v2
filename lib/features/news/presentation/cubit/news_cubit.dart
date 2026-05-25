@@ -55,11 +55,25 @@ class NewsCubit extends Cubit<NewsState> {
 
   Future<void> fetchFavoriteNews({int limit = 10}) async {
     try {
-      emit(NewsLoading());
+      // Load from cache first for immediate display
+      final cachedArticles = repository.getCachedFavorites();
+      if (cachedArticles.isNotEmpty) {
+        emit(NewsLoaded(cachedArticles));
+      } else {
+        emit(NewsLoading());
+      }
+
       final articles = await repository.fetchFavoriteArticles(limit: limit);
+      
+      // Update cache with fresh data
+      await repository.cacheFavorites(articles);
+      
       emit(NewsLoaded(articles));
     } catch (e) {
-      emit(NewsError("Error: ${e.toString()}"));
+      // If we already have cached data, don't emit error
+      if (state is! NewsLoaded) {
+        emit(NewsError("Error: ${e.toString()}"));
+      }
     }
   }
 
@@ -74,10 +88,13 @@ class NewsCubit extends Cubit<NewsState> {
       }).toList();
 
       if (isFavoritesTab && !isBookmarked) {
-        updatedArticles.removeWhere((article) => article?.id == articleId);
+        updatedArticles.removeWhere((article) => article.id == articleId);
       }
 
       emit(NewsLoaded(updatedArticles));
+      
+      // Sync cache after local toggle
+      repository.cacheFavorites(updatedArticles.where((a) => a.isBookmarked).toList());
     }
   }
 }

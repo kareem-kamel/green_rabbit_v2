@@ -260,9 +260,21 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
           }
 
           // Validation: Alert price cannot be the same as current market price
-          if (state.selectedTab == "Price" && targetPrice == widget.lastPrice) {
-            _showError("Alert price cannot be the same as the current market price (${widget.lastPrice.toStringAsFixed(2)})");
-            return;
+          if (state.selectedTab == "Price") {
+            if (targetPrice == widget.lastPrice) {
+              _showError("Alert price cannot be the same as the current market price (${widget.lastPrice.toStringAsFixed(2)})");
+              return;
+            }
+            
+            if (state.priceCondition == "Move Above" && targetPrice < widget.lastPrice) {
+              _showError("The target price is already above your input. Please set a price higher than ${widget.lastPrice.toStringAsFixed(2)}");
+              return;
+            }
+            
+            if (state.priceCondition == "Move Below" && targetPrice > widget.lastPrice) {
+              _showError("The target price is already below your input. Please set a price lower than ${widget.lastPrice.toStringAsFixed(2)}");
+              return;
+            }
           }
           
           String type = "price_above";
@@ -274,9 +286,7 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
              type = state.volumeCondition == "Below" ? "volume_below" : "volume_above";
           }
           
-          DateTime expiresAt = DateTime.now().add(const Duration(days: 30));
-          
-          cubit.createAlert(widget.instrumentId ?? widget.assetName, targetPrice, type, expiresAt: expiresAt);
+          cubit.createAlert(widget.instrumentId ?? widget.assetName, targetPrice, type);
           Navigator.pop(context);
         },
         style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
