@@ -54,7 +54,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _emailController = TextEditingController(text: user.email);
       _phoneController = TextEditingController(text: user.phone ?? '');
       _selectedCountryName = user.country ?? 'Select Country';
-      _avatarUrl = user.avatarUrl ?? 'https://i.pravatar.cc/150?u=green_rabbit';
+      _avatarUrl = user.avatarUrl ?? 'assets/images/default_avatar.png';
       
       // Find country mapping for flag/code if it exists (or keep default)
       final countryMatch = _countries.firstWhere(
@@ -73,7 +73,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _selectedCountryName = 'Select Country';
       _selectedCountryCode = 'EG';
       _selectedCountryFlag = '🇪🇬';
-      _avatarUrl = 'https://i.pravatar.cc/150?u=green_rabbit';
+      _avatarUrl = 'assets/images/default_avatar.png';
     }
   }
 
@@ -118,7 +118,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         bool isLoading = false;
                         
                         if (state is ProfileLoaded) {
-                          currentAvatar = state.user.avatarUrl ?? 'https://i.pravatar.cc/150?u=green_rabbit';
+                          currentAvatar = state.user.avatarUrl ?? 'assets/images/default_avatar.png';
                         } else if (state is ProfileLoading) {
                           isLoading = true;
                         }
@@ -133,7 +133,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ),
                               child: CircleAvatar(
                                 radius: 52,
-                                backgroundImage: NetworkImage(currentAvatar),
+                                backgroundImage: currentAvatar.startsWith('http')
+                                    ? NetworkImage(currentAvatar) as ImageProvider
+                                    : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
                                 child: isLoading ? const CircularProgressIndicator(color: Colors.white) : null,
                               ),
                             ),

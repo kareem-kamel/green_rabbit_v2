@@ -31,6 +31,7 @@ class AppTheme {
       useMaterial3: true,
       fontFamily: 'Urbanist', 
     ).copyWith(
+      cardColor: AppColors.cardBackground,
       textTheme: const TextTheme(
         bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.textLight),
         displayMedium: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
