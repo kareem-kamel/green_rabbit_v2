@@ -147,6 +147,9 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
         }
       } else {
         _loadComments();
+        if (context.mounted) {
+          context.read<ProfileCubit>().getProfile();
+        }
       }
     }
   }
@@ -739,8 +742,8 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                 radius: 16,
                 backgroundColor: isDark ? AppColors.cardBg : Colors.grey[200],
                 backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                    ? NetworkImage(avatarUrl)
-                    : const NetworkImage('https://i.pravatar.cc/150?u=me'),
+                    ? NetworkImage(avatarUrl) as ImageProvider
+                    : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -787,12 +790,9 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                 radius: 14,
                 backgroundColor: isDark ? AppColors.cardBg : Colors.grey[200],
                 backgroundImage: comment.avatarUrl != null && comment.avatarUrl!.isNotEmpty
-                    ? NetworkImage(comment.avatarUrl!)
-                    : null,
-                child: comment.avatarUrl == null || comment.avatarUrl!.isEmpty
-                    ? Text(comment.name.isNotEmpty ? comment.name[0] : '?',
-                        style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 10))
-                    : null,
+                    ? NetworkImage(comment.avatarUrl!) as ImageProvider
+                    : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                child: null,
               ),
               const SizedBox(width: 10),
               Text(comment.name,
