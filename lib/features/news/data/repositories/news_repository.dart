@@ -2,13 +2,19 @@ import 'package:green_rabbit/core/constants/app_constants.dart';
 import 'package:dio/dio.dart';
 import '../../../../core/network/api_client.dart';
 import '../models/news_model.dart';
+import '../services/news_cache_service.dart';
 
 class NewsRepository {
   final ApiClient _apiClient;
+  final NewsCacheService _cacheService;
 
-  NewsRepository(this._apiClient);
+  NewsRepository(this._apiClient, this._cacheService);
 
   String get _endpoint => AppConstants.newsEndpoint;
+
+  // Cache access
+  List<NewsArticle> getCachedFavorites() => _cacheService.getCachedFavorites();
+  Future<void> cacheFavorites(List<NewsArticle> articles) => _cacheService.cacheFavorites(articles);
 
   // THIS NAME MUST MATCH THE CUBIT CALL
   Future<List<NewsArticle>> fetchNewsFeed({int page = 1, int limit = 20, String? category}) async {
