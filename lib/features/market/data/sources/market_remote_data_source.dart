@@ -73,7 +73,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
     }
     
     return list.whereType<Map>().map((item) {
-      final Map<String, dynamic> itemMap = Map<String, dynamic>.from(item as Map);
+      final Map<String, dynamic> itemMap = Map<String, dynamic>.from(item);
       return MarketInstrument.fromJson(itemMap);
     }).toList();
   }
@@ -344,7 +344,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
     // Each trending item is: { rank, instrument: {...}, trendingReason, trendingScore }
     // Extract the nested instrument object before parsing.
     return list.whereType<Map>().map((item) {
-      final Map<String, dynamic> itemMap = Map<String, dynamic>.from(item as Map);
+      final Map<String, dynamic> itemMap = Map<String, dynamic>.from(item);
       final inner = itemMap['instrument'];
       final instrumentMap = inner is Map
           ? Map<String, dynamic>.from(inner)

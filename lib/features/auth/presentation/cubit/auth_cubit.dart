@@ -79,13 +79,13 @@ class AuthCubit extends Cubit<AuthState> {
     emit(AuthLoading());
 
     try {
-      await repository.login(
+      final bool onboardingDone = await repository.login(
         email: email,
         password: password,
         rememberMe: rememberMe,
       );
 
-      if (isFromSignup) {
+      if (!onboardingDone || isFromSignup) {
         emit(AuthNeedsPreferences());
       } else {
         emit(AuthSuccess());
@@ -145,9 +145,13 @@ class AuthCubit extends Cubit<AuthState> {
       }
 
       // Send token to backend
-      await repository.signInWithGoogle(idToken);
+      final bool onboardingDone = await repository.signInWithGoogle(idToken);
 
-      emit(AuthSuccess());
+      if (!onboardingDone) {
+        emit(AuthNeedsPreferences());
+      } else {
+        emit(AuthSuccess());
+      }
     } catch (e) {
       debugPrint('Google Sign-In Error: $e');
 

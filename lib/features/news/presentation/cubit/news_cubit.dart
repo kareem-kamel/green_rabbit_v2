@@ -74,7 +74,7 @@ class NewsCubit extends Cubit<NewsState> {
       }).toList();
 
       if (isFavoritesTab && !isBookmarked) {
-        updatedArticles.removeWhere((article) => article?.id == articleId);
+        updatedArticles.removeWhere((article) => article.id == articleId);
       }
 
       emit(NewsLoaded(updatedArticles));

@@ -296,8 +296,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     color: Colors.white70,
                     size: 20,
                   ),
-                  const SizedBox(width: 8),
-                  const Text("Your Chats",
+                  SizedBox(width: 8),
+                  Text("Your Chats",
                       style: TextStyle(color: Colors.grey, fontSize: 12)),
                 ],
               ),
@@ -501,7 +501,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       // Hide if it's a UUID/ID or technical trigger
       if (RegExp(r'^[a-fA-F0-9-]{32,50}$').hasMatch(content)) return false;
       if (content.contains('targetId:') || content.contains('entityType:') || 
-          content.contains('summaryId:') || content.contains('summaryType:')) return false;
+          content.contains('summaryId:') || content.contains('summaryType:')) {
+        return false;
+      }
       
       return true;
     }).toList();

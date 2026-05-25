@@ -8,8 +8,6 @@ import 'country_selection_screen.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/login_screen.dart';
 
-
-
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
 
@@ -28,7 +26,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
-  
+
   late String _selectedCountryName;
   late String _selectedCountryCode;
   late String _selectedCountryFlag;
@@ -55,16 +53,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _phoneController = TextEditingController(text: user.phone ?? '');
       _selectedCountryName = user.country ?? 'Select Country';
       _avatarUrl = user.avatarUrl ?? 'assets/images/default_avatar.png';
-      
+
       // Find country mapping for flag/code if it exists (or keep default)
       final countryMatch = _countries.firstWhere(
-        (c) => c.name.toLowerCase() == _selectedCountryName.toLowerCase() || c.code.toLowerCase() == _selectedCountryName.toLowerCase(),
+        (c) =>
+            c.name.toLowerCase() == _selectedCountryName.toLowerCase() ||
+            c.code.toLowerCase() == _selectedCountryName.toLowerCase(),
         orElse: () => _countries.first,
       );
       _selectedCountryFlag = countryMatch.flag;
       _selectedCountryCode = countryMatch.code;
-      if (_selectedCountryName == 'Select Country' || _selectedCountryName.length == 2) {
-         _selectedCountryName = countryMatch.name;
+      if (_selectedCountryName == 'Select Country' ||
+          _selectedCountryName.length == 2) {
+        _selectedCountryName = countryMatch.name;
       }
     } else {
       _nameController = TextEditingController();
@@ -77,7 +78,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -86,13 +86,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 20),
+          icon: Icon(
+            Icons.arrow_back_ios,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Profile',
           style: TextStyle(
-            color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white
+                : Colors.black,
             fontSize: 18,
             fontWeight: FontWeight.w600,
           ),
@@ -116,9 +124,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       builder: (context, state) {
                         String currentAvatar = _avatarUrl;
                         bool isLoading = false;
-                        
+
                         if (state is ProfileLoaded) {
-                          currentAvatar = state.user.avatarUrl ?? 'assets/images/default_avatar.png';
+                          currentAvatar =
+                              state.user.avatarUrl ??
+                              'assets/images/default_avatar.png';
                         } else if (state is ProfileLoading) {
                           isLoading = true;
                         }
@@ -129,14 +139,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               padding: const EdgeInsets.all(2),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.1),
+                                  width: 1,
+                                ),
                               ),
                               child: CircleAvatar(
                                 radius: 52,
-                                backgroundImage: currentAvatar.startsWith('http')
-                                    ? NetworkImage(currentAvatar) as ImageProvider
-                                    : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
-                                child: isLoading ? const CircularProgressIndicator(color: Colors.white) : null,
+                                backgroundImage:
+                                    currentAvatar.startsWith('http')
+                                    ? NetworkImage(currentAvatar)
+                                          as ImageProvider
+                                    : const AssetImage(
+                                            'assets/images/default_avatar.png',
+                                          )
+                                          as ImageProvider,
+                                child: isLoading
+                                    ? const CircularProgressIndicator(
+                                        color: Colors.white,
+                                      )
+                                    : null,
                               ),
                             ),
                             Positioned(
@@ -145,9 +167,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF4C3BC9), // specific indigo/blue from theme
+                                  color: const Color(
+                                    0xFF4C3BC9,
+                                  ), // specific indigo/blue from theme
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 3),
+                                  border: Border.all(
+                                    color: Theme.of(
+                                      context,
+                                    ).scaffoldBackgroundColor,
+                                    width: 3,
+                                  ),
                                 ),
                                 child: const Icon(
                                   Icons.edit_outlined,
@@ -167,7 +196,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     child: Text(
                       'Change Avatar',
                       style: TextStyle(
-                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black,
                         fontSize: 16,
                         fontWeight: FontWeight.w400,
                       ),
@@ -178,25 +209,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
 
             const SizedBox(height: 32),
-            
+
             // --- Form Fields ---
             _buildFieldLabel('Name'),
             _buildTextField(_nameController),
             const SizedBox(height: 20),
-            
+
             _buildFieldLabel('Email'),
             _buildTextField(_emailController),
             const SizedBox(height: 20),
-            
+
             _buildFieldLabel('Phone number'),
             _buildTextField(_phoneController),
             const SizedBox(height: 20),
-            
+
             _buildFieldLabel('Country'),
             _buildCountryDropdown(),
-            
+
             const SizedBox(height: 32),
-            
+
             // --- Add Account Button ---
             SizedBox(
               width: double.infinity,
@@ -211,16 +242,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFE5E7EB), // light grey/off-white
+                  backgroundColor: const Color(
+                    0xFFE5E7EB,
+                  ), // light grey/off-white
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   elevation: 0,
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             // --- Delete Account Text ---
             InkWell(
               onTap: () => _showDeleteAccountBottomSheet(context),
@@ -236,9 +271,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 40),
-            
+
             // --- Save Changes Button ---
             SizedBox(
               width: double.infinity,
@@ -251,45 +286,59 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     });
                   } else if (state is ProfileError) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+                      SnackBar(
+                        content: Text(state.message),
+                        backgroundColor: Colors.red,
+                      ),
                     );
                   } else if (state is ProfileDeleted) {
                     _showSuccessAlert(context, 'Account deleted successfully');
                     context.read<AuthCubit>().clearLocalSession();
                     Navigator.pushAndRemoveUntil(
                       context,
-                      MaterialPageRoute(builder: (_) => const LoginScreen(isFromSignup: false)),
+                      MaterialPageRoute(
+                        builder: (_) => const LoginScreen(isFromSignup: false),
+                      ),
                       (route) => false,
                     );
                   }
                 },
                 builder: (context, state) {
                   return ElevatedButton(
-                    onPressed: state is ProfileLoading 
-                      ? null 
-                      : () {
-                        context.read<ProfileCubit>().updateProfile(
-                          fullName: _nameController.text,
-                          phone: _phoneController.text,
-                          country: _selectedCountryCode,
-                        );
-                      },
+                    onPressed: state is ProfileLoading
+                        ? null
+                        : () {
+                            context.read<ProfileCubit>().updateProfile(
+                              fullName: _nameController.text,
+                              phone: _phoneController.text,
+                              country: _selectedCountryCode,
+                            );
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4C3BC9),
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       elevation: 0,
                     ),
                     child: state is ProfileLoading
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text(
-                          'Save Changes',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Text(
+                            'Save Changes',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
                   );
                 },
               ),
@@ -307,7 +356,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       child: Text(
         label,
         style: TextStyle(
-          color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? Colors.white
+              : Colors.black87,
           fontSize: 16,
           fontWeight: FontWeight.w400,
         ),
@@ -315,22 +366,38 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-
   Widget _buildTextField(TextEditingController controller) {
     return TextField(
       controller: controller,
-      style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+      style: TextStyle(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.white
+            : Colors.black,
+      ),
       decoration: InputDecoration(
         filled: true,
-        fillColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF11141B) : Colors.grey.shade100, // dark or light surface
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        fillColor: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF11141B)
+            : Colors.grey.shade100, // dark or light surface
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+          borderSide: BorderSide(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white10
+                : Colors.black.withOpacity(0.05),
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+          borderSide: BorderSide(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white10
+                : Colors.black.withOpacity(0.05),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -340,16 +407,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-
   Widget _buildCountryDropdown() {
     return InkWell(
       onTap: () => _showCountryPicker(context),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF11141B) : Colors.grey.shade100,
+          color: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF11141B)
+              : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.black.withOpacity(0.05)),
+          border: Border.all(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white10
+                : Colors.black.withOpacity(0.05),
+          ),
         ),
         child: Row(
           children: [
@@ -357,16 +429,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             const SizedBox(width: 12),
             Text(
               _selectedCountryName,
-              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 16),
+              style: TextStyle(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.white
+                    : Colors.black,
+                fontSize: 16,
+              ),
             ),
             const Spacer(),
-            Icon(Icons.keyboard_arrow_down, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54),
+            Icon(
+              Icons.keyboard_arrow_down,
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white70
+                  : Colors.black54,
+            ),
           ],
         ),
       ),
     );
   }
-
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -377,16 +458,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         maxHeight: 512,
         imageQuality: 75,
       );
-      
+
       if (image != null && mounted) {
         // Upload immediately
         context.read<ProfileCubit>().updateAvatar(File(image.path));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick image: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
       }
     }
   }
@@ -457,7 +538,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Widget _avatarChoiceItem(BuildContext context, {required IconData icon, required String label, required VoidCallback onTap}) {
+  Widget _avatarChoiceItem(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
@@ -466,7 +552,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05),
+              color: isDark
+                  ? Colors.white.withOpacity(0.05)
+                  : Colors.black.withOpacity(0.05),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: const Color(0xFF4C3BC9), size: 30),
@@ -485,7 +573,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _showCountryPicker(BuildContext context) async {
-
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -506,9 +593,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   void _showDeleteAccountBottomSheet(BuildContext context) {
     final passwordController = TextEditingController();
+    final reasonController = TextEditingController();
     final feedbackController = TextEditingController();
     bool obscurePassword = true;
-
     String selectedReason = 'no_longer_needed';
     final Map<String, String> reasonOptions = {
       'no_longer_needed': 'No longer needed',
@@ -526,9 +613,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       isScrollControlled: true,
       builder: (bottomSheetContext) {
         return StatefulBuilder(
-          builder: (BuildContext statefulContext, StateSetter setState) {
+          builder: (BuildContext statefulContext, StateSetter setBottomSheetState) {
             return Padding(
-              padding: EdgeInsets.only(bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(bottomSheetContext).viewInsets.bottom,
+              ),
               child: Container(
                 padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
                 decoration: const BoxDecoration(
@@ -596,14 +685,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           hintStyle: const TextStyle(color: Colors.white54),
                           filled: true,
                           fillColor: Colors.white10,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              obscurePassword ? Icons.visibility_off : Icons.visibility,
+                              obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
                               color: Colors.white54,
                             ),
                             onPressed: () {
-                              setState(() {
+                              setBottomSheetState(() {
                                 obscurePassword = !obscurePassword;
                               });
                             },
@@ -612,13 +705,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
-                        value: selectedReason,
+                        initialValue: selectedReason,
                         dropdownColor: const Color(0xFF1B1E2B),
                         style: const TextStyle(color: Colors.white),
                         decoration: InputDecoration(
                           filled: true,
                           fillColor: Colors.white10,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         items: reasonOptions.entries.map((entry) {
                           return DropdownMenuItem(
@@ -643,7 +738,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           hintStyle: const TextStyle(color: Colors.white54),
                           filled: true,
                           fillColor: Colors.white10,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 40),
@@ -665,7 +762,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               backgroundColor: Colors.transparent,
                               shadowColor: Colors.transparent,
                               padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
                             ),
                             child: const Text(
                               'Keep Account',
@@ -689,12 +788,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               reason: selectedReason,
                               feedback: feedbackController.text.trim(),
                             );
-                            Navigator.pop(bottomSheetContext); // close bottom sheet
+                            Navigator.pop(
+                              bottomSheetContext,
+                            ); // close bottom sheet
                           },
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             side: const BorderSide(color: Colors.redAccent),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                           child: const Text(
                             'Delete My Account',
@@ -716,6 +819,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       },
     );
   }
+
   void _showSuccessAlert(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -730,7 +834,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             color: const Color(0xFF1B1E2B), // Dark surface color
             borderRadius: BorderRadius.circular(8),
             border: const Border(
-              left: BorderSide(color: Color(0xFF16A34A), width: 6), // Green border as in image
+              left: BorderSide(
+                color: Color(0xFF16A34A),
+                width: 6,
+              ), // Green border as in image
             ),
           ),
           child: Text(
@@ -746,4 +853,3 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 }
-

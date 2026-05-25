@@ -216,7 +216,7 @@ class _NewsScreenState extends State<NewsScreen> {
                         ),
                       )
                     else
-                      ...articles.map((article) => _buildSmallArticle(context, article)).toList(),
+                      ...articles.map((article) => _buildSmallArticle(context, article)),
                   ] else ...[
                     // Featured article (only the first one)
                     if (featuredArticle != null)
@@ -227,7 +227,7 @@ class _NewsScreenState extends State<NewsScreen> {
                     const SizedBox(height: 16),
 
                     // Initial articles
-                    ...initialSmallArticles.map((article) => _buildSmallArticle(context, article)).toList(),
+                    ...initialSmallArticles.map((article) => _buildSmallArticle(context, article)),
 
                     // Top-to-bottom animated expansion
                     AnimatedSwitcher(
@@ -388,8 +388,9 @@ class _NewsScreenState extends State<NewsScreen> {
         } else {
           // Map UI labels to backend 'type' parameters
           String? categoryParam;
-          if (label == "Stocks") categoryParam = "stock";
-          else if (label == "Crypto") categoryParam = "crypto";
+          if (label == "Stocks") {
+            categoryParam = "stock";
+          } else if (label == "Crypto") categoryParam = "crypto";
           else if (label == "Forex") categoryParam = "forex";
           else if (label == "Popular") categoryParam = "popular";
           

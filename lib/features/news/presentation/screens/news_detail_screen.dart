@@ -448,7 +448,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                   );
                 },
                 child: Column(
-                  key: ValueKey("comments_list_${_showAllComments}"),
+                  key: ValueKey("comments_list_$_showAllComments"),
                   children: (_showAllComments ? _comments : _comments.take(3))
                       .map((c) => _buildCommentCard(c))
                       .toList(),
@@ -493,7 +493,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
               ...( _showAllAnalysis 
                   ? _fullArticle!.analysisOpinions 
                   : _fullArticle!.analysisOpinions.take(3)
-                ).map((analysis) => _buildRelatedItem(analysis)).toList(),
+                ).map((analysis) => _buildRelatedItem(analysis)),
               const SizedBox(height: 8),
               _buildSeparator(),
               const SizedBox(height: 8),
@@ -561,7 +561,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
                     );
                   },
                   child: Column(
-                    key: ValueKey("related_list_${_showAllRelated}"),
+                    key: ValueKey("related_list_$_showAllRelated"),
                     children: displayArticles.map((article) => _buildRelatedItem(article)).toList(),
                   ),
                 );
@@ -621,7 +621,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
       },
       child: Text(
         bodyText,
-        key: ValueKey("body_${_isExpanded}"),
+        key: ValueKey("body_$_isExpanded"),
         maxLines: _isExpanded ? null : 4,
         overflow: _isExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
         style: TextStyle(

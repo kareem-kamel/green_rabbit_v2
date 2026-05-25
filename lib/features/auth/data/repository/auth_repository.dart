@@ -148,7 +148,7 @@ class AuthRepository {
   }
 
   // --- LOGIN ---
-  Future<void> login({
+  Future<bool> login({
     required String email,
     required String password,
     required bool rememberMe,
@@ -199,6 +199,18 @@ class AuthRepository {
         // Mark onboarding as complete once they successfully log in
         await setOnboardingComplete();
         debugPrint('AuthRepository: Login completed');
+
+        // Check if onboarding is done
+        bool onboardingDone = false;
+        if (responseData['user'] != null && responseData['user']['onboardingDone'] != null) {
+           onboardingDone = responseData['user']['onboardingDone'] == true;
+        } else if (responseData['user'] != null && responseData['user']['status'] == 'pending_onboarding') {
+           onboardingDone = false;
+        } else if (responseData['onboardingDone'] != null) {
+           onboardingDone = responseData['onboardingDone'] == true;
+        }
+
+        return onboardingDone;
       } else {
         debugPrint(
           'AuthRepository: Failed to find token in responseData: $responseData',
@@ -221,7 +233,7 @@ class AuthRepository {
   }
 
   // --- GOOGLE SIGN IN ---
-  Future<void> signInWithGoogle(String idToken) async {
+  Future<bool> signInWithGoogle(String idToken) async {
     try {
       debugPrint('AuthRepository: Attempting Google Login...');
       final response = await apiClient.dio.post(
@@ -261,6 +273,18 @@ class AuthRepository {
 
         await setOnboardingComplete();
         debugPrint('AuthRepository: Google Login completed');
+
+        // Check if onboarding is done
+        bool onboardingDone = false;
+        if (responseData['user'] != null && responseData['user']['onboardingDone'] != null) {
+           onboardingDone = responseData['user']['onboardingDone'] == true;
+        } else if (responseData['user'] != null && responseData['user']['status'] == 'pending_onboarding') {
+           onboardingDone = false;
+        } else if (responseData['onboardingDone'] != null) {
+           onboardingDone = responseData['onboardingDone'] == true;
+        }
+
+        return onboardingDone;
       } else {
         throw Exception(
           "No access token was found in the Google login response.",

@@ -451,7 +451,7 @@ class ChatCubit extends Cubit<ChatState> {
       }
 
       if (lastError != null) {
-        throw lastError!;
+        throw lastError;
       }
 
       if (streamTarget.trim().isEmpty) {
