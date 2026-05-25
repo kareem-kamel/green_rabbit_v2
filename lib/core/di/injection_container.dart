@@ -31,10 +31,15 @@ import '../../features/calendar/presentation/cubit/calendar_cubit.dart';
 import '../../features/notifications/data/repositories/notification_repository.dart';
 import '../../features/notifications/presentation/cubit/notification_cubit.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../features/news/data/services/news_cache_service.dart';
+
 final sl = GetIt.instance;
 
 Future<void> init() async {
   // Core
+  final sharedPreferences = await SharedPreferences.getInstance();
+  sl.registerLazySingleton<SharedPreferences>(() => sharedPreferences);
   sl.registerLazySingleton<Logger>(() => Logger());
   sl.registerLazySingleton<FlutterSecureStorage>(
     () => const FlutterSecureStorage(),
@@ -60,6 +65,9 @@ Future<void> init() async {
     () => ProfileRemoteDataSourceImpl(apiClient: sl()),
   );
 
+  // Services
+  sl.registerLazySingleton<NewsCacheService>(() => NewsCacheService(sl()));
+
   // Repositories
   sl.registerLazySingleton<MarketRepository>(() => MarketRepositoryImpl(sl()));
   sl.registerLazySingleton<WatchlistRepository>(
@@ -68,7 +76,7 @@ Future<void> init() async {
   sl.registerLazySingleton<ProfileRepository>(
     () => ProfileRepositoryImpl(remoteDataSource: sl()),
   );
-  sl.registerLazySingleton<NewsRepository>(() => NewsRepository(sl()));
+  sl.registerLazySingleton<NewsRepository>(() => NewsRepository(sl(), sl()));
 
   // Auth
   sl.registerLazySingleton<AuthRepository>(

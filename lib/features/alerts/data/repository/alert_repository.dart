@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:green_rabbit/core/constants/app_constants.dart';
 import 'package:green_rabbit/core/network/api_client.dart';
 import '../models/alert_model.dart';
@@ -29,7 +30,13 @@ class AlertRepository {
       }
       return [];
     } catch (e) {
-      throw Exception('Failed to fetch alerts: $e');
+      if (e is DioException) {
+        final data = e.response?.data;
+        if (data is Map && data['error'] != null && data['error']['message'] != null) {
+          throw data['error']['message'];
+        }
+      }
+      throw 'Failed to fetch alerts: $e';
     }
   }
 
@@ -48,7 +55,13 @@ class AlertRepository {
       }
       return null;
     } catch (e) {
-      return null;
+      if (e is DioException) {
+        final data = e.response?.data;
+        if (data is Map && data['error'] != null && data['error']['message'] != null) {
+          throw data['error']['message'];
+        }
+      }
+      throw 'Failed to create alert: $e';
     }
   }
 
@@ -66,6 +79,12 @@ class AlertRepository {
       }
       return false;
     } catch (e) {
+      if (e is DioException) {
+        final data = e.response?.data;
+        if (data is Map && data['error'] != null && data['error']['message'] != null) {
+          throw data['error']['message'];
+        }
+      }
       return false;
     }
   }

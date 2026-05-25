@@ -368,7 +368,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           const SizedBox(height: 24),
           _buildRabbitLogo(),
           const SizedBox(height: 32),
-          _buildAIGreetingBubble("Hi, I'm your Financial Advisor. You can ask me anything about markets"),
+          _buildAIGreetingBubble("Hi, I'm your Financial Advisor. You can ask me anything about markets. \n\n*Note: AI responses are for informational purposes only. We are not responsible for any inaccuracies.*"),
           const SizedBox(height: 16),
           _buildSuggestionBox(cubit),
         ],
@@ -419,16 +419,16 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   Widget _buildSuggestionBox(ChatCubit cubit) {
     final List<Map<String, String>> suggestions = [
       {
-        "label": "Show me Top Stocks",
+        "label": "Top stocks performers",
         "query": "Provide a detailed report on today's top performing stocks and trending market instruments."
       },
       {
-        "label": "Latest Crypto News",
-        "query": "Search for the most recent cryptocurrency market news and provide a detailed summary of significant events affecting Bitcoin, Ethereum, and major altcoins today."
+        "label": "Commodity Outlook",
+        "query": "What is the current outlook for major commodities like Gold, Silver, and Oil in the global market?"
       },
       {
         "label": "Bullish Trends",
-        "query": "What are the current bullish trends in the stock and crypto markets that I should be aware of?"
+        "query": "What are the current bullish trends in the stock market that I should be aware of?"
       },
       {
         "label": "Market Analysis",
@@ -753,66 +753,78 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   Widget _buildInputArea(BuildContext context, ChatCubit cubit, ChatState state) {
     return SafeArea(
       top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: Row(
-          children: [
-            Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: Colors.white.withOpacity(0.08)),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _textController,
-                        style: const TextStyle(color: Colors.white, fontSize: 14),
-                        decoration: const InputDecoration(
-                          hintText: "Ask Financial Advisor",
-                          hintStyle: TextStyle(color: Colors.grey),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: EdgeInsets.symmetric(vertical: 14),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _textController,
+                            style: const TextStyle(color: Colors.white, fontSize: 14),
+                            decoration: const InputDecoration(
+                              hintText: "Ask Financial Advisor",
+                              hintStyle: TextStyle(color: Colors.grey),
+                              border: InputBorder.none,
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            onSubmitted: (v) => _handleSend(cubit),
+                          ),
                         ),
-                        onSubmitted: (v) => _handleSend(cubit),
-                      ),
+                        GestureDetector(
+                          onTap: () => cubit.toggleVoiceMode(true),
+                          child: const Padding(
+                            padding: EdgeInsets.only(left: 4),
+                            child: Icon(Icons.mic_none, color: Color(0xFF8B5CF6), size: 20),
+                          ),
+                        ),
+                      ],
                     ),
-                    GestureDetector(
-                      onTap: () => cubit.toggleVoiceMode(true),
-                      child: const Padding(
-                        padding: EdgeInsets.only(left: 4),
-                        child: Icon(Icons.mic_none, color: Color(0xFF8B5CF6), size: 20),
-                      ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: state.isGenerating
+                      ? () => cubit.stopGenerating()
+                      : () => _handleSend(cubit),
+                  child: Container(
+                    height: 44,
+                    width: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: state.isGenerating
+                          ? Colors.redAccent.withOpacity(0.9)
+                          : const Color(0xFF8B5CF6),
                     ),
-                  ],
+                    child: state.isGenerating
+                        ? const Icon(Icons.stop_rounded, color: Colors.white, size: 20)
+                        : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                  ),
                 ),
-              ),
+              ],
             ),
-            const SizedBox(width: 10),
-            GestureDetector(
-              onTap: state.isGenerating
-                  ? () => cubit.stopGenerating()
-                  : () => _handleSend(cubit),
-              child: Container(
-                height: 44,
-                width: 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: state.isGenerating
-                      ? Colors.redAccent.withOpacity(0.9)
-                      : const Color(0xFF8B5CF6),
-                ),
-                child: state.isGenerating
-                    ? const Icon(Icons.stop_rounded, color: Colors.white, size: 20)
-                    : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
-              ),
+          ),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8),
+            child: Text(
+              "AI may make mistakes.",
+              style: TextStyle(color: Colors.white38, fontSize: 10),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
