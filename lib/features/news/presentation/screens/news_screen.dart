@@ -427,20 +427,27 @@ class _NewsScreenState extends State<NewsScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(title,
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                fontFamily: 'Urbanist',
-                color: isDark ? Colors.white : Colors.black)),
-        if (hasFilter)
+        Expanded(
+          child: Text(title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Urbanist',
+                  color: isDark ? Colors.white : Colors.black)),
+        ),
+        if (hasFilter) ...[
+          const SizedBox(width: 8),
           Image.asset(
             'assets/icons/filter.png',
             width: 24,
             height: 24,
             color: isDark ? null : Colors.black87,
           ),
-        if (hasViewAll)
+        ],
+        if (hasViewAll) ...[
+          const SizedBox(width: 8),
           GestureDetector(
             onTap: onViewAll,
             child: const Text("View all",
@@ -450,6 +457,7 @@ class _NewsScreenState extends State<NewsScreen> {
                     fontWeight: FontWeight.w600,
                     fontFamily: 'Urbanist')),
           ),
+        ],
       ],
     );
   }

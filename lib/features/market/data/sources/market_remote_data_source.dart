@@ -229,25 +229,28 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
       }
     }
 
-    // 2. Build the namespaced instrument ID using singular prefixes for the URL path parameter (e.g., stock:AAPL)
+    // 2. Build the namespaced instrument ID for the URL path.
+    // The backend for the News endpoint strictly expects the "category:symbol" format.
     String namespacedId = id;
-    if (id.contains(':')) {
-      final parts = id.split(':');
-      final prefix = parts.first.toLowerCase();
-      final rest = parts.sublist(1).join(':');
-      if (prefix == 'stocks' || prefix == 'stock') {
-        namespacedId = 'stock:$rest';
-      } else {
-        namespacedId = '$prefix:$rest';
-      }
+    if (!id.contains(':')) {
+      // Use singular 'stock' for the path as expected by the backend
+      final pathPrefix = category == 'stocks' ? 'stock' : category;
+      namespacedId = '$pathPrefix:$id';
     } else {
-      namespacedId = '$category:$id';
+      // Ensure 'stocks:' is converted to 'stock:' if present
+      if (namespacedId.startsWith('stocks:')) {
+        namespacedId = namespacedId.replaceFirst('stocks:', 'stock:');
+      }
     }
 
     // 3. Map to the query parameter value expected by the server ('stocks', 'crypto', 'forex')
     final String queryType = category == 'stock' ? 'stocks' : category;
 
-    final url = AppConstants.instrumentNews(namespacedId);
+    // 4. Prepare the final URL. 
+    // We encode the ID because crypto symbols often contain slashes (e.g., BTC/USD).
+    final String encodedId = Uri.encodeComponent(namespacedId);
+    final url = AppConstants.instrumentNews(encodedId);
+
     final queryParams = {
       'type': queryType,
     };
