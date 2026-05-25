@@ -3,6 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubit/alert_cubit.dart';
 import '../cubit/alert_state.dart';
 
+import 'package:green_rabbit/features/notifications/data/services/push_notification_service.dart';
+
 class CreateAlertSheet extends StatefulWidget {
   final String assetName;
   final double lastPrice;
@@ -246,51 +248,67 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
         gradient: const LinearGradient(colors: [Color(0xFF4C3BB1), Color(0xFF3B2E8A)]),
       ),
       child: ElevatedButton(
-        onPressed: () {
-          final priceText = _priceController.text.trim();
-          if (priceText.isEmpty) {
-            _showError("Please enter a value");
-            return;
-          }
-
-          double? targetPrice = double.tryParse(priceText);
-          if (targetPrice == null) {
-            _showError("Invalid value format");
-            return;
-          }
-
-          // Validation: Alert price cannot be the same as current market price
-          if (state.selectedTab == "Price") {
-            if (targetPrice == widget.lastPrice) {
-              _showError("Alert price cannot be the same as the current market price (${widget.lastPrice.toStringAsFixed(2)})");
+        onPressed: state.isLoading 
+          ? null 
+          : () async {
+            final priceText = _priceController.text.trim();
+            if (priceText.isEmpty) {
+              _showError("Please enter a value");
               return;
+            }
+
+            double? targetPrice = double.tryParse(priceText);
+            if (targetPrice == null) {
+              _showError("Invalid value format");
+              return;
+            }
+
+            // Validation: Alert price cannot be the same as current market price
+            if (state.selectedTab == "Price") {
+              if (targetPrice == widget.lastPrice) {
+                _showError("Alert price cannot be the same as the current market price (${widget.lastPrice.toStringAsFixed(2)})");
+                return;
+              }
+              
+              if (state.priceCondition == "Move Above" && targetPrice < widget.lastPrice) {
+                _showError("The target price is already above your input. Please set a price higher than ${widget.lastPrice.toStringAsFixed(2)}");
+                return;
+              }
+              
+              if (state.priceCondition == "Move Below" && targetPrice > widget.lastPrice) {
+                _showError("The target price is already below your input. Please set a price lower than ${widget.lastPrice.toStringAsFixed(2)}");
+                return;
+              }
             }
             
-            if (state.priceCondition == "Move Above" && targetPrice < widget.lastPrice) {
-              _showError("The target price is already above your input. Please set a price higher than ${widget.lastPrice.toStringAsFixed(2)}");
-              return;
+            String type = "price_above";
+            if (state.selectedTab == "Price") {
+              type = state.priceCondition == "Move Below" ? "price_below" : "price_above";
+            } else if (state.selectedTab == "Charge %") {
+               type = state.gainCondition == "Loses" ? "percent_down" : "percent_up";
+            } else {
+               type = state.volumeCondition == "Below" ? "volume_below" : "volume_above";
             }
             
-            if (state.priceCondition == "Move Below" && targetPrice > widget.lastPrice) {
-              _showError("The target price is already below your input. Please set a price lower than ${widget.lastPrice.toStringAsFixed(2)}");
-              return;
+            await cubit.createAlert(widget.instrumentId ?? widget.assetName, targetPrice, type);
+            
+            if (mounted) {
+              final updatedState = context.read<AlertCubit>().state;
+              if (updatedState.error != null) {
+                _showError(updatedState.error!);
+              } else {
+                // Success: Trigger a local test notification
+                Future.delayed(const Duration(seconds: 1), () {
+                  PushNotificationService.showTestNotification();
+                });
+                Navigator.pop(context);
+              }
             }
-          }
-          
-          String type = "price_above";
-          if (state.selectedTab == "Price") {
-            type = state.priceCondition == "Move Below" ? "price_below" : "price_above";
-          } else if (state.selectedTab == "Charge %") {
-             type = state.gainCondition == "Loses" ? "percent_down" : "percent_up";
-          } else {
-             type = state.volumeCondition == "Below" ? "volume_below" : "volume_above";
-          }
-          
-          cubit.createAlert(widget.instrumentId ?? widget.assetName, targetPrice, type);
-          Navigator.pop(context);
-        },
+          },
         style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-        child: const Text("Create", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        child: state.isLoading 
+          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+          : const Text("Create", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
       ),
     );
   }

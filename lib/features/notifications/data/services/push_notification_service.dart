@@ -156,6 +156,32 @@ class PushNotificationService {
     }
   }
 
+  static Future<void> showTestNotification() async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'high_importance_channel',
+      'High Importance Notifications',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await _localNotifications.show(
+      id: Random().nextInt(100000),
+      title: 'Meyka Alert Triggered! 🚀',
+      body: 'Your price alert for Apple Inc. has been reached at \$196.45',
+      notificationDetails: details,
+      payload: 'stock:AAPL',
+    );
+  }
+
   static Future<String> _getOrCreateDeviceId() async {
     const storage = FlutterSecureStorage();
     String? deviceId = await storage.read(key: 'device_id');
