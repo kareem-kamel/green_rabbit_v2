@@ -139,7 +139,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
     return BlocBuilder<ProfileCubit, ProfileState>(
       builder: (context, state) {
         String userName = 'User';
-        String avatarUrl = 'https://i.pravatar.cc/150?u=green_rabbit';
+        String avatarUrl = 'assets/images/default_avatar.png';
         
         if (state is ProfileLoaded && state.user.fullName.isNotEmpty) {
           userName = state.user.fullName.split(' ').first;
@@ -157,7 +157,9 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                 children: [
                   CircleAvatar(
                     radius: 20,
-                    backgroundImage: NetworkImage(avatarUrl),
+                    backgroundImage: avatarUrl.startsWith('http')
+                        ? NetworkImage(avatarUrl) as ImageProvider
+                        : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
                   ),
                   const SizedBox(width: 12),
                   Expanded(

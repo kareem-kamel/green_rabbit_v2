@@ -181,12 +181,9 @@ class ProfileScreen extends StatelessWidget {
                                         children: [
                                           CircleAvatar(
                                             radius: 35,
-                                            backgroundImage: user.avatarUrl !=
-                                                null &&
-                                                user.avatarUrl!.isNotEmpty
-                                                ? NetworkImage(user.avatarUrl!)
-                                                : const NetworkImage(
-                                                'https://i.pravatar.cc/150?u=green_rabbit'),
+                                            backgroundImage: user.avatarUrl != null && user.avatarUrl!.isNotEmpty
+                                                ? NetworkImage(user.avatarUrl!) as ImageProvider
+                                                : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
                                           ),
                                           const SizedBox(width: 16),
                                           Expanded(
