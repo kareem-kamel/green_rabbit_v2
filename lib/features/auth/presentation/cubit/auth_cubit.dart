@@ -105,6 +105,9 @@ class AuthCubit extends Cubit<AuthState> {
     required String email,
     required String password,
     required String confirmPassword,
+    required String fullName,
+    required String phone,
+    required String country,
   }) async {
     emit(AuthLoading());
 
@@ -113,6 +116,9 @@ class AuthCubit extends Cubit<AuthState> {
         email: email,
         password: password,
         confirmPassword: confirmPassword,
+        fullName: fullName,
+        phone: phone,
+        country: country,
       );
 
       emit(AuthNeedsVerification());
@@ -132,10 +138,17 @@ class AuthCubit extends Cubit<AuthState> {
 
     try {
       // Start Google authentication flow
-      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
+      // Use signIn() for standard login flow. 
+      // authenticate() is for re-authentication and may fail with code 16 if configuration is mismatched.
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+      if (googleUser == null) {
+        emit(AuthInitial()); // User canceled the picker
+        return;
+      }
 
       // Retrieve authentication data
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
       final String? idToken = googleAuth.idToken;
 
