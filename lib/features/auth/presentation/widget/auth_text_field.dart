@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart'; // Adjust path if needed
+import '../../../../core/theme/app_colors.dart';
 
 class AuthTextField extends StatefulWidget {
   final String label;
   final String hintText;
   final bool isPassword;
   final TextEditingController controller;
-  // 1. Add this new property
   final TextInputAction textInputAction;
-  final FocusNode? focusNode; 
+  final FocusNode? focusNode;
   final FocusNode? nextFocusNode;
   final String? Function(String?)? validator;
+  final TextInputType? keyboardType;
+  final void Function(String)? onFieldSubmitted;
 
   const AuthTextField({
     super.key,
@@ -18,11 +19,12 @@ class AuthTextField extends StatefulWidget {
     required this.hintText,
     required this.controller,
     this.isPassword = false,
-    // 2. Default it to "Next" so you don't have to type it every time
     this.textInputAction = TextInputAction.next,
     this.focusNode,
     this.nextFocusNode,
-    this.validator, required void Function(dynamic _) onFieldSubmitted,
+    this.validator,
+    this.onFieldSubmitted,
+    this.keyboardType,
   });
 
   @override
@@ -53,17 +55,14 @@ class _AuthTextFieldState extends State<AuthTextField> {
           style: const TextStyle(color: Colors.white),
           scrollPadding: const EdgeInsets.only(bottom: 120),
           validator: widget.validator,
-
-          // 3. Use the new property here!
+          keyboardType: widget.keyboardType,
           textInputAction: widget.textInputAction,
-
-          onFieldSubmitted: (_) {
-            // <-- 2. The Bulletproof Jump Logic -->
-            if (widget.nextFocusNode != null) {
-              // If we provided a next node, force the keyboard to jump to it!
+          onFieldSubmitted: (value) {
+            if (widget.onFieldSubmitted != null) {
+              widget.onFieldSubmitted!(value);
+            } else if (widget.nextFocusNode != null) {
               FocusScope.of(context).requestFocus(widget.nextFocusNode);
             } else if (widget.textInputAction == TextInputAction.done) {
-              // If it's the last field, hide the keyboard
               FocusScope.of(context).unfocus();
             }
           },

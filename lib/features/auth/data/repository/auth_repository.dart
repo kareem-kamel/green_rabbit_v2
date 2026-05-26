@@ -97,21 +97,19 @@ class AuthRepository {
     required String email,
     required String password,
     required String confirmPassword,
-    String? fullName,
-    String? phone,
-    String? country,
-    // Placeholder until we add a full name field in the UI
+    required String fullName,
+    required String phone,
+    required String country,
   }) async {
     try {
       final response = await apiClient.dio.post(
         AppConstants.register,
         data: {
-          "fullName": fullName, // Consider passing this as a parameter later
+          "fullName": fullName,
           "email": email.trim(),
           "password": password,
           "passwordConfirm": confirmPassword,
-          "country":
-              country, // Placeholder until we add a country field in the UI
+          "country": country,
           "phone": phone,
           "acceptTerms": true,
           "acceptPrivacy": true,
