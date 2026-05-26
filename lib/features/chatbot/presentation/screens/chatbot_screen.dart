@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 import '../cubit/chat_cubit.dart';
 import '../cubit/chat_state.dart';
+import '../../../profile/presentation/screens/subscription_screen.dart';
 
 class ChatBotScreen extends StatefulWidget {
   final bool startEmpty;
@@ -585,6 +586,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     }
 
     final isError = _isErrorMessage(msg);
+    final isPlanError = isError && (msg.content.toLowerCase().contains('current plan') || msg.content.toLowerCase().contains('free trial'));
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -592,7 +594,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            margin: EdgeInsets.only(bottom: msg.hasChart ? 0 : 12, right: 40),
+            margin: EdgeInsets.only(bottom: (msg.hasChart || isPlanError) ? 0 : 12, right: 40),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: isError
@@ -614,8 +616,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (isError) ...[
-                        const Icon(Icons.error_outline,
-                            color: Colors.redAccent, size: 18),
+                        Icon(isPlanError ? Icons.lock_outline : Icons.error_outline,
+                            color: isPlanError ? AppColors.premiumGold : Colors.redAccent, size: 18),
                         const SizedBox(width: 8),
                       ],
                       Expanded(
@@ -625,12 +627,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                           selectable: true,
                           styleSheet: MarkdownStyleSheet(
                             p: TextStyle(
-                              color: isError ? Colors.redAccent[100] : Colors.white,
+                              color: isPlanError ? Colors.white : (isError ? Colors.redAccent[100] : Colors.white),
                               fontSize: 14,
                               height: 1.5,
                             ),
                             strong: TextStyle(
-                              color: isError ? Colors.redAccent[100] : Colors.white,
+                              color: isPlanError ? Colors.white : (isError ? Colors.redAccent[100] : Colors.white),
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
@@ -640,6 +642,47 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     ],
                   ),
           ),
+          if (isPlanError) ...[
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => SubscriptionScreen()),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryPurple.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.rocket_launch, color: Colors.white, size: 16),
+                    SizedBox(width: 8),
+                    Text(
+                      "Activate the Free Trial",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (msg.hasChart) ...[
             const SizedBox(height: 8),
             _buildInlineChart(),
