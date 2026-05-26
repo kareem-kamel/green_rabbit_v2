@@ -156,5 +156,15 @@ flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/icons/app_icon.png"
-  adaptive_icon_background: "#0E1117"
+  adaptive_icon_background: "assets/icons/app_icon.png"
   adaptive_icon_foreground: "assets/icons/app_icon.png"
+
+  
+flutter_native_splash:
+  color: "#0e1117"
+  image: "assets/icons/green_rabbit_splash.png" # Added quotes here
+  
+  # Add this block for modern Android devices
+  android_12:
+    image: "assets/icons/green_rabbit_splash.png"
+    icon_background_color: "#0e1117"

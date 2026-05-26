@@ -16,7 +16,6 @@ import '../../../../core/utils/image_utils.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 
 import 'package:shimmer/shimmer.dart';
-import '../../../../shared/widgets/app_card.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
