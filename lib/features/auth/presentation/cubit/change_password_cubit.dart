@@ -40,8 +40,10 @@ class ChangePasswordCubit extends Cubit<ChangePasswordState> {
         confirmNewPassword: confirmNewPassword,
       );
       
+      if (isClosed) return;
       emit(ChangePasswordSuccess());
     } catch (e) {
+      if (isClosed) return;
       emit(ChangePasswordError(e.toString().replaceAll('Exception: ', '')));
     }
   }

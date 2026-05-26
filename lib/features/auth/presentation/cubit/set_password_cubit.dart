@@ -44,8 +44,10 @@ class SetPasswordCubit extends Cubit<SetPasswordState> {
       );
       
       // 3. Success State
+      if (isClosed) return;
       emit(SetPasswordSuccess());
     } catch (e) {
+      if (isClosed) return;
       emit(SetPasswordError(e.toString().replaceAll('Exception: ', '')));
     }
   }

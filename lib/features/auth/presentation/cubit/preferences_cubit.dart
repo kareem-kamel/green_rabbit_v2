@@ -76,8 +76,10 @@ class PreferencesCubit extends Cubit<PreferencesState> {
         interestedIn: state.selectedInterests,
       );
       
+      if (isClosed) return;
       emit(state.copyWith(status: PreferencesStatus.success));
     } catch (e) {
+      if (isClosed) return;
       emit(state.copyWith(status: PreferencesStatus.error, errorMessage: e.toString().replaceAll('Exception: ', '')));
     }
   }

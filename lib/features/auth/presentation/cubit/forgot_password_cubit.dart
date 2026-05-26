@@ -23,8 +23,10 @@ class ForgotPasswordCubit extends Cubit<ForgotPasswordState> {
 
     try {
       await repository.forgotPassword(email);
+      if (isClosed) return;
       emit(ForgotPasswordSuccess());
     } catch (e) {
+      if (isClosed) return;
       emit(ForgotPasswordError(e.toString().replaceAll('Exception: ', '')));
     }
   }

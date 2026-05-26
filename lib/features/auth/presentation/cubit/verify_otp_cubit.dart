@@ -28,9 +28,11 @@ class VerifyOtpCubit extends Cubit<VerifyOtpState> {
       await repository.verifyEmailCode(email: email, code: code);
       
       // If it doesn't crash, it was a success!
+      if (isClosed) return;
       emit(VerifyOtpSuccess());
     } catch (e) {
       // Clean up the error message
+      if (isClosed) return;
       emit(VerifyOtpError(e.toString().replaceAll('Exception: ', '')));
     }
   }
