@@ -105,7 +105,7 @@ class MarketInstrument {
       price: toDouble(findValue(['price', 'currentPrice', 'lastPrice', 'last', 'close', 'current', 'rate', 'priceUsd'])),
       previousClose: toDouble(findValue(['previousClose', 'prevClose', 'regularMarketPreviousClose', 'close', 'lastClose'])),
       change: toDouble(findValue(['change', 'dayChange', 'priceChange', 'absoluteChange', 'diff'])),
-      changePercent: toDouble(findValue(['changePercent', 'percentChange', 'dayChangePercent', 'change_percent', 'percent_change'])),
+      changePercent: toDouble(findValue(['changePercent', 'percentChange', 'dayChangePercent', 'change_percent', 'percent_change', 'priceChangePercent', 'price_change_percent'])),
       dayHigh: toDouble(findValue(['dayHigh', 'high', 'day_high', 'regularMarketDayHigh', 'h'])),
       dayLow: toDouble(findValue(['dayLow', 'low', 'day_low', 'regularMarketDayLow', 'l'])),
       volume: toNum(findValue(['volume', 'vol', '24hVolume', 'regularMarketVolume', 'v', 'totalVolume'])),
@@ -149,5 +149,112 @@ class MarketInstrument {
       'displayOrder': displayOrder,
       'addedAt': addedAt,
     };
+  }
+
+  MarketInstrument copyWith({
+    String? id,
+    String? symbol,
+    String? name,
+    String? type,
+    String? exchange,
+    String? sector,
+    String? currency,
+    double? price,
+    double? previousClose,
+    double? change,
+    double? changePercent,
+    double? dayHigh,
+    double? dayLow,
+    num? volume,
+    num? marketCap,
+    String? logoUrl,
+    List<double>? sparkline7d,
+    int? displayOrder,
+    String? addedAt,
+  }) {
+    return MarketInstrument(
+      id: id ?? this.id,
+      symbol: symbol ?? this.symbol,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      exchange: exchange ?? this.exchange,
+      sector: sector ?? this.sector,
+      currency: currency ?? this.currency,
+      price: price ?? this.price,
+      previousClose: previousClose ?? this.previousClose,
+      change: change ?? this.change,
+      changePercent: changePercent ?? this.changePercent,
+      dayHigh: dayHigh ?? this.dayHigh,
+      dayLow: dayLow ?? this.dayLow,
+      volume: volume ?? this.volume,
+      marketCap: marketCap ?? this.marketCap,
+      logoUrl: logoUrl ?? this.logoUrl,
+      sparkline7d: sparkline7d ?? this.sparkline7d,
+      displayOrder: displayOrder ?? this.displayOrder,
+      addedAt: addedAt ?? this.addedAt,
+    );
+  }
+}
+
+class MarketOverviewResponse {
+  final List<MarketInstrument> instruments;
+  final MarketOverviewMeta meta;
+
+  MarketOverviewResponse({
+    required this.instruments,
+    required this.meta,
+  });
+
+  factory MarketOverviewResponse.fromJson(Map<String, dynamic> json) {
+    List<dynamic>? list;
+    final innerData = json['data'];
+    if (innerData is Map) {
+      list = innerData['instruments'] as List<dynamic>?;
+    } else if (innerData is List) {
+      list = innerData;
+    } else {
+      list = json['instruments'] as List<dynamic>?;
+    }
+
+    final instrumentsList = (list ?? []).whereType<Map>().map((item) {
+      return MarketInstrument.fromJson(Map<String, dynamic>.from(item));
+    }).toList();
+
+    final metaJson = json['meta'] as Map<String, dynamic>? ?? {};
+    final meta = MarketOverviewMeta.fromJson(metaJson);
+
+    return MarketOverviewResponse(
+      instruments: instrumentsList,
+      meta: meta,
+    );
+  }
+}
+
+class MarketOverviewMeta {
+  final int page;
+  final int limit;
+  final bool hasNext;
+  final bool hasPrev;
+  final int? totalPages;
+  final int? totalItems;
+
+  MarketOverviewMeta({
+    required this.page,
+    required this.limit,
+    required this.hasNext,
+    required this.hasPrev,
+    this.totalPages,
+    this.totalItems,
+  });
+
+  factory MarketOverviewMeta.fromJson(Map<String, dynamic> json) {
+    return MarketOverviewMeta(
+      page: json['page'] as int? ?? 1,
+      limit: json['limit'] as int? ?? 20,
+      hasNext: (json['hasNext'] as bool?) ?? (json['hasNextPage'] as bool?) ?? false,
+      hasPrev: (json['hasPrev'] as bool?) ?? (json['hasPreviousPage'] as bool?) ?? false,
+      totalPages: json['totalPages'] as int? ?? json['total_pages'] as int?,
+      totalItems: json['totalItems'] as int? ?? json['total_items'] as int?,
+    );
   }
 }

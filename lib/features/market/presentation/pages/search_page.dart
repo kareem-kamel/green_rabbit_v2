@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:green_rabbit/core/theme/app_theme.dart';
@@ -18,18 +19,76 @@ class SearchPage extends ConsumerStatefulWidget {
 
 class _SearchPageState extends ConsumerState<SearchPage> {
   final TextEditingController _searchController = TextEditingController();
-  bool _isActive = false;
-  final List<String> _recentSearches = ['Apple', 'Microsoft', 'Google'];
+  Timer? _idleTimer;
+  Timer? _debounceTimer;
+  String _debouncedQuery = '';
+  String? _lastSavedQuery;
+  late SearchHistoryNotifier _searchHistoryNotifier;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchHistoryNotifier = ref.read(searchHistoryProvider.notifier);
+  }
+
+  void _saveFinalSearch() {
+    _idleTimer?.cancel();
+    _debounceTimer?.cancel();
+    final query = _searchController.text.trim();
+    if (_debouncedQuery != query) {
+      setState(() {
+        _debouncedQuery = query;
+      });
+    }
+    if (query.length >= 2) {
+      if (query != _lastSavedQuery) {
+        _lastSavedQuery = query;
+        _searchHistoryNotifier.saveQuery(query);
+      }
+    } else {
+      _lastSavedQuery = null;
+    }
+  }
+
+  void _onSearchChanged(String val) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 1000), () {
+      if (mounted) {
+        setState(() {
+          _debouncedQuery = val.trim();
+        });
+      }
+    });
+  }
+
+  void _resetIdleTimer(String value) {
+    _idleTimer?.cancel();
+    if (value.trim().length >= 2) {
+      _idleTimer = Timer(const Duration(seconds: 3), () {
+        _saveFinalSearch();
+      });
+    }
+  }
 
   @override
   void dispose() {
+    _saveFinalSearch();
+    _idleTimer?.cancel();
+    _debounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final marketAsync = ref.watch(marketOverviewProvider('stocks'));
+    final isQueryValid = _debouncedQuery.length >= 2;
+
+    final searchAsync = isQueryValid 
+        ? ref.watch(searchResultsProvider(_debouncedQuery)) 
+        : const AsyncValue<List<MarketInstrument>>.data([]);
+        
+    final historyAsync = ref.watch(searchHistoryProvider);
+    final popularAsync = ref.watch(marketOverviewProvider('stocks'));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -39,11 +98,23 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           children: [
             _buildSearchBar(isDark),
             Expanded(
-              child: marketAsync.when(
-                data: (instruments) => _buildContent(instruments, isDark),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, stack) => Center(child: Text('Error: $err', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color))),
-              ),
+              child: isQueryValid
+                  ? searchAsync.when(
+                      data: (instruments) => _buildContent(instruments, isDark),
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (err, stack) => Center(child: Text('Error: $err', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color))),
+                    )
+                  : historyAsync.when(
+                      data: (history) {
+                        return popularAsync.when(
+                          data: (popular) => _buildDefaultState(history, popular.take(5).toList(), isDark),
+                          loading: () => const Center(child: CircularProgressIndicator()),
+                          error: (err, stack) => _buildDefaultState(history, [], isDark),
+                        );
+                      },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (err, stack) => Center(child: Text('Error: $err', style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color))),
+                    ),
             ),
           ],
         ),
@@ -58,15 +129,29 @@ class _SearchPageState extends ConsumerState<SearchPage> {
         children: [
           IconButton(
             icon: Icon(Icons.arrow_back_ios, color: Theme.of(context).iconTheme.color, size: 20),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              _saveFinalSearch();
+              Navigator.pop(context);
+            },
           ),
           Expanded(
             child: AppSearchField(
               controller: _searchController,
               onChanged: (val) {
-                setState(() {
-                  _isActive = val.isNotEmpty;
-                });
+                if (val.trim().isEmpty) {
+                  _debounceTimer?.cancel();
+                  setState(() {
+                    _debouncedQuery = '';
+                  });
+                  ref.invalidate(searchHistoryProvider);
+                } else {
+                  _onSearchChanged(val);
+                }
+                _lastSavedQuery = null;
+                _resetIdleTimer(val);
+              },
+              onSubmitted: (val) {
+                _saveFinalSearch();
               },
               hintText: 'Search here...',
             ),
@@ -77,44 +162,60 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   }
 
   Widget _buildContent(List<MarketInstrument> instruments, bool isDark) {
-    final query = _searchController.text.toLowerCase();
-    final filtered = instruments.where((i) => 
-      i.symbol.toLowerCase().contains(query) ||
-      i.name.toLowerCase().contains(query)
-    ).toList();
-
-    if (!_isActive && query.isEmpty) {
-      return _buildDefaultState(instruments.take(5).toList(), isDark);
-    }
-    
-    if (filtered.isEmpty) {
+    if (instruments.isEmpty) {
       return _buildNoResultsState(isDark);
     }
-
-    return _buildActiveState(filtered, isDark);
+    return _buildActiveState(instruments, isDark);
   }
 
-  Widget _buildDefaultState(List<MarketInstrument> popular, bool isDark) {
+  Widget _buildDefaultState(List<String> history, List<MarketInstrument> popular, bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM + 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Recent search',
-            style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 14),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Recent search',
+                style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color, fontSize: 14),
+              ),
+              if (history.isNotEmpty)
+                TextButton(
+                  onPressed: () {
+                    ref.read(searchHistoryProvider.notifier).clearHistory();
+                  },
+                  child: const Text('Clear all', style: TextStyle(color: AppColors.primary, fontSize: 12)),
+                ),
+            ],
           ),
           const SizedBox(height: 16),
-          ..._recentSearches.map((search) => Padding(
-            padding: const EdgeInsets.only(bottom: 16.0),
-            child: Row(
-              children: [
-                Text(search, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16)),
-                const Spacer(),
-                Icon(Icons.close, color: Theme.of(context).iconTheme.color?.withOpacity(0.5), size: 18),
-              ],
-            ),
-          )),
+          if (history.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              child: Text('No search history yet.', style: TextStyle(color: Colors.grey, fontSize: 14)),
+            )
+          else
+            ...history.map((search) => Padding(
+              padding: const EdgeInsets.only(bottom: 16.0),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      _debounceTimer?.cancel();
+                      _idleTimer?.cancel();
+                      _searchController.text = search;
+                      _lastSavedQuery = search;
+                      setState(() {
+                        _debouncedQuery = search;
+                      });
+                    },
+                    child: Text(search, style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16)),
+                  ),
+                ],
+              ),
+            )),
           const SizedBox(height: 24),
           Text(
             'Popular',
@@ -190,6 +291,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           Expanded(
             child: GestureDetector(
               onTap: () {
+                _saveFinalSearch();
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -316,8 +418,4 @@ class _SearchPageState extends ConsumerState<SearchPage> {
     );
   }
 
-  Widget _popularStockItem(String name, String details, String price, String change, bool isUp) {
-    // Keep for backward compatibility or remove if not used
-    return const SizedBox.shrink();
-  }
 }

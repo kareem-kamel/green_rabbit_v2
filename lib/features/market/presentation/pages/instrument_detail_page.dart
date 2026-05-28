@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:green_rabbit/core/theme/app_theme.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/price_flash_widget.dart';
 import '../../../watchlist/presentation/providers/watchlist_providers.dart';
 import '../providers/market_providers.dart';
 import '../../data/models/market_instrument.dart';
@@ -158,23 +159,36 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     }
   }
 
+  late StateController<bool> _detailsPageActiveController;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 8, vsync: this);
+    _detailsPageActiveController = ref.read(isDetailsPageActiveProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _detailsPageActiveController.state = true;
       _loadComments();
     });
   }
 
   @override
   void dispose() {
+    Future.microtask(() {
+      _detailsPageActiveController.state = false;
+    });
     _tabController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Keep the live price provider alive by watching it in the UI
+    final livePriceStream = ref.watch(instrumentLivePriceProvider(widget.instrumentId));
+    if (livePriceStream is AsyncError) {
+      debugPrint('❌ [InstrumentDetailPage] livePriceStream Error: ${livePriceStream.error}');
+    }
+
     final detailAsync = ref.watch(liveInstrumentDetailProvider(widget.instrumentId));
 
     return OrientationBuilder(
@@ -402,12 +416,15 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                           children: [
                             Icon(isUp ? Icons.arrow_drop_up : Icons.arrow_drop_down, color: isUp ? AppColors.success : AppColors.error, size: 32),
                             const SizedBox(width: 4),
-                            Text(
-                              detail.price.current?.toStringAsFixed(2) ?? '--',
-                              style: TextStyle(
-                                color: Theme.of(context).textTheme.displayMedium?.color, 
-                                fontSize: isSmall ? 28 : 36, 
-                                fontWeight: FontWeight.bold,
+                            PriceFlashWidget(
+                              price: detail.price.current,
+                              child: Text(
+                                detail.price.current?.toStringAsFixed(2) ?? '--',
+                                style: TextStyle(
+                                  color: Theme.of(context).textTheme.displayMedium?.color, 
+                                  fontSize: isSmall ? 28 : 36, 
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
                           ],
@@ -1226,16 +1243,73 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     return getIntervalForPeriod(period);
   }
 
+  String _formatLargeNumber(num? number, {bool isCurrency = false}) {
+    if (number == null) return '-';
+    final prefix = isCurrency ? '\$' : '';
+    if (number >= 1e12) {
+      return '$prefix${(number / 1e12).toStringAsFixed(2)}T';
+    } else if (number >= 1e9) {
+      return '$prefix${(number / 1e9).toStringAsFixed(2)}B';
+    } else if (number >= 1e6) {
+      return '$prefix${(number / 1e6).toStringAsFixed(2)}M';
+    } else {
+      return '$prefix${NumberFormat('#,##0', 'en_US').format(number)}';
+    }
+  }
+
   Widget _buildKeyStatsSection(MarketInstrumentDetail detail, {bool isWide = false}) {
-    final stats = [
-      {'label': 'Previous Close', 'value': detail.price.previousClose?.toString() ?? '-'},
-      {'label': 'Open', 'value': detail.price.open?.toString() ?? '-'},
-      {'label': 'Day Range', 'value': '${detail.price.dayLow ?? '-'}-${detail.price.dayHigh ?? '-'}'},
-      {'label': '52wk Range', 'value': '${detail.price.week52Low ?? '-'}-${detail.price.week52High ?? '-'}'},
-      {'label': 'Market Cap', 'value': detail.fundamentals?.marketCap?.toString() ?? '-'},
-      {'label': 'P/E Ratio', 'value': detail.fundamentals?.peRatio?.toString() ?? '-'},
-      {'label': 'Div. Yield', 'value': '${detail.fundamentals?.dividendYield?.toString() ?? '-'}%'},
-    ];
+    final type = detail.type.toLowerCase();
+    final List<Map<String, String>> stats;
+
+    final prevClose = detail.price.previousClose?.toStringAsFixed(type == 'forex' ? 4 : 2) ?? '-';
+    final openVal = detail.price.open?.toStringAsFixed(type == 'forex' ? 4 : 2) ?? '-';
+    final dayRange = '${detail.price.dayLow?.toStringAsFixed(type == 'forex' ? 4 : 2) ?? '-'}-${detail.price.dayHigh?.toStringAsFixed(type == 'forex' ? 4 : 2) ?? '-'}';
+    final wkRange = '${detail.price.week52Low?.toStringAsFixed(type == 'forex' ? 4 : 2) ?? '-'}-${detail.price.week52High?.toStringAsFixed(type == 'forex' ? 4 : 2) ?? '-'}';
+
+    if (type == 'crypto') {
+      stats = [
+        {'label': 'Previous Close', 'value': prevClose},
+        {'label': 'Open', 'value': openVal},
+        {'label': 'Day Range', 'value': dayRange},
+        {'label': '52wk Range', 'value': wkRange},
+        {'label': 'Circulating Supply', 'value': _formatLargeNumber(detail.cryptoMetrics?.circulatingSupply)},
+        {'label': 'Max Supply', 'value': _formatLargeNumber(detail.cryptoMetrics?.maxSupply)},
+        {'label': 'Total Supply', 'value': _formatLargeNumber(detail.cryptoMetrics?.totalSupply)},
+        {'label': 'Market Cap', 'value': _formatLargeNumber(detail.cryptoMetrics?.marketCap, isCurrency: true)},
+        {'label': 'Market Dominance', 'value': detail.cryptoMetrics?.marketDominance != null ? '${detail.cryptoMetrics!.marketDominance!.toStringAsFixed(2)}%' : '-'},
+        {'label': 'Fully Diluted Valuation', 'value': _formatLargeNumber(detail.cryptoMetrics?.fullyDilutedValuation, isCurrency: true)},
+      ];
+    } else if (type == 'forex') {
+      stats = [
+        {'label': 'Previous Close', 'value': prevClose},
+        {'label': 'Open', 'value': openVal},
+        {'label': 'Day Range', 'value': dayRange},
+        {'label': '52wk Range', 'value': wkRange},
+        {'label': 'Bid', 'value': detail.forexMetrics?.bid?.toStringAsFixed(4) ?? '-'},
+        {'label': 'Ask', 'value': detail.forexMetrics?.ask?.toStringAsFixed(4) ?? '-'},
+        {'label': 'Spread (pips)', 'value': detail.forexMetrics?.spreadPips?.toString() ?? '-'},
+        {'label': 'Pip Value', 'value': detail.forexMetrics?.pipValue?.toString() ?? '-'},
+      ];
+    } else if (type == 'etf') {
+      stats = [
+        {'label': 'Previous Close', 'value': prevClose},
+        {'label': 'Open', 'value': openVal},
+        {'label': 'Day Range', 'value': dayRange},
+        {'label': '52wk Range', 'value': wkRange},
+        {'label': 'P/E Ratio', 'value': detail.fundamentals?.peRatio?.toString() ?? '-'},
+        {'label': 'Div. Yield', 'value': detail.fundamentals?.dividendYield != null ? '${detail.fundamentals!.dividendYield!.toStringAsFixed(2)}%' : '-'},
+      ];
+    } else {
+      stats = [
+        {'label': 'Previous Close', 'value': prevClose},
+        {'label': 'Open', 'value': openVal},
+        {'label': 'Day Range', 'value': dayRange},
+        {'label': '52wk Range', 'value': wkRange},
+        {'label': 'Market Cap', 'value': _formatLargeNumber(detail.fundamentals?.marketCap, isCurrency: true)},
+        {'label': 'P/E Ratio', 'value': detail.fundamentals?.peRatio?.toString() ?? '-'},
+        {'label': 'Div. Yield', 'value': detail.fundamentals?.dividendYield != null ? '${detail.fundamentals!.dividendYield!.toStringAsFixed(2)}%' : '-'},
+      ];
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2782,3 +2856,5 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     );
   }
 }
+
+
