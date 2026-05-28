@@ -17,6 +17,8 @@ class SubscriptionRepository {
 
   SubscriptionRepository(this._apiClient);
 
+  SubscriptionModel? get currentSubscription => _currentSubscription;
+
   String _generateUUID() {
     final random = Random.secure();
     final values = List<int>.generate(16, (i) => random.nextInt(256));

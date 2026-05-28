@@ -5,6 +5,7 @@ import 'package:green_rabbit/core/theme/app_theme.dart';
 class AppSearchField extends StatelessWidget {
   final String hintText;
   final ValueChanged<String>? onChanged;
+  final ValueChanged<String>? onSubmitted;
   final VoidCallback? onTap;
   final bool readOnly;
   final TextEditingController? controller;
@@ -13,6 +14,7 @@ class AppSearchField extends StatelessWidget {
     super.key,
     this.hintText = 'Search here...',
     this.onChanged,
+    this.onSubmitted,
     this.onTap,
     this.readOnly = false,
     this.controller,
@@ -43,6 +45,7 @@ class AppSearchField extends StatelessWidget {
                       readOnly: readOnly,
                       controller: controller,
                       onChanged: onChanged,
+                      onSubmitted: onSubmitted,
                       style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 13),
                       decoration: InputDecoration(
                         hintText: hintText,

@@ -21,6 +21,8 @@ class MarketInstrumentDetail {
   final List<RelatedInstrument>? relatedInstruments;
   final List<InstrumentContract>? contracts;
   final List<InstrumentComment>? comments;
+  final CryptoMetricsInfo? cryptoMetrics;
+  final ForexMetricsInfo? forexMetrics;
 
   MarketInstrumentDetail({
     required this.id,
@@ -43,6 +45,8 @@ class MarketInstrumentDetail {
     this.relatedInstruments,
     this.contracts,
     this.comments,
+    this.cryptoMetrics,
+    this.forexMetrics,
   });
 
   factory MarketInstrumentDetail.fromJson(Map<String, dynamic> json) {
@@ -115,6 +119,12 @@ class MarketInstrumentDetail {
               .map((e) => InstrumentComment.fromJson(Map<String, dynamic>.from(e)))
               .toList()
           : [],
+      cryptoMetrics: json['cryptoMetrics'] is Map 
+          ? CryptoMetricsInfo.fromJson(Map<String, dynamic>.from(json['cryptoMetrics'] as Map))
+          : (json['crypto_metrics'] is Map ? CryptoMetricsInfo.fromJson(Map<String, dynamic>.from(json['crypto_metrics'] as Map)) : null),
+      forexMetrics: json['forexMetrics'] is Map 
+          ? ForexMetricsInfo.fromJson(Map<String, dynamic>.from(json['forexMetrics'] as Map))
+          : (json['forex_metrics'] is Map ? ForexMetricsInfo.fromJson(Map<String, dynamic>.from(json['forex_metrics'] as Map)) : null),
     );
   }
 }
@@ -595,6 +605,74 @@ class TechnicalIndicator {
       signal: json['signal']?.toString() ?? '',
       color: json['color']?.toString() ?? 'neutral',
       isLocked: json['isLocked'] as bool? ?? false,
+    );
+  }
+}
+
+class CryptoMetricsInfo {
+  final num? marketCap;
+  final num? fullyDilutedValuation;
+  final num? circulatingSupply;
+  final num? totalSupply;
+  final num? maxSupply;
+  final double? supplyPercentage;
+  final double? marketDominance;
+
+  CryptoMetricsInfo({
+    this.marketCap,
+    this.fullyDilutedValuation,
+    this.circulatingSupply,
+    this.totalSupply,
+    this.maxSupply,
+    this.supplyPercentage,
+    this.marketDominance,
+  });
+
+  factory CryptoMetricsInfo.fromJson(Map<String, dynamic> json) {
+    double? toDouble(dynamic val) {
+      if (val == null) return null;
+      if (val is num) return val.toDouble();
+      return double.tryParse(val.toString());
+    }
+    return CryptoMetricsInfo(
+      marketCap: json['marketCap'] as num? ?? json['market_cap'] as num?,
+      fullyDilutedValuation: json['fullyDilutedValuation'] as num? ?? json['fully_diluted_valuation'] as num?,
+      circulatingSupply: json['circulatingSupply'] as num? ?? json['circulating_supply'] as num?,
+      totalSupply: json['totalSupply'] as num? ?? json['total_supply'] as num?,
+      maxSupply: json['maxSupply'] as num? ?? json['max_supply'] as num?,
+      supplyPercentage: toDouble(json['supplyPercentage'] ?? json['supply_percentage']),
+      marketDominance: toDouble(json['marketDominance'] ?? json['market_dominance']),
+    );
+  }
+}
+
+class ForexMetricsInfo {
+  final double? bid;
+  final double? ask;
+  final double? spread;
+  final num? spreadPips;
+  final double? pipValue;
+
+  ForexMetricsInfo({
+    this.bid,
+    this.ask,
+    this.spread,
+    this.spreadPips,
+    this.pipValue,
+  });
+
+  factory ForexMetricsInfo.fromJson(Map<String, dynamic> json) {
+    double? toDouble(dynamic val) {
+      if (val == null) return null;
+      if (val is num) return val.toDouble();
+      return double.tryParse(val.toString());
+    }
+    return ForexMetricsInfo(
+      bid: toDouble(json['bid']),
+      ask: toDouble(json['ask']),
+      spread: toDouble(json['spread']),
+      spreadPips: json['spreadPips'] as num? ?? json['spread_pips'] as num?,
+      pipValue: toDouble(json['pipValue'] ?? json['pip_value']),
     );
   }
 }
