@@ -15,7 +15,6 @@ import 'package:share_plus/share_plus.dart';
 import '../../../../core/utils/image_utils.dart';
 
 import 'package:shimmer/shimmer.dart';
-import '../../../../shared/widgets/app_card.dart';
 
 // ─────────────────────────────────────────────
 //  SCREEN

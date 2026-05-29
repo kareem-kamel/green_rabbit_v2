@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import 'package:green_rabbit/core/theme/app_theme.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:green_rabbit/features/profile/presentation/screens/profile_screen.dart';
 import '../../../../shared/widgets/app_card.dart';
+import '../../../../shared/widgets/price_flash_widget.dart';
 import '../../../../shared/widgets/app_section_header.dart';
 import '../../../../shared/widgets/sparkline_painter.dart';
 import 'instrument_detail_page.dart';
@@ -28,13 +30,16 @@ class MarketPage extends ConsumerStatefulWidget {
 
 class _MarketPageState extends ConsumerState<MarketPage> {
   late TextEditingController _searchController;
+  late ScrollController _scrollController;
   String _selectedType = 'popular';
+  Timer? _visibilityDebounceTimer;
 
   @override
   void initState() {
     super.initState();
     _searchController = TextEditingController();
     _searchController.addListener(_onSearchChanged);
+    _scrollController = ScrollController()..addListener(_onScroll);
     
     // Ensure profile data is loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -47,19 +52,133 @@ class _MarketPageState extends ConsumerState<MarketPage> {
     ref.read(marketSearchQueryProvider.notifier).state = _searchController.text;
   }
 
+  void _updateVisibleInstruments() {
+    if (!mounted) return;
+    
+    final instrumentsAsync = _selectedType == 'popular'
+        ? ref.read(trendingInstrumentsProvider(null))
+        : (_selectedType == 'etf'
+            ? ref.read(trendingInstrumentsProvider('etf'))
+            : ref.read(marketOverviewProvider(_selectedType)));
+            
+    final instruments = instrumentsAsync.valueOrNull ?? [];
+    if (instruments.isEmpty) return;
+
+    _visibilityDebounceTimer?.cancel();
+    _visibilityDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+
+      final double scrollOffset = _scrollController.hasClients ? _scrollController.offset : 0.0;
+      final double viewportHeight = _scrollController.hasClients ? _scrollController.position.viewportDimension : 600.0;
+
+      final bool isMobile = MediaQuery.of(context).size.width <= 600;
+      final List<String> visibleIds = [];
+
+      if (isMobile) {
+        const double headerHeight = 350.0; 
+        const double itemHeight = 108.0; 
+        
+        for (int i = 0; i < instruments.length; i++) {
+          final double itemTop = headerHeight + (i * itemHeight);
+          final double itemBottom = itemTop + itemHeight;
+          
+          if (itemBottom > scrollOffset && itemTop < scrollOffset + viewportHeight) {
+            visibleIds.add(instruments[i].id);
+          }
+        }
+      } else {
+        final double width = MediaQuery.of(context).size.width;
+        final int crossAxisCount = width > 900 ? 3 : 2;
+        const double headerHeight = 300.0;
+        final double colWidth = (width.clamp(0.0, 1000.0) - 40.0) / crossAxisCount;
+        final double itemHeight = colWidth / (width > 900 ? 2.5 : 2.2) + 16.0; 
+        
+        for (int i = 0; i < instruments.length; i++) {
+          final int rowIndex = i ~/ crossAxisCount;
+          final double itemTop = headerHeight + (rowIndex * itemHeight);
+          final double itemBottom = itemTop + itemHeight;
+          
+          if (itemBottom > scrollOffset && itemTop < scrollOffset + viewportHeight) {
+            visibleIds.add(instruments[i].id);
+          }
+        }
+      }
+
+      if (visibleIds.isEmpty) {
+        visibleIds.addAll(instruments.take(5).map((i) => i.id));
+      }
+
+      // Update provider
+      final currentIds = ref.read(visibleInstrumentsProvider);
+      bool isSame = currentIds.length == visibleIds.length;
+      if (isSame) {
+        for (int i = 0; i < currentIds.length; i++) {
+          if (currentIds[i] != visibleIds[i]) {
+            isSame = false;
+            break;
+          }
+        }
+      }
+      
+      if (!isSame) {
+        ref.read(visibleInstrumentsProvider.notifier).state = visibleIds;
+        debugPrint('👁️ [SSE] Calculated visible instruments: $visibleIds');
+      }
+    });
+  }
+
+  void _onScroll() {
+    _updateVisibleInstruments();
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      _loadMore();
+    }
+  }
+
+  void _loadMore() {
+    if (_selectedType != 'popular' && _selectedType != 'etf') {
+      ref.read(marketOverviewProvider(_selectedType).notifier).loadNextPage();
+    }
+  }
+
   @override
   void dispose() {
+    _visibilityDebounceTimer?.cancel();
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(
+      _selectedType == 'popular'
+          ? trendingInstrumentsProvider(null)
+          : (_selectedType == 'etf'
+              ? trendingInstrumentsProvider('etf')
+              : marketOverviewProvider(_selectedType)),
+      (prev, next) {
+        if (next is AsyncData) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _updateVisibleInstruments();
+          });
+        }
+      },
+    );
+
+    final visibleStream = ref.watch(visibleMarketLivePricesProvider);
+    if (visibleStream is AsyncError) {
+      debugPrint('❌ [MarketPage] visibleMarketLivePricesProvider Error: ${visibleStream.error}');
+    }
+
     final instrumentsAsync = _selectedType == 'popular'
         ? ref.watch(trendingInstrumentsProvider(null))
-        : _selectedType == 'etf'
+        : (_selectedType == 'etf'
             ? ref.watch(trendingInstrumentsProvider('etf'))
-            : ref.watch(marketOverviewProvider(_selectedType));
+            : ref.watch(marketOverviewProvider(_selectedType)));
+
+    final isLoadingMore = (_selectedType != 'popular' && _selectedType != 'etf')
+        ? ref.watch(marketOverviewLoadingMoreProvider(_selectedType))
+        : false;
 
     return SafeArea(
       child: LayoutBuilder(
@@ -72,6 +191,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
               : (isTablet ? 40 : AppTheme.paddingM + 4);
 
           return SingleChildScrollView(
+            controller: _scrollController,
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: horizontalPadding > 0 ? horizontalPadding : 20),
               child: Center(
@@ -91,7 +211,21 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                       const SizedBox(height: 20),
                       instrumentsAsync.when(
                         data: (instruments) {
-                          return _buildInstrumentList(context, ref, instruments, constraints.maxWidth);
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildInstrumentList(context, ref, instruments, constraints.maxWidth),
+                              if (isLoadingMore)
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 24.0),
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
                         },
                         loading: () => MarketSkeletonLoader(width: constraints.maxWidth),
                         error: (err, stack) => _buildErrorState(ref),
@@ -288,7 +422,12 @@ class _MarketPageState extends ConsumerState<MarketPage> {
   Widget _tabItem(String label, {required String type}) {
     final bool isActive = _selectedType == type;
     return GestureDetector(
-      onTap: () => setState(() => _selectedType = type),
+      onTap: () {
+        setState(() => _selectedType = type);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _updateVisibleInstruments();
+        });
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         decoration: BoxDecoration(
@@ -548,12 +687,15 @@ class _MarketPageState extends ConsumerState<MarketPage> {
       crossAxisAlignment: CrossAxisAlignment.end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          instrument.price?.toStringAsFixed(2) ?? '--',
-          style: TextStyle(
-            color: Theme.of(context).textTheme.bodyLarge?.color,
-            fontSize: 18,
-            fontWeight: FontWeight.w400,
+        PriceFlashWidget(
+          price: instrument.price,
+          child: Text(
+            instrument.price?.toStringAsFixed(2) ?? '--',
+            style: TextStyle(
+              color: Theme.of(context).textTheme.bodyLarge?.color,
+              fontSize: 18,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ),
         const SizedBox(height: 4),

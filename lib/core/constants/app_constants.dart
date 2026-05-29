@@ -68,6 +68,8 @@ class AppConstants {
   static String instrumentStats(String id) => "market/instruments/$id/stats";
   static String instrumentNews(String id) => "market/instruments/$id/news";
   static const String marketNews = "market/news";
+  static const String search = "search";
+  static const String searchHistory = "search/history";
 
   // Profile / User
   static const String deleteUser = "users/me";

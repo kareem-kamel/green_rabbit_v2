@@ -113,9 +113,6 @@ class AuthCubit extends Cubit<AuthState> {
     required String email,
     required String password,
     required String confirmPassword,
-    required String fullName,
-    required String phone,
-    required String country,
   }) async {
     emit(AuthLoading());
 
@@ -124,9 +121,6 @@ class AuthCubit extends Cubit<AuthState> {
         email: email,
         password: password,
         confirmPassword: confirmPassword,
-        fullName: fullName,
-        phone: phone,
-        country: country,
       );
 
       if (isClosed) return;
