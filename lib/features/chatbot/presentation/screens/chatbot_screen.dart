@@ -6,6 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 import '../cubit/chat_cubit.dart';
 import '../cubit/chat_state.dart';
+import 'package:green_rabbit/shared/widgets/feature_guide_overlay.dart';
 import '../../../profile/presentation/screens/subscription_screen.dart';
 
 class ChatBotScreen extends StatefulWidget {
@@ -210,6 +211,20 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       ),
       actions: [
         _buildAppBarIcon(
+          icon: Icons.help_outline,
+          size: 18,
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (context) => FeatureGuideOverlay(
+                type: GuideType.ai,
+                onDismiss: () => Navigator.pop(context),
+              ),
+            );
+          },
+        ),
+        const SizedBox(width: 10),
+        _buildAppBarIcon(
           icon: Icons.edit_outlined,
           size: 18,
           onTap: () => cubit.startNewChat(),
@@ -377,18 +392,17 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     );
   }
 
-  Widget _buildRabbitLogo({double size = 96}) {
+  Widget _buildRabbitLogo({double size = 80}) { // Reduced from 96
     return SizedBox(
       height: size,
       width: size,
-      child: ClipOval(
-        child: Image.asset(
-          'assets/icons/rabbiticonAI.png',
-          fit: BoxFit.cover,
-          width: size,
-          height: size,
-          filterQuality: FilterQuality.high,
-        ),
+      child: Image.asset(
+        'assets/ai.png',
+        fit: BoxFit.contain,
+        width: size,
+        height: size,
+        isAntiAlias: true,
+        filterQuality: FilterQuality.high,
       ),
     );
   }

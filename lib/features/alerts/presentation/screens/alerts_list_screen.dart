@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../cubit/alert_cubit.dart';
 import '../cubit/alert_state.dart';
 import '../widgets/alert_tile.dart';
+import 'package:green_rabbit/shared/widgets/feature_guide_overlay.dart';
 
 class AlertsListScreen extends StatefulWidget {
   const AlertsListScreen({super.key});
@@ -38,6 +39,18 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline, color: AppColors.textGrey),
+            onPressed: () {
+              showDialog(
+                 context: context,
+                 builder: (context) => FeatureGuideOverlay(
+                   type: GuideType.alerts,
+                   onDismiss: () => Navigator.pop(context),
+                 ),
+               );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.sort_rounded, color: AppColors.textGrey),
             onPressed: () {},

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
+import 'package:green_rabbit/shared/widgets/feature_guide_overlay.dart';
 import '../../data/models/alert_model.dart';
 import '../cubit/alert_cubit.dart';
 import '../cubit/alert_state.dart';
@@ -42,6 +43,21 @@ class _AlertsPageState extends State<AlertsPage> {
                 fontWeight: FontWeight.w600,
               ),
             ),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.help_outline, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => FeatureGuideOverlay(
+                      type: GuideType.alerts,
+                      onDismiss: () => Navigator.pop(context),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
           body: state.isLoading
               ? const Center(child: CircularProgressIndicator())

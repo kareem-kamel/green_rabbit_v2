@@ -72,9 +72,13 @@ class GreenRabbitApp extends StatelessWidget {
         BlocProvider<AuthCubit>(create: (context) => di.sl<AuthCubit>()..checkAuth()),
       ],
 
-      child: BlocBuilder<SettingsCubit, SettingsState>(
-        builder: (context, settingsState) {
-          return MaterialApp(
+      child: BlocListener<AuthCubit, AuthState>(
+        listener: (context, state) {
+          showGlobalCalculator.value = (state is AuthSuccess);
+        },
+        child: BlocBuilder<SettingsCubit, SettingsState>(
+          builder: (context, settingsState) {
+            return MaterialApp(
             navigatorKey: globalNavigatorKey,
             title: 'Green Rabbit',
             debugShowCheckedModeBanner: false,
@@ -136,6 +140,7 @@ class GreenRabbitApp extends StatelessWidget {
           );
         },
       ),
+    ),
     );
   }
 }

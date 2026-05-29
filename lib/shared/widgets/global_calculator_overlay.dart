@@ -6,8 +6,10 @@ import '../../main.dart'; // To access globalNavigatorKey
 import '../../features/market/presentation/providers/market_providers.dart';
 import '../../features/market/data/models/market_instrument.dart';
 
+import 'package:green_rabbit/shared/widgets/feature_guide_overlay.dart';
+
 // Global flag to control visibility
-final ValueNotifier<bool> showGlobalCalculator = ValueNotifier<bool>(true);
+final ValueNotifier<bool> showGlobalCalculator = ValueNotifier<bool>(false);
 
 // Persistent state for Standard Calculator
 double _globalPrincipal = 1000.0;
@@ -123,16 +125,36 @@ class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(28),
                     onTap: _openCalculator,
-                    child: Align(
-                      alignment: _isHidden ? Alignment.centerLeft : Alignment.center,
-                      child: Padding(
-                        padding: EdgeInsets.only(left: _isHidden ? 6.0 : 0),
-                        child: Icon(
-                          _isHidden ? Icons.chevron_left : Icons.calculate_outlined,
-                          color: Colors.white,
-                          size: _isHidden ? 20 : 28, // Slightly larger hidden icon
+                    child: Stack(
+                      children: [
+                        Align(
+                          alignment: _isHidden ? Alignment.centerLeft : Alignment.center,
+                          child: Padding(
+                            padding: EdgeInsets.only(left: _isHidden ? 6.0 : 0),
+                            child: Icon(
+                              _isHidden ? Icons.chevron_left : Icons.calculate_outlined,
+                              color: Colors.white,
+                              size: _isHidden ? 20 : 28, // Slightly larger hidden icon
+                            ),
+                          ),
                         ),
-                      ),
+                        if (_isHidden)
+                          Positioned(
+                            right: 8,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: Container(
+                                width: 2,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: Colors.white24,
+                                  borderRadius: BorderRadius.circular(1),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
@@ -207,6 +229,21 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
           icon: Icon(Icons.arrow_back_ios_new, color: isDark ? Colors.white70 : Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.help_outline, color: isDark ? Colors.white70 : Colors.black87),
+            onPressed: () {
+              showDialog(
+                 context: context,
+                 builder: (context) => FeatureGuideOverlay(
+                   type: GuideType.calculator,
+                   onDismiss: () => Navigator.pop(context),
+                 ),
+               );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(

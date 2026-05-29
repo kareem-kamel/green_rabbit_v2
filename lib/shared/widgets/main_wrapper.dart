@@ -11,6 +11,9 @@ import '../../features/notifications/data/services/push_notification_service.dar
 import '../../features/notifications/presentation/cubit/notification_cubit.dart';
 import '../widgets/global_calculator_overlay.dart';
 
+import 'package:green_rabbit/shared/widgets/feature_guide_overlay.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 // Provider to manage the current bottom nav index
 final navigationIndexProvider = StateProvider<int>((ref) => 0);
 
@@ -22,15 +25,26 @@ class MainWrapper extends ConsumerStatefulWidget {
 }
 
 class _MainWrapperState extends ConsumerState<MainWrapper> {
+  bool _showGuide = false;
   
   @override
   void initState() {
     super.initState();
+    _checkFirstTime();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         PushNotificationService.initialize(context.read<NotificationCubit>());
       }
     });
+  }
+
+  void _checkFirstTime() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasSeenGuide = prefs.getBool('has_seen_feature_guide') ?? false;
+    if (!hasSeenGuide) {
+      setState(() => _showGuide = true);
+      await prefs.setBool('has_seen_feature_guide', true);
+    }
   }
 
   @override
@@ -53,7 +67,15 @@ class _MainWrapperState extends ConsumerState<MainWrapper> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       extendBody: true,
-      body: pages[selectedIndex],
+      body: Stack(
+        children: [
+          pages[selectedIndex],
+          if (_showGuide)
+            FeatureGuideOverlay(
+              onDismiss: () => setState(() => _showGuide = false),
+            ),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
         onTap: (index) {
