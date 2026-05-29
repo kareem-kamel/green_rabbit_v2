@@ -83,7 +83,7 @@ class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
         if (!show || _isPageOpen) return const SizedBox.shrink();
 
         return Positioned(
-          bottom: 50, // Lower position
+          bottom: 60, // Lower position
           right: -_xOffset + 16,
           child: SafeArea(
             child: GestureDetector(

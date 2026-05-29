@@ -26,6 +26,14 @@ class ChatCubit extends Cubit<ChatState> {
     loadUsageStats();
   }
 
+  @override
+  Future<void> close() {
+    _activeCancelToken?.cancel();
+    _revealTimer?.cancel();
+    _speech.stop();
+    return super.close();
+  }
+
   Future<void> loadHistory() async {
     try {
       final history = await repository.getConversations();
@@ -85,56 +93,75 @@ class ChatCubit extends Cubit<ChatState> {
 
   void toggleVoiceMode(bool val) {
     if (val) {
-      emit(state.copyWith(isVoiceMode: true));
-      startListening();
+      emit(state.copyWith(isVoiceMode: true, clearError: true));
+      // Don't auto-start listening here, let the UI trigger it via the large button
     } else {
       stopListening(submit: false);
       emit(state.copyWith(isVoiceMode: false));
     }
   }
 
-  Future<void> _initSpeech() async {
-    if (!_isSpeechInitialized) {
-      _isSpeechInitialized = await _speech.initialize(
-        onError: (error) => print('Speech initialization error: $error'),
-      );
-    }
-  }
-
   Future<void> startListening() async {
-    if (!kIsWeb) {
-      final status = await Permission.microphone.request();
-      if (status != PermissionStatus.granted) {
-        print('Microphone permission denied');
-        return;
+    try {
+      if (!kIsWeb) {
+        final status = await Permission.microphone.request();
+        if (status != PermissionStatus.granted) {
+          emit(state.copyWith(
+            error: 'Microphone permission is required for voice input.',
+          ));
+          return;
+        }
       }
-    }
 
-    await _initSpeech();
-    
-    // Force stop any stuck listening session
-    if (_speech.isListening) {
-      await _speech.stop();
-    }
+      bool available = await _speech.initialize(
+        onStatus: (status) {
+          if (status == 'done' || status == 'notListening') {
+            emit(state.copyWith(isListening: false));
+          }
+        },
+        onError: (errorNotification) {
+          print('STT Error: ${errorNotification.errorMsg}');
+          emit(state.copyWith(
+            isListening: false,
+            error: 'Speech recognition error. Please try again.',
+          ));
+        },
+      );
 
-    if (_isSpeechInitialized) {
-      emit(state.copyWith(isListening: true, speechText: ''));
-      try {
+      _isSpeechInitialized = available;
+
+      if (_isSpeechInitialized) {
+        if (_speech.isListening) {
+          await _speech.stop();
+        }
+
+        emit(state.copyWith(isListening: true, speechText: '', clearError: true));
+        
         await _speech.listen(
           onResult: (result) {
             emit(state.copyWith(speechText: result.recognizedWords));
             if (result.finalResult) {
+              // Auto-stop listening when speech ends, but stay in Voice Mode
               stopListening(submit: true);
             }
           },
-          listenFor: const Duration(seconds: 30),
-          pauseFor: const Duration(seconds: 3),
+          listenFor: const Duration(seconds: 60),
+          pauseFor: const Duration(seconds: 5), // Increased from 2 to 5 for more time
           partialResults: true,
+          listenMode: stt.ListenMode.dictation, // Switched back to dictation for better flow
+          cancelOnError: true,
         );
-      } catch (e) {
-        print('Speech listen error: $e');
-        emit(state.copyWith(isListening: false, isVoiceMode: false));
+      } else {
+        emit(state.copyWith(
+          error: 'Speech recognition not available on this device.',
+        ));
       }
+    } catch (e) {
+      print('Speech start error: $e');
+      emit(state.copyWith(
+        isListening: false,
+        error: 'Failed to start microphone.',
+      ));
     }
   }
 
@@ -148,12 +175,15 @@ class ChatCubit extends Cubit<ChatState> {
     emit(state.copyWith(
       isListening: false, 
       speechText: '', 
-      isVoiceMode: false,
     ));
     
     if (submit && text.trim().isNotEmpty) {
       sendMessage(text.trim());
     }
+  }
+
+  void clearError() {
+    emit(state.copyWith(clearError: true));
   }
 
   void startNewChat() {
