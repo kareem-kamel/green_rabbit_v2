@@ -242,7 +242,8 @@ class NewsResponse {
     final articlesList = (data['articles'] as List? ?? [])
         .map((a) => NewsArticle.fromJson(Map<String, dynamic>.from(a)))
         .toList();
-    final meta = json['meta'] != null ? NewsMeta.fromJson(Map<String, dynamic>.from(json['meta'])) : null;
+    final metaData = data['meta'] ?? json['meta'];
+    final meta = metaData != null ? NewsMeta.fromJson(Map<String, dynamic>.from(metaData)) : null;
     return NewsResponse(articles: articlesList, meta: meta);
   }
 }

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:permission_handler/permission_handler.dart';
 import '../../data/repository/chatbot_repository.dart';
 import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 import 'chat_state.dart';
@@ -11,6 +13,8 @@ class ChatCubit extends Cubit<ChatState> {
   final ChatbotRepository repository;
   CancelToken? _activeCancelToken;
   Timer? _revealTimer;
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isSpeechInitialized = false;
 
   /// ChatGPT-style typewriter: UI trails the live stream slightly.
   static const _revealTickMs = 18;
@@ -79,7 +83,78 @@ class ChatCubit extends Cubit<ChatState> {
     }
   }
 
-  void toggleVoiceMode(bool val) => emit(state.copyWith(isVoiceMode: val));
+  void toggleVoiceMode(bool val) {
+    if (val) {
+      emit(state.copyWith(isVoiceMode: true));
+      startListening();
+    } else {
+      stopListening(submit: false);
+      emit(state.copyWith(isVoiceMode: false));
+    }
+  }
+
+  Future<void> _initSpeech() async {
+    if (!_isSpeechInitialized) {
+      _isSpeechInitialized = await _speech.initialize(
+        onError: (error) => print('Speech initialization error: $error'),
+      );
+    }
+  }
+
+  Future<void> startListening() async {
+    if (!kIsWeb) {
+      final status = await Permission.microphone.request();
+      if (status != PermissionStatus.granted) {
+        print('Microphone permission denied');
+        return;
+      }
+    }
+
+    await _initSpeech();
+    
+    // Force stop any stuck listening session
+    if (_speech.isListening) {
+      await _speech.stop();
+    }
+
+    if (_isSpeechInitialized) {
+      emit(state.copyWith(isListening: true, speechText: ''));
+      try {
+        await _speech.listen(
+          onResult: (result) {
+            emit(state.copyWith(speechText: result.recognizedWords));
+            if (result.finalResult) {
+              stopListening(submit: true);
+            }
+          },
+          listenFor: const Duration(seconds: 30),
+          pauseFor: const Duration(seconds: 3),
+          partialResults: true,
+        );
+      } catch (e) {
+        print('Speech listen error: $e');
+        emit(state.copyWith(isListening: false, isVoiceMode: false));
+      }
+    }
+  }
+
+  Future<void> stopListening({bool submit = true}) async {
+    final text = state.speechText;
+    
+    if (_speech.isListening) {
+      await _speech.stop();
+    }
+    
+    emit(state.copyWith(
+      isListening: false, 
+      speechText: '', 
+      isVoiceMode: false,
+    ));
+    
+    if (submit && text.trim().isNotEmpty) {
+      sendMessage(text.trim());
+    }
+  }
 
   void startNewChat() {
     _activeCancelToken?.cancel();
@@ -484,6 +559,7 @@ class ChatCubit extends Cubit<ChatState> {
       );
     } finally {
       _cancelRevealTimer();
+      emit(state.copyWith(isGenerating: false));
       if (_activeCancelToken == cancelToken) {
         _activeCancelToken = null;
       }
