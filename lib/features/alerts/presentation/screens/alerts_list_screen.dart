@@ -59,14 +59,13 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
             child: ListView(
               padding: const EdgeInsets.all(20),
               children: [
+                _buildInfoCard(),
+                const SizedBox(height: 24),
                 _buildSectionHeader("Active Alerts"),
                 const SizedBox(height: 16),
                 
                 if (activeAlerts.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(child: Text("No active alerts", style: TextStyle(color: AppColors.textGrey))),
-                  ),
+                  _buildEmptyState("No active alerts", "Create alerts from the market or asset pages to stay informed about price movements."),
                   
                 ...activeAlerts.map((alert) => AlertTile(
                   assetName: alert.instrument.symbol,
@@ -83,10 +82,7 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
                 const SizedBox(height: 16),
                 
                 if (triggeredAlerts.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(child: Text("No recent triggers", style: TextStyle(color: AppColors.textGrey))),
-                  ),
+                  _buildEmptyState("No recent triggers", "Triggered and expired alerts will appear here for your history."),
                   
                 ...triggeredAlerts.map((alert) => Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -101,6 +97,57 @@ class _AlertsListScreenState extends State<AlertsListScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildInfoCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primaryPurple.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primaryPurple.withOpacity(0.2)),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.info_outline, color: AppColors.primaryPurple, size: 20),
+              SizedBox(width: 8),
+              Text(
+                "How alerts work",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
+          SizedBox(height: 8),
+          Text(
+            "Stay on top of the market by setting price, percentage, or volume alerts. We'll notify you instantly when your conditions are met.",
+            style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+      child: Column(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            description,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.textGrey, fontSize: 13, height: 1.5),
+          ),
+        ],
       ),
     );
   }

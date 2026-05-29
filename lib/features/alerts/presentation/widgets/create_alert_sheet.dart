@@ -111,6 +111,8 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
                    style: const TextStyle(color: Colors.grey, fontSize: 13)),
               const SizedBox(height: 20),
               _buildTabPicker(cubit, state.selectedTab),
+              const SizedBox(height: 12),
+              _buildTabExplanation(state.selectedTab),
               const SizedBox(height: 24),
               GestureDetector(
                 onTap: () => _showConditionPicker(context, cubit, state),
@@ -182,6 +184,29 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
         cubit.updateCondition(title);
         Navigator.pop(context);
       },
+    );
+  }
+
+  Widget _buildTabExplanation(String selectedTab) {
+    String explanation = "";
+    switch (selectedTab) {
+      case "Price":
+        explanation = "Get notified when the price hits your target level.";
+        break;
+      case "Charge %":
+        explanation = "Alert me when the price moves by a specific percentage today.";
+        break;
+      case "Volume":
+        explanation = "Track unusual trading activity by monitoring volume levels.";
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Text(
+        explanation,
+        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12, fontStyle: FontStyle.italic),
+      ),
     );
   }
 

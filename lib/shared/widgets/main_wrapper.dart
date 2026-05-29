@@ -26,10 +26,7 @@ class _MainWrapperState extends ConsumerState<MainWrapper> {
   @override
   void initState() {
     super.initState();
-    // The calculator starts in its own internal 'hidden' state (peek mode) 
-    // by default, so it's not intrusive on startup.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      showGlobalCalculator.value = true;
       if (mounted) {
         PushNotificationService.initialize(context.read<NotificationCubit>());
       }
@@ -38,7 +35,6 @@ class _MainWrapperState extends ConsumerState<MainWrapper> {
 
   @override
   void dispose() {
-    showGlobalCalculator.value = false;
     super.dispose();
   }
 
@@ -57,12 +53,7 @@ class _MainWrapperState extends ConsumerState<MainWrapper> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       extendBody: true,
-      body: Stack(
-        children: [
-          pages[selectedIndex],
-          const GlobalCalculatorOverlay(),
-        ],
-      ),
+      body: pages[selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
         onTap: (index) {

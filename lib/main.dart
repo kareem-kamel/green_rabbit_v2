@@ -22,6 +22,7 @@ import 'package:green_rabbit/features/news/presentation/screens/deep_link_articl
 import 'package:green_rabbit/features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'core/network/api_client.dart';
 import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
+import 'package:green_rabbit/shared/widgets/global_calculator_overlay.dart';
 import 'core/di/injection_container.dart' as di;
 
 final GlobalKey<NavigatorState> globalNavigatorKey =
@@ -83,7 +84,12 @@ class GreenRabbitApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             builder: (context, child) {
-              return child ?? const SizedBox.shrink();
+              return Stack(
+                children: [
+                  if (child != null) child,
+                  const GlobalCalculatorOverlay(),
+                ],
+              );
             },
 
             // 👇 Use a BlocBuilder here to decide the home page
