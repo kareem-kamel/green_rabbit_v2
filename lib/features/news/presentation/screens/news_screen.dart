@@ -319,7 +319,7 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 
   Widget _buildCategoryRow() {
-    final categories = ["Featured", "Popular", "Stocks", "Crypto", "Forex", "Favorites"];
+    final categories = ["Featured", "Popular", "Stocks", "Cryptocurrency", "Forex", "Favorites"];
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
@@ -371,10 +371,30 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
+  IconData _getCategoryIcon(String label) {
+    switch (label) {
+      case 'Featured':
+        return Icons.star_rounded;
+      case 'Popular':
+        return Icons.local_fire_department_rounded;
+      case 'Stocks':
+        return Icons.show_chart_rounded;
+      case 'Cryptocurrency':
+        return Icons.currency_bitcoin_rounded;
+      case 'Forex':
+        return Icons.swap_horiz_rounded;
+      case 'Favorites':
+        return Icons.bookmark_rounded;
+      default:
+        return Icons.article_rounded;
+    }
+  }
+
   Widget _buildCategoryChip(String label) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     bool isActive = selectedCategory == label;
+    final icon = _getCategoryIcon(label);
 
     return GestureDetector(
       onTap: () {
@@ -385,20 +405,20 @@ class _NewsScreenState extends State<NewsScreen> {
         if (label == "Favorites") {
           context.read<NewsCubit>().fetchFavoriteNews(limit: 20);
         } else {
-          // Map UI labels to backend 'type' parameters
+          // Map UI labels to backend 'category' parameters
           String? categoryParam;
           if (label == "Stocks") {
-            categoryParam = "stock";
-          } else if (label == "Crypto") categoryParam = "crypto";
+            categoryParam = "stocks";
+          } else if (label == "Cryptocurrency") categoryParam = "crypto";
           else if (label == "Forex") categoryParam = "forex";
-          else if (label == "Popular") categoryParam = "popular";
+          else if (label == "Popular") categoryParam = "most_popular";
           
           context.read<NewsCubit>().fetchNewsFeed(limit: 20, category: categoryParam);
         }
       },
       child: Container(
         margin: const EdgeInsets.only(right: 10),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isActive ? Colors.transparent : (isDark ? AppColors.cardBg.withOpacity(0.5) : Colors.grey[200]),
           borderRadius: BorderRadius.circular(8),
@@ -407,14 +427,25 @@ class _NewsScreenState extends State<NewsScreen> {
             width: isActive ? 1.5 : 1,
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isActive ? (isDark ? Colors.white : AppColors.primary) : AppColors.textGrey,
-            fontSize: 16,
-            fontFamily: 'Urbanist',
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isActive ? (isDark ? Colors.white : AppColors.primary) : AppColors.textGrey,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? (isDark ? Colors.white : AppColors.primary) : AppColors.textGrey,
+                fontSize: 14,
+                fontFamily: 'Urbanist',
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
         ),
       ),
     );

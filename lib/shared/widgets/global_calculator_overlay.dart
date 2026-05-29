@@ -6,6 +6,8 @@ import '../../main.dart'; // To access globalNavigatorKey
 import '../../features/market/presentation/providers/market_providers.dart';
 import '../../features/market/data/models/market_instrument.dart';
 
+import 'package:green_rabbit/shared/widgets/feature_guide_overlay.dart';
+
 // Global flag to control visibility
 final ValueNotifier<bool> showGlobalCalculator = ValueNotifier<bool>(false);
 
@@ -81,7 +83,7 @@ class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
         if (!show || _isPageOpen) return const SizedBox.shrink();
 
         return Positioned(
-          bottom: 80, // Above bottom nav bar
+          bottom: 50, // Lower position
           right: -_xOffset + 16,
           child: SafeArea(
             child: GestureDetector(
@@ -123,16 +125,36 @@ class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
                   child: InkWell(
                     borderRadius: BorderRadius.circular(28),
                     onTap: _openCalculator,
-                    child: Align(
-                      alignment: _isHidden ? Alignment.centerLeft : Alignment.center,
-                      child: Padding(
-                        padding: EdgeInsets.only(left: _isHidden ? 6.0 : 0),
-                        child: Icon(
-                          _isHidden ? Icons.arrow_back_ios_new : Icons.calculate_outlined,
-                          color: Colors.white,
-                          size: _isHidden ? 16 : 28,
+                    child: Stack(
+                      children: [
+                        Align(
+                          alignment: _isHidden ? Alignment.centerLeft : Alignment.center,
+                          child: Padding(
+                            padding: EdgeInsets.only(left: _isHidden ? 6.0 : 0),
+                            child: Icon(
+                              _isHidden ? Icons.chevron_left : Icons.calculate_outlined,
+                              color: Colors.white,
+                              size: _isHidden ? 20 : 28, // Slightly larger hidden icon
+                            ),
+                          ),
                         ),
-                      ),
+                        if (_isHidden)
+                          Positioned(
+                            right: 8,
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: Container(
+                                width: 2,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: Colors.white24,
+                                  borderRadius: BorderRadius.circular(1),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),
@@ -207,6 +229,21 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
           icon: Icon(Icons.arrow_back_ios_new, color: isDark ? Colors.white70 : Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.help_outline, color: isDark ? Colors.white70 : Colors.black87),
+            onPressed: () {
+              showDialog(
+                 context: context,
+                 builder: (context) => FeatureGuideOverlay(
+                   type: GuideType.calculator,
+                   onDismiss: () => Navigator.pop(context),
+                 ),
+               );
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -311,7 +348,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                 _buildAdjustButton(
                   icon: Icons.add,
                   onPressed: () {
-                    if (_globalMonths < 132) {
+                    if (_globalMonths < 180) {
                       setState(() => _globalMonths++);
                     }
                   },
@@ -324,8 +361,8 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
         Slider(
           value: _globalMonths.toDouble(),
           min: 1,
-          max: 132,
-          divisions: 131,
+          max: 180,
+          divisions: 179,
           activeColor: AppColors.primaryPurple,
           onChanged: (val) {
             setState(() {
@@ -340,72 +377,65 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
   }
 
   Widget _buildStockTab(bool isDark) {
-    final marketAsync = ref.watch(marketOverviewProvider('stocks'));
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        marketAsync.when(
-          data: (stocks) {
-            return Autocomplete<MarketInstrument>(
-              displayStringForOption: (option) => "${option.name} (${option.symbol})",
-              optionsBuilder: (TextEditingValue textEditingValue) {
-                if (textEditingValue.text.isEmpty) {
-                  return const Iterable<MarketInstrument>.empty();
-                }
-                return stocks.where((stock) {
-                  return stock.name.toLowerCase().contains(textEditingValue.text.toLowerCase()) ||
-                         stock.symbol.toLowerCase().contains(textEditingValue.text.toLowerCase());
-                });
-              },
-              onSelected: (MarketInstrument selection) {
-                setState(() {
-                  _globalSelectedStock = selection;
-                });
-                FocusScope.of(context).unfocus(); // Close keyboard
-              },
-              fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
-                if (_globalSelectedStock != null && textEditingController.text.isEmpty) {
-                  textEditingController.text = "${_globalSelectedStock!.name} (${_globalSelectedStock!.symbol})";
-                }
-                return _buildRawInputField(
-                  label: "Search Stock",
-                  controller: textEditingController,
-                  focusNode: focusNode,
-                  isDark: isDark,
-                  hint: "e.g. Apple or AAPL",
-                );
-              },
-              optionsViewBuilder: (context, onSelected, options) {
-                return Align(
-                  alignment: Alignment.topLeft,
-                  child: Material(
-                    elevation: 4,
-                    color: isDark ? const Color(0xFF1C1F26) : Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 200, maxWidth: 320),
-                      child: ListView.builder(
-                        padding: EdgeInsets.zero,
-                        shrinkWrap: true,
-                        itemCount: options.length,
-                        itemBuilder: (context, index) {
-                          final option = options.elementAt(index);
-                          return ListTile(
-                            title: Text("${option.name} (${option.symbol})", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
-                            subtitle: Text("\$${option.price?.toStringAsFixed(2)}", style: const TextStyle(color: AppColors.primaryPurple)),
-                            onTap: () => onSelected(option),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                );
-              },
+        Autocomplete<MarketInstrument>(
+          displayStringForOption: (option) => "${option.name} (${option.symbol})",
+          optionsBuilder: (TextEditingValue textEditingValue) async {
+            if (textEditingValue.text.isEmpty) {
+              return const Iterable<MarketInstrument>.empty();
+            }
+            try {
+              return await ref.read(marketRepositoryProvider).searchInstruments(textEditingValue.text);
+            } catch (e) {
+              return const Iterable<MarketInstrument>.empty();
+            }
+          },
+          onSelected: (MarketInstrument selection) {
+            setState(() {
+              _globalSelectedStock = selection;
+            });
+            FocusScope.of(context).unfocus(); // Close keyboard
+          },
+          fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+            if (_globalSelectedStock != null && textEditingController.text.isEmpty) {
+              textEditingController.text = "${_globalSelectedStock!.name} (${_globalSelectedStock!.symbol})";
+            }
+            return _buildRawInputField(
+              label: "Search Stock",
+              controller: textEditingController,
+              focusNode: focusNode,
+              isDark: isDark,
+              hint: "e.g. Apple or AAPL",
             );
           },
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, s) => Text("Error loading stocks", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+          optionsViewBuilder: (context, onSelected, options) {
+            return Align(
+              alignment: Alignment.topLeft,
+              child: Material(
+                elevation: 4,
+                color: isDark ? const Color(0xFF1C1F26) : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 200, maxWidth: 320),
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    itemBuilder: (context, index) {
+                      final option = options.elementAt(index);
+                      return ListTile(
+                        title: Text("${option.name} (${option.symbol})", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
+                        subtitle: Text("\$${option.price?.toStringAsFixed(2)}", style: const TextStyle(color: AppColors.primaryPurple)),
+                        onTap: () => onSelected(option),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            );
+          },
         ),
 
         const SizedBox(height: 16),
@@ -486,7 +516,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                   _buildAdjustButton(
                     icon: Icons.add,
                     onPressed: () {
-                      if (_globalStockMonths < 132) {
+                      if (_globalStockMonths < 180) {
                         setState(() => _globalStockMonths++);
                       }
                     },
@@ -499,8 +529,8 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
           Slider(
             value: _globalStockMonths.toDouble(),
             min: 1,
-            max: 132,
-            divisions: 131,
+            max: 180,
+            divisions: 179,
             activeColor: AppColors.primaryPurple,
             onChanged: (val) {
               setState(() {

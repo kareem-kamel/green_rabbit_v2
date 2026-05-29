@@ -6,6 +6,8 @@ import '../../../../core/theme/app_colors.dart';
 import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 import '../cubit/chat_cubit.dart';
 import '../cubit/chat_state.dart';
+import 'package:green_rabbit/shared/widgets/feature_guide_overlay.dart';
+import '../../../profile/presentation/screens/subscription_screen.dart';
 
 class ChatBotScreen extends StatefulWidget {
   final bool startEmpty;
@@ -171,7 +173,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               children: [
                 Expanded(
                   child: state.isVoiceMode
-                      ? _buildVoiceInterface(context, cubit)
+                      ? _buildVoiceInterface(context, cubit, state)
                       : (state.isGenerating && state.messages.isEmpty
                           ? const Center(child: CircularProgressIndicator())
                           : (state.messages.isNotEmpty
@@ -208,6 +210,20 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         ),
       ),
       actions: [
+        _buildAppBarIcon(
+          icon: Icons.help_outline,
+          size: 18,
+          onTap: () {
+            showDialog(
+              context: context,
+              builder: (context) => FeatureGuideOverlay(
+                type: GuideType.ai,
+                onDismiss: () => Navigator.pop(context),
+              ),
+            );
+          },
+        ),
+        const SizedBox(width: 10),
         _buildAppBarIcon(
           icon: Icons.edit_outlined,
           size: 18,
@@ -376,18 +392,17 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     );
   }
 
-  Widget _buildRabbitLogo({double size = 110}) {
+  Widget _buildRabbitLogo({double size = 80}) { // Reduced from 96
     return SizedBox(
       height: size,
       width: size,
-      child: ClipOval(
-        child: Image.asset(
-          'assets/icons/rabbiticonAI.png',
-          fit: BoxFit.cover,
-          width: size,
-          height: size,
-          filterQuality: FilterQuality.high,
-        ),
+      child: Image.asset(
+        'assets/ai.png',
+        fit: BoxFit.contain,
+        width: size,
+        height: size,
+        isAntiAlias: true,
+        filterQuality: FilterQuality.high,
       ),
     );
   }
@@ -585,6 +600,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     }
 
     final isError = _isErrorMessage(msg);
+    final isPlanError = isError && (msg.content.toLowerCase().contains('current plan') || msg.content.toLowerCase().contains('free trial'));
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -592,7 +608,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            margin: EdgeInsets.only(bottom: msg.hasChart ? 0 : 12, right: 40),
+            margin: EdgeInsets.only(bottom: (msg.hasChart || isPlanError) ? 0 : 12, right: 40),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: isError
@@ -614,8 +630,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (isError) ...[
-                        const Icon(Icons.error_outline,
-                            color: Colors.redAccent, size: 18),
+                        Icon(isPlanError ? Icons.lock_outline : Icons.error_outline,
+                            color: isPlanError ? AppColors.premiumGold : Colors.redAccent, size: 18),
                         const SizedBox(width: 8),
                       ],
                       Expanded(
@@ -625,12 +641,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                           selectable: true,
                           styleSheet: MarkdownStyleSheet(
                             p: TextStyle(
-                              color: isError ? Colors.redAccent[100] : Colors.white,
+                              color: isPlanError ? Colors.white : (isError ? Colors.redAccent[100] : Colors.white),
                               fontSize: 14,
                               height: 1.5,
                             ),
                             strong: TextStyle(
-                              color: isError ? Colors.redAccent[100] : Colors.white,
+                              color: isPlanError ? Colors.white : (isError ? Colors.redAccent[100] : Colors.white),
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
@@ -640,6 +656,47 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     ],
                   ),
           ),
+          if (isPlanError) ...[
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => SubscriptionScreen()),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryPurple.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.rocket_launch, color: Colors.white, size: 16),
+                    SizedBox(width: 8),
+                    Text(
+                      "Activate the Free Trial",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           if (msg.hasChart) ...[
             const SizedBox(height: 8),
             _buildInlineChart(),
@@ -698,7 +755,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   // ─────────────────────────────────────────────
   //  VOICE MODE
   // ─────────────────────────────────────────────
-  Widget _buildVoiceInterface(BuildContext context, ChatCubit cubit) {
+  Widget _buildVoiceInterface(BuildContext context, ChatCubit cubit, ChatState state) {
     return Column(
       children: [
         Expanded(
@@ -710,8 +767,23 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 _buildRabbitLogo(),
                 const SizedBox(height: 24),
                 _buildAIGreetingBubble("I'm listening... Ask me anything"),
+                if (state.speechText.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      state.speechText,
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontStyle: FontStyle.italic),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
-                _buildSuggestionBox(cubit),
+                if (!state.isListening && state.speechText.isEmpty) _buildSuggestionBox(cubit),
               ],
             ),
           ),
@@ -728,16 +800,27 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                   textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 16)),
               const SizedBox(height: 28),
               GestureDetector(
-                onTap: () => cubit.toggleVoiceMode(false),
+                onTap: () {
+                  if (state.isListening) {
+                    cubit.stopListening();
+                  } else {
+                    cubit.startListening();
+                  }
+                },
                 child: Container(
                   height: 64, width: 64,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withOpacity(0.12), width: 1.5),
-                    color: Colors.white.withOpacity(0.05),
+                    border: Border.all(color: state.isListening ? Colors.redAccent.withOpacity(0.5) : Colors.white.withOpacity(0.12), width: 1.5),
+                    color: state.isListening ? Colors.redAccent.withOpacity(0.1) : Colors.white.withOpacity(0.05),
                   ),
-                  child: const Icon(Icons.mic, color: Color(0xFF8B5CF6), size: 30),
+                  child: Icon(state.isListening ? Icons.stop : Icons.mic, color: state.isListening ? Colors.redAccent : const Color(0xFF8B5CF6), size: 30),
                 ),
+              ),
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: () => cubit.toggleVoiceMode(false),
+                child: const Text("Close Voice Mode", style: TextStyle(color: Colors.grey, fontSize: 14)),
               ),
               const SizedBox(height: 8),
             ],
@@ -785,10 +868,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: () => cubit.toggleVoiceMode(true),
-                          child: const Padding(
-                            padding: EdgeInsets.only(left: 4),
-                            child: Icon(Icons.mic_none, color: Color(0xFF8B5CF6), size: 20),
+                          onTap: state.isGenerating ? null : () => cubit.toggleVoiceMode(true),
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: Icon(
+                              Icons.mic_none, 
+                              color: state.isGenerating ? Colors.grey : const Color(0xFF8B5CF6), 
+                              size: 20
+                            ),
                           ),
                         ),
                       ],

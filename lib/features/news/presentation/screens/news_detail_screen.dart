@@ -973,7 +973,7 @@ class _NewsDetailScreenState extends State<NewsDetailScreen> {
       child: Row(
         children: [
           Image.asset(
-            'assets/icons/rabbiticonAI.png',
+            'assets/ai.png',
             width: 28,
             height: 28,
           ),

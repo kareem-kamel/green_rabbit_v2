@@ -48,12 +48,16 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       final isFirstTime = await repository.isFirstTime();
 
+      if (isClosed) return;
+
       if (isFirstTime) {
         emit(AuthFirstTime());
         return;
       }
 
       final isLoggedIn = await repository.checkAuthStatus();
+
+      if (isClosed) return;
 
       if (isLoggedIn) {
         emit(AuthSuccess());
@@ -62,6 +66,7 @@ class AuthCubit extends Cubit<AuthState> {
       }
     } catch (e) {
       debugPrint('checkAuth error: $e');
+      if (isClosed) return;
       emit(AuthInitial());
     }
   }
@@ -85,6 +90,8 @@ class AuthCubit extends Cubit<AuthState> {
         rememberMe: rememberMe,
       );
 
+      if (isClosed) return;
+
       if (!onboardingDone || isFromSignup) {
         emit(AuthNeedsPreferences());
       } else {
@@ -93,6 +100,7 @@ class AuthCubit extends Cubit<AuthState> {
     } catch (e) {
       final parsedError = e.toString().replaceAll('Exception: ', '');
 
+      if (isClosed) return;
       emit(AuthFailure(errorMessage: parsedError));
     }
   }
@@ -115,8 +123,10 @@ class AuthCubit extends Cubit<AuthState> {
         confirmPassword: confirmPassword,
       );
 
+      if (isClosed) return;
       emit(AuthNeedsVerification());
     } catch (e) {
+      if (isClosed) return;
       emit(
         AuthFailure(errorMessage: e.toString().replaceAll('Exception: ', '')),
       );
@@ -134,6 +144,8 @@ class AuthCubit extends Cubit<AuthState> {
       // Start Google authentication flow
       final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
 
+      if (isClosed) return;
+
       // Retrieve authentication data
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
@@ -147,6 +159,8 @@ class AuthCubit extends Cubit<AuthState> {
       // Send token to backend
       final bool onboardingDone = await repository.signInWithGoogle(idToken);
 
+      if (isClosed) return;
+
       if (!onboardingDone) {
         emit(AuthNeedsPreferences());
       } else {
@@ -154,6 +168,8 @@ class AuthCubit extends Cubit<AuthState> {
       }
     } catch (e) {
       debugPrint('Google Sign-In Error: $e');
+
+      if (isClosed) return;
 
       emit(
         AuthFailure(errorMessage: e.toString().replaceAll('Exception: ', '')),
@@ -179,6 +195,8 @@ class AuthCubit extends Cubit<AuthState> {
     // Clear local/backend session
     await repository.logout();
 
+    if (isClosed) return;
+
     // Navigate user back to Login
     emit(AuthInitial());
   }
@@ -189,6 +207,8 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<void> clearLocalSession() async {
     await repository.clearLocalSession();
+
+    if (isClosed) return;
 
     emit(AuthInitial());
   }

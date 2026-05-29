@@ -13,39 +13,8 @@ class NewsCubit extends Cubit<NewsState> {
       emit(NewsLoading());
       var articles = await repository.fetchNewsFeed(limit: limit, category: category);
       
-      // Local filtering as a safeguard if the backend returns mixed news
-      // However, we should be careful not to be too strict, especially for Forex.
-      if (category != null && category.toLowerCase() != 'featured' && category.toLowerCase() != 'popular') {
-        final targetType = category.toLowerCase();
-        articles = articles.where((a) {
-          final articleType = a.type.toLowerCase();
-          
-          // If the article explicitly says it's of the target type, keep it.
-          if (articleType.contains(targetType)) return true;
-          
-          final cats = a.categories.map((c) => c.toLowerCase()).toList();
-          final tags = a.tags.map((t) => t.toLowerCase()).toList();
-          final tickers = a.tickers.map((t) => t.toLowerCase()).toList();
-          
-          // Loosen filtering for Forex to also catch 'fx' or common currency pairs
-          if (targetType == 'forex') {
-            final forexTerms = [
-              'forex', 'fx', 'currency', 'exchange rate', 
-              'eur', 'usd', 'gbp', 'jpy', 'aud', 'chf', 'cad', 'nzd', 'hkd', 'sgd',
-              'gold', 'xau', 'silver', 'xag'
-            ];
-            return articleType.contains('forex') || articleType.contains('fx') ||
-                   cats.any((c) => forexTerms.any((term) => c.contains(term))) ||
-                   tags.any((t) => forexTerms.any((term) => t.contains(term))) ||
-                   tickers.any((t) => forexTerms.any((term) => t.contains(term)));
-          }
-
-          return articleType.contains(targetType) || 
-                 cats.any((c) => c.contains(targetType)) ||
-                 tags.any((t) => t.contains(targetType)) ||
-                 tickers.any((t) => t.contains(targetType));
-        }).toList();
-      }
+      // We rely entirely on the backend to filter categories.
+      // The backend uses 'category' query parameter properly now.
       
       emit(NewsLoaded(articles));
     } catch (e) {
