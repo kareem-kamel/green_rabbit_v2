@@ -12,6 +12,7 @@ class ChatState extends Equatable {
   final int totalCredits;
   final bool isListening;
   final String speechText;
+  final String? error;
 
   const ChatState({
     this.messages = const [],
@@ -24,6 +25,7 @@ class ChatState extends Equatable {
     this.totalCredits = 5,
     this.isListening = false,
     this.speechText = '',
+    this.error,
   });
 
   ChatState copyWith({
@@ -37,7 +39,9 @@ class ChatState extends Equatable {
     int? totalCredits,
     bool? isListening,
     String? speechText,
+    String? error,
     bool clearActiveConversationId = false,
+    bool clearError = false,
   }) {
     return ChatState(
       messages: messages ?? this.messages,
@@ -50,9 +54,10 @@ class ChatState extends Equatable {
       totalCredits: totalCredits ?? this.totalCredits,
       isListening: isListening ?? this.isListening,
       speechText: speechText ?? this.speechText,
+      error: clearError ? null : (error ?? this.error),
     );
   }
 
   @override
-  List<Object?> get props => [messages, history, activeConversationId, isVoiceMode, hasMessages, isGenerating, creditsUsed, totalCredits, isListening, speechText];
+  List<Object?> get props => [messages, history, activeConversationId, isVoiceMode, hasMessages, isGenerating, creditsUsed, totalCredits, isListening, speechText, error];
 }

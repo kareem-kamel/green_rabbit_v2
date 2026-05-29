@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -37,6 +38,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   bool _initialPromptSent = false;
   bool _autoScroll = true;
   bool _scrollScheduled = false;
+  Timer? _recordingTimer;
+  int _recordingSeconds = 0;
 
   @override
   void initState() {
@@ -49,7 +52,30 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     _scrollController.removeListener(_scrollListener);
     _textController.dispose();
     _scrollController.dispose();
+    _recordingTimer?.cancel();
     super.dispose();
+  }
+
+  void _startRecordingTimer() {
+    setState(() => _recordingSeconds = 0);
+    _recordingTimer?.cancel();
+    _recordingTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() => _recordingSeconds++);
+      }
+    });
+  }
+
+  void _stopRecordingTimer() {
+    _recordingTimer?.cancel();
+    _recordingTimer = null;
+    setState(() => _recordingSeconds = 0);
+  }
+
+  String _formatDuration(int seconds) {
+    final mins = (seconds ~/ 60).toString().padLeft(2, '0');
+    final secs = (seconds % 60).toString().padLeft(2, '0');
+    return "$mins:$secs";
   }
 
   void _scrollListener() {
@@ -115,23 +141,25 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   @override
   Widget build(BuildContext context) {
     return BlocConsumer<ChatCubit, ChatState>(
-      buildWhen: (previous, current) {
-        if (previous.isGenerating != current.isGenerating) return true;
-        if (previous.messages.length != current.messages.length) return true;
-        if (previous.messages.isEmpty || current.messages.isEmpty) return true;
-        final prevLast = previous.messages.last;
-        final currLast = current.messages.last;
-        return prevLast.id != currLast.id || prevLast.content != currLast.content;
-      },
-      listenWhen: (previous, current) =>
-          previous.messages.length != current.messages.length ||
-          (current.isGenerating &&
-              current.messages.isNotEmpty &&
-              previous.messages.lastOrNull?.content !=
-                  current.messages.last.content),
       listener: (context, state) {
         if (state.messages.isNotEmpty) {
           _scrollToBottom();
+        }
+        if (state.error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.error!),
+              backgroundColor: Colors.redAccent,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          context.read<ChatCubit>().clearError();
+        }
+        // Handle timer based on listening state
+        if (state.isListening && _recordingTimer == null) {
+          _startRecordingTimer();
+        } else if (!state.isListening && _recordingTimer != null) {
+          _stopRecordingTimer();
         }
       },
       builder: (context, state) {
@@ -180,7 +208,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                               ? _buildChatHistory(state)
                               : _buildEmptyState(cubit))),
                 ),
-                _buildInputArea(context, cubit, state),
+                if (!state.isVoiceMode) _buildInputArea(context, cubit, state),
               ],
             ),
           ),
@@ -756,77 +784,124 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   //  VOICE MODE
   // ─────────────────────────────────────────────
   Widget _buildVoiceInterface(BuildContext context, ChatCubit cubit, ChatState state) {
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Spacer(),
+          _buildRabbitLogo(size: 120),
+          const SizedBox(height: 40),
+          
+          // Live Transcription Area
+          Container(
+            height: 120,
+            alignment: Alignment.center,
+            child: state.isListening
+                ? Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            "Listening...",
+                            style: TextStyle(color: Color(0xFF8B5CF6), fontSize: 16, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _formatDuration(_recordingSeconds),
+                            style: const TextStyle(color: Colors.white70, fontSize: 14),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Text(
+                            state.speechText.isEmpty ? "Say something..." : state.speechText,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : state.isGenerating
+                    ? Column(
+                        children: [
+                          const TypingIndicator(),
+                          const SizedBox(height: 12),
+                          const Text(
+                            "AI is thinking...",
+                            style: TextStyle(color: Colors.white70, fontSize: 16),
+                          ),
+                        ],
+                      )
+                    : const Text(
+                        "Tap the microphone to speak",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.white70, fontSize: 18),
+                      ),
+          ),
+          
+          const Spacer(),
+          
+          // Large Microphone Button
+          GestureDetector(
+            onTap: () {
+              if (state.isListening) {
+                cubit.stopListening();
+              } else if (!state.isGenerating) {
+                cubit.startListening();
+              }
+            },
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                const SizedBox(height: 24),
-                _buildRabbitLogo(),
-                const SizedBox(height: 24),
-                _buildAIGreetingBubble("I'm listening... Ask me anything"),
-                if (state.speechText.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(12),
+                if (state.isListening)
+                  const _VoiceRipple(),
+                Container(
+                  height: 100,
+                  width: 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      colors: state.isListening
+                          ? [Colors.redAccent, Colors.red.shade900]
+                          : [const Color(0xFF8B5CF6), const Color(0xFF6D28D9)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    child: Text(
-                      state.speechText,
-                      style: const TextStyle(color: Colors.white, fontSize: 16, fontStyle: FontStyle.italic),
-                      textAlign: TextAlign.center,
-                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (state.isListening ? Colors.redAccent : const Color(0xFF8B5CF6)).withOpacity(0.3),
+                        blurRadius: 20,
+                        spreadRadius: 5,
+                      ),
+                    ],
                   ),
-                ],
-                const SizedBox(height: 16),
-                if (!state.isListening && state.speechText.isEmpty) _buildSuggestionBox(cubit),
+                  child: Icon(
+                    state.isListening ? Icons.stop_rounded : Icons.mic_rounded,
+                    color: Colors.white,
+                    size: 48,
+                  ),
+                ),
               ],
             ),
           ),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.03),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          
+          const SizedBox(height: 60),
+          
+          // Close Voice Mode Button
+          TextButton.icon(
+            onPressed: () => cubit.toggleVoiceMode(false),
+            icon: const Icon(Icons.keyboard_outlined, color: Colors.white54),
+            label: const Text("Switch to Text Mode", style: TextStyle(color: Colors.white54)),
           ),
-          child: Column(
-            children: [
-              const Text("Voice Mode Active",
-                  textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 16)),
-              const SizedBox(height: 28),
-              GestureDetector(
-                onTap: () {
-                  if (state.isListening) {
-                    cubit.stopListening();
-                  } else {
-                    cubit.startListening();
-                  }
-                },
-                child: Container(
-                  height: 64, width: 64,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: state.isListening ? Colors.redAccent.withOpacity(0.5) : Colors.white.withOpacity(0.12), width: 1.5),
-                    color: state.isListening ? Colors.redAccent.withOpacity(0.1) : Colors.white.withOpacity(0.05),
-                  ),
-                  child: Icon(state.isListening ? Icons.stop : Icons.mic, color: state.isListening ? Colors.redAccent : const Color(0xFF8B5CF6), size: 30),
-                ),
-              ),
-              const SizedBox(height: 16),
-              GestureDetector(
-                onTap: () => cubit.toggleVoiceMode(false),
-                child: const Text("Close Voice Mode", style: TextStyle(color: Colors.grey, fontSize: 14)),
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ],
+          const SizedBox(height: 40),
+        ],
+      ),
     );
   }
 
@@ -845,60 +920,98 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               children: [
                 Expanded(
                   child: Container(
+                    height: 50,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.06),
                       borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                      border: Border.all(
+                        color: state.isListening 
+                          ? const Color(0xFF8B5CF6).withOpacity(0.3) 
+                          : Colors.white.withOpacity(0.08)
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _textController,
-                            style: const TextStyle(color: Colors.white, fontSize: 14),
-                            decoration: const InputDecoration(
-                              hintText: "Ask Financial Advisor",
-                              hintStyle: TextStyle(color: Colors.grey),
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            onSubmitted: (v) => _handleSend(cubit),
+                    child: state.isListening
+                        ? Row(
+                            children: [
+                              const _PulseIcon(),
+                              const SizedBox(width: 10),
+                              Text(
+                                _formatDuration(_recordingSeconds),
+                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  state.speechText.isEmpty ? "Listening..." : state.speechText,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Colors.white70, fontSize: 13, fontStyle: FontStyle.italic),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => cubit.stopListening(submit: false),
+                                child: const Text(
+                                  "Cancel",
+                                  style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _textController,
+                                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                                  decoration: const InputDecoration(
+                                    hintText: "Ask Financial Advisor",
+                                    hintStyle: TextStyle(color: Colors.grey),
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(vertical: 14),
+                                  ),
+                                  onSubmitted: (v) => _handleSend(cubit),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: state.isGenerating ? null : () => cubit.startListening(),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 4),
+                                  child: Icon(
+                                    Icons.mic_none, 
+                                    color: state.isGenerating ? Colors.grey : const Color(0xFF8B5CF6), 
+                                    size: 22
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        GestureDetector(
-                          onTap: state.isGenerating ? null : () => cubit.toggleVoiceMode(true),
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 4),
-                            child: Icon(
-                              Icons.mic_none, 
-                              color: state.isGenerating ? Colors.grey : const Color(0xFF8B5CF6), 
-                              size: 20
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 GestureDetector(
-                  onTap: state.isGenerating
-                      ? () => cubit.stopGenerating()
-                      : () => _handleSend(cubit),
+                  onTap: state.isListening
+                      ? () => cubit.stopListening(submit: true)
+                      : (state.isGenerating
+                          ? () => cubit.stopGenerating()
+                          : () => _handleSend(cubit)),
                   child: Container(
                     height: 44,
                     width: 44,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: state.isGenerating
-                          ? Colors.redAccent.withOpacity(0.9)
-                          : const Color(0xFF8B5CF6),
+                      color: state.isListening 
+                          ? const Color(0xFF8B5CF6)
+                          : (state.isGenerating
+                              ? Colors.redAccent.withOpacity(0.9)
+                              : const Color(0xFF8B5CF6)),
                     ),
-                    child: state.isGenerating
-                        ? const Icon(Icons.stop_rounded, color: Colors.white, size: 20)
-                        : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                    child: state.isListening
+                        ? const Icon(Icons.check_rounded, color: Colors.white, size: 22)
+                        : (state.isGenerating
+                            ? const Icon(Icons.stop_rounded, color: Colors.white, size: 20)
+                            : const Icon(Icons.send_rounded, color: Colors.white, size: 18)),
                   ),
                 ),
               ],
@@ -926,6 +1039,103 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 }
 
 // _RabbitAIIcon kept previously is no longer used after switching to sparkles.
+
+class _VoiceRipple extends StatefulWidget {
+  const _VoiceRipple();
+
+  @override
+  State<_VoiceRipple> createState() => _VoiceRippleState();
+}
+
+class _VoiceRippleState extends State<_VoiceRipple> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            _buildRipple(1.0 + (_controller.value * 0.5), 1.0 - _controller.value),
+            _buildRipple(1.0 + ((_controller.value + 0.5) % 1.0 * 0.5), 1.0 - ((_controller.value + 0.5) % 1.0)),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildRipple(double scale, double opacity) {
+    return Transform.scale(
+      scale: scale,
+      child: Container(
+        height: 120,
+        width: 120,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.redAccent.withOpacity(opacity * 0.5), width: 2),
+        ),
+      ),
+    );
+  }
+}
+
+class _PulseIcon extends StatefulWidget {
+  const _PulseIcon();
+
+  @override
+  State<_PulseIcon> createState() => _PulseIconState();
+}
+
+class _PulseIconState extends State<_PulseIcon> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _controller.drive(CurveTween(curve: Curves.easeInOut)),
+      child: Container(
+        width: 10,
+        height: 10,
+        decoration: const BoxDecoration(
+          color: Colors.redAccent,
+          shape: BoxShape.circle,
+        ),
+      ),
+    );
+  }
+}
 
 class _SparkIcon extends StatelessWidget {
   final double size;
