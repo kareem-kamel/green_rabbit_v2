@@ -9,7 +9,6 @@ import '../../features/market/presentation/pages/market_page.dart';
 import '../../features/watchlist/presentation/pages/watchlist_page.dart';
 import '../../features/notifications/data/services/push_notification_service.dart';
 import '../../features/notifications/presentation/cubit/notification_cubit.dart';
-import '../widgets/global_calculator_overlay.dart';
 
 import 'package:green_rabbit/shared/widgets/feature_guide_overlay.dart';
 import 'package:shared_preferences/shared_preferences.dart';

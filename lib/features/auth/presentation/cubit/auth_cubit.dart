@@ -10,29 +10,9 @@ import 'auth_state.dart';
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository repository;
 
-  // New Google Sign-In v7 API
-  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
 
-  AuthCubit({required this.repository}) : super(AuthInitial()) {
-    _initializeGoogle();
-  }
-
-  // --------------------------------------------------
-  // GOOGLE INITIALIZATION
-  // --------------------------------------------------
-
-  Future<void> _initializeGoogle() async {
-    try {
-      await _googleSignIn.initialize(
-        serverClientId:
-            '963276687646-9ijmelnsmq6752a0fr64lk6q05l9sgoa.apps.googleusercontent.com',
-      );
-
-      debugPrint('Google Sign-In initialized successfully');
-    } catch (e) {
-      debugPrint('Google Sign-In initialization failed: $e');
-    }
-  }
+  AuthCubit({required this.repository}) : super(AuthInitial());
 
   // --------------------------------------------------
   // CHECK AUTH (APP STARTUP GATEKEEPER)
@@ -138,16 +118,22 @@ class AuthCubit extends Cubit<AuthState> {
 
     try {
       // Start Google authentication flow
-      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+
+      if (googleUser == null) {
+        if (!isClosed) {
+          emit(AuthInitial());
+        }
+        return;
+      }
 
       if (isClosed) return;
 
       // Retrieve authentication data
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
 
       final String? idToken = googleAuth.idToken;
-
-
 
       if (idToken == null || idToken.isEmpty) {
         emit(AuthFailure(errorMessage: 'Failed to retrieve Google ID token.'));

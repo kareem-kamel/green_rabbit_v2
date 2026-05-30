@@ -436,7 +436,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
           if (cleanId.toUpperCase() == 'AADBE') {
             cleanId = 'ADBE';
           } else if (cleanId.toUpperCase().endsWith(':AADBE')) {
-            cleanId = cleanId.substring(0, cleanId.length - 5) + 'ADBE';
+            cleanId = '${cleanId.substring(0, cleanId.length - 5)}ADBE';
           }
 
           // Strip any existing prefix just in case, per user request to not send types
@@ -559,7 +559,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
             }
             debugPrint('╚══════════════════════════════════════════════════════════════╝\n');
           } else {
-            throw e;
+            rethrow;
           }
         }
 
