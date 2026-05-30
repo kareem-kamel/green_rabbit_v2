@@ -66,21 +66,27 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
 
         return Container(
           padding: EdgeInsets.only(
-            left: 20, right: 20, top: 20,
+            left: 20, right: 20, top: 10,
             bottom: MediaQuery.of(context).viewInsets.bottom + 20,
           ),
           decoration: const BoxDecoration(
             color: Color(0xFF131517),
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-              ),
-              if (_errorMessage != null) ...[
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(vertical: 10),
+                    width: 40, 
+                    height: 4, 
+                    decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))
+                  ),
+                ),
+                if (_errorMessage != null) ...[
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -111,6 +117,8 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
                    style: const TextStyle(color: Colors.grey, fontSize: 13)),
               const SizedBox(height: 20),
               _buildTabPicker(cubit, state.selectedTab),
+              const SizedBox(height: 12),
+              _buildTabExplanation(state.selectedTab),
               const SizedBox(height: 24),
               GestureDetector(
                 onTap: () => _showConditionPicker(context, cubit, state),
@@ -135,8 +143,9 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
               _buildCreateButton(context, cubit, state),
             ],
           ),
-        );
-      },
+        ),
+      );
+    },
     );
   }
 
@@ -185,6 +194,29 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
     );
   }
 
+  Widget _buildTabExplanation(String selectedTab) {
+    String explanation = "";
+    switch (selectedTab) {
+      case "Price":
+        explanation = "Get notified when the price hits your target level.";
+        break;
+      case "Charge %":
+        explanation = "Alert me when the price moves by a specific percentage today.";
+        break;
+      case "Volume":
+        explanation = "Track unusual trading activity by monitoring volume levels.";
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Text(
+        explanation,
+        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12, fontStyle: FontStyle.italic),
+      ),
+    );
+  }
+
   Widget _buildTabPicker(AlertCubit cubit, String selectedTab) {
     return Row(
       children: ["Price", "Charge %", "Volume"].map((tab) {
@@ -209,6 +241,15 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
   }
 
   Widget _buildInputArea(String selectedTab, double lastPrice) {
+    String? prefix;
+    String? suffix;
+    
+    if (selectedTab == "Price") {
+      prefix = "\$ ";
+    } else if (selectedTab == "Charge %") {
+      suffix = " %";
+    }
+
     return TextField(
       controller: _priceController,
       style: const TextStyle(color: Colors.white),
@@ -219,6 +260,10 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         hintText: selectedTab == "Charge %" ? "13" : lastPrice.toStringAsFixed(2),
         hintStyle: const TextStyle(color: Colors.white38),
+        prefixText: prefix,
+        prefixStyle: const TextStyle(color: Colors.white70),
+        suffixText: suffix,
+        suffixStyle: const TextStyle(color: Colors.white70),
       ),
     );
   }

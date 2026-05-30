@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
+import 'package:green_rabbit/shared/widgets/feature_guide_overlay.dart';
 import '../../data/models/alert_model.dart';
 import '../cubit/alert_cubit.dart';
 import '../cubit/alert_state.dart';
@@ -42,22 +43,80 @@ class _AlertsPageState extends State<AlertsPage> {
                 fontWeight: FontWeight.w600,
               ),
             ),
+            actions: [
+              IconButton(
+                icon: Icon(Icons.help_outline, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => FeatureGuideOverlay(
+                      type: GuideType.alerts,
+                      onDismiss: () => Navigator.pop(context),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+            ],
           ),
           body: state.isLoading
               ? const Center(child: CircularProgressIndicator())
-              : state.alerts.isEmpty
-                  ? _buildEmptyState(context)
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(20),
-                      itemCount: state.alerts.length,
-                      separatorBuilder: (context, index) => const SizedBox(height: 16),
-                      itemBuilder: (context, index) {
-                        final alert = state.alerts[index];
-                        return _buildAlertCard(context, alert);
-                      },
-                    ),
+              : ListView(
+                  padding: const EdgeInsets.all(20),
+                  children: [
+                    _buildInfoCard(context),
+                    const SizedBox(height: 24),
+                    if (state.alerts.isEmpty)
+                      _buildEmptyState(context)
+                    else
+                      ...state.alerts.map((alert) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: _buildAlertCard(context, alert),
+                      )),
+                  ],
+                ),
         );
       },
+    );
+  }
+
+  Widget _buildInfoCard(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF4C3BC9).withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF4C3BC9).withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.info_outline, color: Color(0xFF4C3BC9), size: 20),
+              const SizedBox(width: 8),
+              Text(
+                "How alerts work",
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black, 
+                  fontWeight: FontWeight.bold, 
+                  fontSize: 16
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Stay on top of the market by setting price, percentage, or volume alerts. We'll notify you instantly when your conditions are met.",
+            style: TextStyle(
+              color: isDark ? Colors.white70 : Colors.black87, 
+              fontSize: 13, 
+              height: 1.4
+            ),
+          ),
+        ],
+      ),
     );
   }
 

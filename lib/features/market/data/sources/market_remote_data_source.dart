@@ -8,31 +8,43 @@ import '../../../../core/network/api_client.dart';
 import 'package:green_rabbit/features/news/data/models/news_model.dart';
 import '../models/market_instrument.dart';
 import '../models/market_instrument_detail.dart';
+import '../../../../core/di/injection_container.dart' as di;
+import '../../../subscriptions/data/repository/subscription_repository.dart';
+import '../../../subscriptions/data/models/subscription_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 abstract class MarketRemoteDataSource {
-  Future<List<MarketInstrument>> getMarketOverview(String type, {String? search});
+  Future<MarketOverviewResponse> getMarketOverview(String type, {String? search, int? page, int? limit});
   Future<MarketInstrumentDetail> getInstrumentDetails(String id);
   Future<Map<String, dynamic>> getInstrumentChart(String id, {String? period, String? interval});
   Future<MarketInstrumentStats> getInstrumentStats(String id, {String? interval});
   Future<List<MarketNewsArticle>> getInstrumentNews(String id, {String? type});
   Future<List<MarketInstrument>> getTrendingInstruments({String? type});
-  Stream<Map<String, dynamic>> getMarketStream(List<String> instruments);
+  Stream<Map<String, dynamic>> getMarketStream(List<String> instruments, {CancelToken? cancelToken});
   Future<List<CommentModel>> fetchComments(String instrumentId);
   Future<bool> postComment(String instrumentId, String text);
   Future<bool> likeComment(String commentId);
   Future<bool> unlikeComment(String commentId);
+  Future<List<MarketInstrument>> searchInstruments(String query, {int? page, int? limit});
+  Future<List<String>> getSearchHistory({int? limit});
+  Future<bool> clearSearchHistory();
+  Future<void> saveSearchHistory(String query);
 }
 
 class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
   final ApiClient _apiClient;
 
+  static final Set<String> _streamBlacklistedSymbols = {};
+
   MarketRemoteDataSourceImpl(this._apiClient);
 
   @override
-  Future<List<MarketInstrument>> getMarketOverview(String type, {String? search}) async {
+  Future<MarketOverviewResponse> getMarketOverview(String type, {String? search, int? page, int? limit}) async {
     final url = AppConstants.marketOverview(type);
     final queryParams = {
       if (search != null && search.isNotEmpty) 'search': search,
+      if (page != null) 'page': page,
+      if (limit != null) 'limit': limit,
     };
     
     debugPrint('\n--- [MARKET API REQUEST] ---');
@@ -50,32 +62,14 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
     debugPrint('-----------------------------\n');
 
     final responseData = response.data;
-    if (responseData == null) return [];
-
-    // Robust parsing: Handle { data: { instruments: [...] } }, { instruments: [...] }, or { data: [...] }
-    List<dynamic>? list;
-    if (responseData is Map) {
-      final innerData = responseData['data'];
-      if (innerData is Map) {
-        list = innerData['instruments'] as List<dynamic>?;
-      } else if (innerData is List) {
-        list = innerData;
-      } else {
-        list = responseData['instruments'] as List<dynamic>?;
-      }
-    } else if (responseData is List) {
-      list = responseData;
+    if (responseData == null) {
+      return MarketOverviewResponse(
+        instruments: [],
+        meta: MarketOverviewMeta(page: page ?? 1, limit: limit ?? 20, hasNext: false, hasPrev: false),
+      );
     }
 
-    if (list == null || list.isEmpty) {
-      debugPrint('⚠️ Warning: Market overview for $type returned no instruments');
-      return [];
-    }
-    
-    return list.whereType<Map>().map((item) {
-      final Map<String, dynamic> itemMap = Map<String, dynamic>.from(item);
-      return MarketInstrument.fromJson(itemMap);
-    }).toList();
+    return MarketOverviewResponse.fromJson(Map<String, dynamic>.from(responseData));
   }
 
   @override
@@ -243,6 +237,22 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
       }
     }
 
+    // Trim hyphen for crypto category (e.g. crypto:BTC-USD -> crypto:BTC)
+    if (category == 'crypto') {
+      if (namespacedId.contains(':')) {
+        final parts = namespacedId.split(':');
+        final prefix = parts[0];
+        final symbol = parts[1];
+        if (symbol.contains('-')) {
+          namespacedId = '$prefix:${symbol.split('-').first}';
+        }
+      } else {
+        if (namespacedId.contains('-')) {
+          namespacedId = namespacedId.split('-').first;
+        }
+      }
+    }
+
     // 3. Map to the query parameter value expected by the server ('stocks', 'crypto', 'forex')
     final String queryType = category == 'stock' ? 'stocks' : category;
 
@@ -357,106 +367,378 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
   }
 
   @override
-  Stream<Map<String, dynamic>> getMarketStream(List<String> instruments) async* {
+  Stream<Map<String, dynamic>> getMarketStream(List<String> instruments, {CancelToken? cancelToken}) async* {
+    debugPrint('➡️ [SSE Remote] getMarketStream called for instruments: $instruments');
     final token = await _apiClient.resolveAuthToken();
-    
+    debugPrint('➡️ [SSE Remote] resolved token: ${token != null && token.isNotEmpty ? "Length ${token.length}" : "NULL/EMPTY"}');
+
     int retryDelaySec = 1;
     const int maxRetryDelaySec = 60;
-    
+
     while (true) {
+      if (cancelToken?.isCancelled ?? false) break;
+
+      final subRepo = di.sl<SubscriptionRepository>();
+      final currentSub = subRepo.currentSubscription;
+
+      int maxInstruments = 5; // Free tier limit
+      if (currentSub != null && currentSub.status == 'active') {
+        final planId = currentSub.planId.toLowerCase();
+        final planName = currentSub.planName.toLowerCase();
+        final isPro = currentSub.isFullPro ||
+            planId.contains('pro') ||
+            planId.contains('premium') ||
+            planName.contains('pro') ||
+            planName.contains('premium') ||
+            currentSub.features.contains('all_pro_features') ||
+            currentSub.features.contains('all_pro_features_full');
+
+        final isClassic = currentSub.isClassic ||
+            planId.contains('classic') ||
+            planName.contains('classic');
+
+        if (isPro) {
+          maxInstruments = 100;
+        } else if (isClassic) {
+          maxInstruments = 25;
+        }
+      }
+
       DateTime lastHeartbeatReceived = DateTime.now();
       http.Client? client;
       Timer? monitorTimer;
-      
+
       try {
         client = http.Client();
-        
+
+        cancelToken?.whenCancel.then((_) {
+          client?.close();
+          monitorTimer?.cancel();
+        });
+
+        if (cancelToken?.isCancelled ?? false) {
+          client.close();
+          break;
+        }
+
+        // ─── DEBUG: Log raw input instruments ───
+        debugPrint('\n╔══════════════════════════════════════════════════════════════╗');
+        debugPrint('║  [SSE] getMarketStream() START                               ║');
+        debugPrint('╠══════════════════════════════════════════════════════════════╣');
+        debugPrint('║  Raw input instruments (${instruments.length}):');
+        for (int i = 0; i < instruments.length; i++) {
+          debugPrint('║    [$i] "${instruments[i]}"');
+        }
+        debugPrint('╚══════════════════════════════════════════════════════════════╝\n');
+
+        final namespacedInstruments = instruments.map((id) {
+          String cleanId = id;
+          if (cleanId.toUpperCase() == 'AADBE') {
+            cleanId = 'ADBE';
+          } else if (cleanId.toUpperCase().endsWith(':AADBE')) {
+            cleanId = cleanId.substring(0, cleanId.length - 5) + 'ADBE';
+          }
+
+          // Strip any existing prefix just in case, per user request to not send types
+          if (cleanId.contains(':')) {
+            cleanId = cleanId.split(':').last;
+          }
+
+          return cleanId;
+        }).toList();
+
+        // ─── DEBUG: Log namespaced instruments after transformation ───
+        debugPrint('\n╔══════════════════════════════════════════════════════════════╗');
+        debugPrint('║  [SSE] After namespace transformation                        ║');
+        debugPrint('╠══════════════════════════════════════════════════════════════╣');
+        debugPrint('║  Namespaced instruments (${namespacedInstruments.length}):');
+        for (int i = 0; i < namespacedInstruments.length; i++) {
+          debugPrint('║    [$i] "${namespacedInstruments[i]}"');
+        }
+        debugPrint('╚══════════════════════════════════════════════════════════════╝\n');
+
+        final validInstruments = namespacedInstruments.where((inst) {
+          final rawSymbol = inst.contains(':') ? inst.split(':')[1].toUpperCase() : inst.toUpperCase();
+          return !_streamBlacklistedSymbols.contains(rawSymbol);
+        }).toList();
+
+        // ─── DEBUG: Log blacklist filtering ───
+        debugPrint('\n╔══════════════════════════════════════════════════════════════╗');
+        debugPrint('║  [SSE] After blacklist filtering                             ║');
+        debugPrint('╠══════════════════════════════════════════════════════════════╣');
+        debugPrint('║  Blacklisted symbols (${_streamBlacklistedSymbols.length}): ${_streamBlacklistedSymbols.join(', ')}');
+        debugPrint('║  Valid instruments (${validInstruments.length}/${namespacedInstruments.length}):');
+        for (int i = 0; i < validInstruments.length; i++) {
+          debugPrint('║    [$i] "${validInstruments[i]}"');
+        }
+        if (validInstruments.length < namespacedInstruments.length) {
+          final removed = namespacedInstruments.where((inst) => !validInstruments.contains(inst)).toList();
+          debugPrint('║  Removed by blacklist (${removed.length}):');
+          for (final r in removed) {
+            debugPrint('║    - "$r"');
+          }
+        }
+        debugPrint('╚══════════════════════════════════════════════════════════════╝\n');
+
+        final limitedInstruments = validInstruments.take(maxInstruments).toList();
+        if (limitedInstruments.isEmpty) {
+          debugPrint('❌ [SSE] No valid instruments after filtering/blacklist. Yielding empty map and waiting 10s...');
+          yield const <String, dynamic>{};
+          await Future.delayed(const Duration(seconds: 10));
+          continue;
+        }
+
+        // ─── DEBUG: Log final subscription request ───
+        debugPrint('\n╔══════════════════════════════════════════════════════════════╗');
+        debugPrint('║  [SSE] Subscription Request Summary                          ║');
+        debugPrint('╠══════════════════════════════════════════════════════════════╣');
+        debugPrint('║  Tier: ${currentSub?.planName ?? 'free'}');
+        debugPrint('║  Max instruments allowed: $maxInstruments');
+        debugPrint('║  Requesting: ${limitedInstruments.length}/${namespacedInstruments.length}');
+        debugPrint('║  Final instrument list:');
+        for (int i = 0; i < limitedInstruments.length; i++) {
+          debugPrint('║    [$i] "${limitedInstruments[i]}"');
+        }
+        debugPrint('╚══════════════════════════════════════════════════════════════╝\n');
+
         final queryParams = {
-          'instruments': instruments.join(','),
+          'instruments': limitedInstruments.join(','),
           'fields': 'price,change,changePercent,volume,dayHigh,dayLow,timestamp',
         };
-        
-        final baseUri = Uri.parse(AppConstants.apiBaseUrl);
-        final fullPath = baseUri.path.endsWith('/') && AppConstants.marketStream.startsWith('/')
-            ? '${baseUri.path.substring(0, baseUri.path.length - 1)}${AppConstants.marketStream}'
-            : (baseUri.path.endsWith('/') || AppConstants.marketStream.startsWith('/')
-                ? '${baseUri.path}${AppConstants.marketStream}'
-                : '${baseUri.path}/${AppConstants.marketStream}');
 
-        final streamUri = Uri(
-          scheme: baseUri.scheme,
-          host: baseUri.host,
-          port: baseUri.port,
-          path: fullPath,
-          queryParameters: queryParams,
-        );
+        // ─── DEBUG: Log query parameters ───
+        debugPrint('\n╔══════════════════════════════════════════════════════════════╗');
+        debugPrint('║  [SSE] Query Parameters                                        ║');
+        debugPrint('╠══════════════════════════════════════════════════════════════╣');
+        queryParams.forEach((key, value) {
+          debugPrint('║  $key = "$value"');
+        });
+        debugPrint('╚══════════════════════════════════════════════════════════════╝\n');
 
-        debugPrint('--- [MARKET SSE HTTP SEND] URL: $streamUri');
-        
-        final request = http.Request('GET', streamUri);
-        request.headers['Accept'] = 'text/event-stream';
-        request.headers['Cache-Control'] = 'no-cache';
-        if (token != null && token.isNotEmpty) {
-          request.headers['Authorization'] = 'Bearer $token';
+        debugPrint('📡 [SSE] Sending request using Dio...');
+
+        Response<ResponseBody>? response;
+        try {
+          response = await _apiClient.dio.get<ResponseBody>(
+            AppConstants.marketStream,
+            queryParameters: queryParams,
+            cancelToken: cancelToken,
+            options: Options(
+              responseType: ResponseType.stream,
+              headers: {
+                'Accept': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+              },
+              validateStatus: (status) => status != null && status >= 200 && status < 500, // Handle 404 manually
+            ),
+          );
+        } catch (e) {
+          if (e is DioException) {
+            response = e.response as Response<ResponseBody>?;
+            debugPrint('\n╔══════════════════════════════════════════════════════════════╗');
+            debugPrint('║  [SSE] DioException Caught                                     ║');
+            debugPrint('╠══════════════════════════════════════════════════════════════╣');
+            debugPrint('║  Message: ${e.message}');
+            debugPrint('║  Status Code: ${e.response?.statusCode}');
+            debugPrint('║  Error Data: ${e.response?.data}');
+            try {
+              if (e.response?.data is ResponseBody) {
+                final bodyStream = (e.response?.data as ResponseBody).stream;
+                final bytesList = await bodyStream.fold<List<int>>(
+                  <int>[],
+                  (previous, element) => previous..addAll(element),
+                );
+                final bodyString = utf8.decode(bytesList);
+                debugPrint('║  Response Body String: $bodyString');
+              } else {
+                debugPrint('║  Response Body String: ${e.response?.data?.toString()}');
+              }
+            } catch (bodyError) {
+              debugPrint('║  Could not read body string: $bodyError');
+            }
+            debugPrint('╚══════════════════════════════════════════════════════════════╝\n');
+          } else {
+            throw e;
+          }
         }
-        
-        final response = await client.send(request);
-        
+
+        if (response == null) {
+          throw Exception('SSE stream connection failed with no response');
+        }
+
+        // ─── DEBUG: Log response status immediately ───
+        debugPrint('\n╔══════════════════════════════════════════════════════════════╗');
+        debugPrint('║  [SSE] Response Received                                       ║');
+        debugPrint('╠══════════════════════════════════════════════════════════════╣');
+        debugPrint('║  Status Code: ${response.statusCode}');
+        debugPrint('║  Reason Phrase: ${response.statusMessage}');
+        debugPrint('╚══════════════════════════════════════════════════════════════╝\n');
+
+        if (response.statusCode == 200) {
+          debugPrint('🟢 [SSE] Successfully established stream connection for: $limitedInstruments');
+        }
+
         if (response.statusCode != 200) {
+          if (response.statusCode == 404) {
+            debugPrint('⚠️ [SSE] Connection failed with 404. Diagnosing invalid instruments...');
+
+            monitorTimer?.cancel();
+
+            // Validate each instrument via REST in parallel
+            final validationFutures = limitedInstruments.map((inst) async {
+              final rawSymbol = inst.contains(':') ? inst.split(':')[1] : inst;
+              try {
+                final restUrl = AppConstants.instrumentDetails(rawSymbol);
+                debugPrint('🔍 [SSE] Validating via REST: $inst → GET $restUrl');
+
+                final restResp = await _apiClient.dio.get(
+                  restUrl,
+                  options: Options(
+                    validateStatus: (status) => status == 200 || status == 404 || status == 400,
+                  ),
+                ).timeout(const Duration(seconds: 5));
+
+                if (restResp.statusCode == 404 || restResp.statusCode == 400) {
+                  final sym = rawSymbol.toUpperCase();
+                  _streamBlacklistedSymbols.add(sym);
+                  debugPrint('❌ [SSE] Blacklisted invalid instrument: $inst (HTTP ${restResp.statusCode})');
+                } else {
+                  debugPrint('✅ [SSE] Instrument valid: $inst (HTTP ${restResp.statusCode})');
+                }
+              } catch (e) {
+                debugPrint('⚠️ [SSE] Could not validate $inst via REST: $e');
+              }
+            });
+            await Future.wait(validationFutures);
+
+            // Check if everything was blacklisted
+            final remaining = namespacedInstruments.where((inst) {
+              final raw = inst.contains(':') ? inst.split(':')[1].toUpperCase() : inst.toUpperCase();
+              return !_streamBlacklistedSymbols.contains(raw);
+            }).toList();
+
+            debugPrint('\n╔══════════════════════════════════════════════════════════════╗');
+            debugPrint('║  [SSE] Post-Diagnosis Summary                                  ║');
+            debugPrint('╠══════════════════════════════════════════════════════════════╣');
+            debugPrint('║  Remaining valid instruments: ${remaining.length}');
+            for (int i = 0; i < remaining.length; i++) {
+              debugPrint('║    [$i] "${remaining[i]}"');
+            }
+            debugPrint('╚══════════════════════════════════════════════════════════════╝\n');
+
+            if (remaining.isEmpty) {
+              debugPrint('❌ [SSE] All requested instruments are invalid/blacklisted. Waiting 10s...');
+              yield const <String, dynamic>{};
+              await Future.delayed(const Duration(seconds: 10));
+              retryDelaySec = 1;
+              continue;
+            }
+
+            retryDelaySec = 1;
+            continue;
+          }
+          
+          if (response.statusCode == 400) {
+            String errorBody = 'Unknown 400 Error';
+            try {
+              if (response.data is ResponseBody) {
+                final bodyStream = (response.data as ResponseBody).stream;
+                final bytesList = await bodyStream.fold<List<int>>(
+                  <int>[],
+                  (previous, element) => previous..addAll(element),
+                );
+                errorBody = utf8.decode(bytesList);
+              } else {
+                errorBody = response.data?.toString() ?? 'null';
+              }
+            } catch (e) {
+              errorBody = 'Could not read error body: $e';
+            }
+            debugPrint('❌ [SSE] Server returned 400 Bad Request: $errorBody');
+          }
+
           throw Exception('SSE stream connection failed with status code ${response.statusCode}');
         }
-        
+
         // Reset backoff delay on successful connection
         retryDelaySec = 1;
-        
+
         // Monitor heartbeat
         monitorTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
           final diff = DateTime.now().difference(lastHeartbeatReceived);
           if (diff > const Duration(seconds: 60)) {
             debugPrint('⚠️ [SSE] No heartbeat received for ${diff.inSeconds}s (threshold 60s). Reconnecting...');
             timer.cancel();
-            client?.close();
+            cancelToken?.cancel();
           }
         });
-        
-        final lines = response.stream
+
+        final stream = response.data?.stream;
+        if (stream == null) {
+          throw Exception('SSE stream is null');
+        }
+
+        final lines = stream
             .cast<List<int>>()
             .transform(utf8.decoder)
             .transform(const LineSplitter());
-            
+
         String? currentEventType;
-        
+
         await for (final line in lines) {
+          if (cancelToken?.isCancelled ?? false) break;
+          // debugPrint('📥 [SSE Raw Line] "$line"');
           if (line.isEmpty) continue;
-          
+
           if (line.startsWith('event: ')) {
             currentEventType = line.substring(7).trim();
           } else if (line.startsWith('data: ')) {
             final dataString = line.substring(6).trim();
-            debugPrint('--- [MARKET SSE LINE EVENT: $currentEventType] ---');
-            
+            // debugPrint('📨 [SSE] Event: $currentEventType | Data: $dataString');
+
             if (currentEventType == 'heartbeat') {
               lastHeartbeatReceived = DateTime.now();
             }
-            
+
             try {
               final Map<String, dynamic> data = jsonDecode(dataString);
+              if (data['type'] == 'price_update') {
+                debugPrint('🔍 [SSE Raw Data] $data');
+                final instId = data['instrumentId']?.toString();
+                if (instId != null) {
+                  if ((instId == 'stock:ADBE' || instId == 'ADBE') &&
+                      (instruments.contains('AADBE') || instruments.contains('stock:AADBE'))) {
+                    data['instrumentId'] = instId.replaceFirst('ADBE', 'AADBE');
+                  }
+                }
+                debugPrint('📈 [SSE] Decoded price update: ${data['symbol'] ?? data['instrumentId']} -> \$${data['price']} (Change: ${data['changePercent']}%)');
+              }
               yield data;
             } catch (e) {
-              debugPrint('Error decoding SSE data: $e');
+              debugPrint('❌ [SSE] Error decoding event data: $e');
+              debugPrint('   Raw data: $dataString');
             }
           }
         }
-        
+
       } catch (e) {
-        debugPrint('❌ Market Stream Error/Disconnect: $e');
+        if (cancelToken?.isCancelled ?? false) {
+          debugPrint('🛑 [SSE] Stream explicitly cancelled (likely due to scrolling or navigation).');
+        } else {
+          debugPrint('\n╔══════════════════════════════════════════════════════════════╗');
+          debugPrint('║  [SSE] ERROR                                                   ║');
+          debugPrint('╠══════════════════════════════════════════════════════════════╣');
+          debugPrint('║  Error: $e');
+          debugPrint('╚══════════════════════════════════════════════════════════════╝\n');
+        }
       } finally {
         monitorTimer?.cancel();
-        client?.close();
       }
-      
-      // Exponential backoff
-      debugPrint('ℹ️ [SSE] Reconnecting in $retryDelaySec seconds...');
+
+      if (cancelToken?.isCancelled ?? false) break;
+
+      debugPrint('⏳ [SSE] Reconnecting in $retryDelaySec seconds...');
       await Future.delayed(Duration(seconds: retryDelaySec));
       retryDelaySec = (retryDelaySec * 2).clamp(1, maxRetryDelaySec);
     }
@@ -537,6 +819,240 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
       return false;
+    }
+  }
+
+  static const String _keySearchHistory = 'local_search_history';
+
+  static final List<Map<String, dynamic>> _allMockInstruments = [
+    {
+      'id': 'AAPL',
+      'symbol': 'AAPL',
+      'name': 'Apple Inc.',
+      'type': 'stock',
+      'exchange': 'NASDAQ',
+      'price': 178.72,
+      'previousClose': 175.1,
+      'change': 3.62,
+      'changePercent': 2.07,
+      'dayHigh': 179.43,
+      'dayLow': 175.82,
+      'volume': 58432100,
+      'marketCap': 2780000000000,
+      'logoUrl': 'https://picsum.photos/seed/aapl/200',
+    },
+    {
+      'id': 'NVDA',
+      'symbol': 'NVDA',
+      'name': 'NVIDIA Corporation',
+      'type': 'stock',
+      'exchange': 'NASDAQ',
+      'price': 875.3,
+      'previousClose': 860.0,
+      'change': 15.3,
+      'changePercent': 1.78,
+      'dayHigh': 882.15,
+      'dayLow': 858.4,
+      'volume': 45230800,
+      'marketCap': 2160000000000,
+      'logoUrl': 'https://picsum.photos/seed/nvda/200',
+    },
+    {
+      'id': 'MSFT',
+      'symbol': 'MSFT',
+      'name': 'Microsoft Corporation',
+      'type': 'stock',
+      'exchange': 'NASDAQ',
+      'price': 415.6,
+      'previousClose': 412.35,
+      'change': 3.25,
+      'changePercent': 0.79,
+      'dayHigh': 417.2,
+      'dayLow': 411.8,
+      'volume': 22145600,
+      'marketCap': 3090000000000,
+      'logoUrl': 'https://picsum.photos/seed/msft/200',
+    },
+    {
+      'id': 'GOOGL',
+      'symbol': 'GOOGL',
+      'name': 'Alphabet Inc.',
+      'type': 'stock',
+      'exchange': 'NASDAQ',
+      'price': 150.0,
+      'previousClose': 148.5,
+      'change': 1.5,
+      'changePercent': 1.01,
+      'dayHigh': 151.2,
+      'dayLow': 147.8,
+      'volume': 18900000,
+      'marketCap': 1850000000000,
+      'logoUrl': 'https://picsum.photos/seed/googl/200',
+    },
+    {
+      'id': 'AMZN',
+      'symbol': 'AMZN',
+      'name': 'Amazon.com, Inc.',
+      'type': 'stock',
+      'exchange': 'NASDAQ',
+      'price': 175.5,
+      'previousClose': 174.0,
+      'change': 1.5,
+      'changePercent': 0.86,
+      'dayHigh': 177.0,
+      'dayLow': 173.5,
+      'volume': 35400000,
+      'marketCap': 1820000000000,
+      'logoUrl': 'https://picsum.photos/seed/amzn/200',
+    },
+    {
+      'id': 'BTC-USD',
+      'symbol': 'BTC/USD',
+      'name': 'Bitcoin',
+      'type': 'crypto',
+      'price': 67842.5,
+      'previousClose': 66210.0,
+      'change': 1632.5,
+      'changePercent': 2.47,
+      'logoUrl': 'https://picsum.photos/seed/btc/200',
+    },
+    {
+      'id': 'ETH-USD',
+      'symbol': 'ETH/USD',
+      'name': 'Ethereum',
+      'type': 'crypto',
+      'price': 3842.75,
+      'previousClose': 3780.0,
+      'change': 62.75,
+      'changePercent': 1.66,
+      'logoUrl': 'https://picsum.photos/seed/eth/200',
+    },
+  ];
+
+  Future<void> _saveLocalSearchQuery(String query) async {
+    try {
+      final prefs = di.sl<SharedPreferences>();
+      final history = prefs.getStringList(_keySearchHistory) ?? [];
+      history.remove(query);
+      history.insert(0, query);
+      if (history.length > 20) {
+        history.removeLast();
+      }
+      await prefs.setStringList(_keySearchHistory, history);
+    } catch (e) {
+      debugPrint('Error saving local search query: $e');
+    }
+  }
+
+  List<String> _getLocalSearchHistory({int? limit}) {
+    try {
+      final prefs = di.sl<SharedPreferences>();
+      final history = prefs.getStringList(_keySearchHistory) ?? [];
+      if (limit != null && history.length > limit) {
+        return history.take(limit).toList();
+      }
+      return history;
+    } catch (e) {
+      debugPrint('Error reading local search history: $e');
+      return [];
+    }
+  }
+
+  Future<void> _clearLocalSearchHistory() async {
+    try {
+      final prefs = di.sl<SharedPreferences>();
+      await prefs.remove(_keySearchHistory);
+    } catch (e) {
+      debugPrint('Error clearing local search history: $e');
+    }
+  }
+
+  @override
+  Future<List<MarketInstrument>> searchInstruments(String query, {int? page, int? limit}) async {
+    final url = AppConstants.search;
+    final queryParams = {
+      'q': query,
+      'type': 'instruments',
+      if (page != null) 'page': page,
+      if (limit != null) 'limit': limit,
+    };
+
+    try {
+      final response = await _apiClient.dio.get(url, queryParameters: queryParams);
+      final responseData = response.data;
+      if (responseData == null) return [];
+
+      final dataObj = responseData['data'] ?? {};
+      final list = dataObj['instruments'] as List<dynamic>? ?? [];
+
+      return list.whereType<Map>().map((item) {
+        return MarketInstrument.fromJson(Map<String, dynamic>.from(item));
+      }).toList();
+    } catch (e) {
+      debugPrint('Error searching instruments from API: $e. Falling back to local/mock search.');
+
+      final lowerQuery = query.toLowerCase();
+      final filteredMock = _allMockInstruments.where((item) {
+        final symbol = (item['symbol'] as String).toLowerCase();
+        final name = (item['name'] as String).toLowerCase();
+        return symbol.contains(lowerQuery) || name.contains(lowerQuery);
+      }).map((item) => MarketInstrument.fromJson(item)).toList();
+
+      return filteredMock;
+    }
+  }
+
+  @override
+  Future<List<String>> getSearchHistory({int? limit}) async {
+    final url = AppConstants.searchHistory;
+    final queryParams = {
+      if (limit != null) 'limit': limit,
+    };
+
+    try {
+      final response = await _apiClient.dio.get(url, queryParameters: queryParams);
+      final responseData = response.data;
+      if (responseData == null) return _getLocalSearchHistory(limit: limit);
+
+      final dataObj = responseData['data'] ?? {};
+      final list = dataObj['history'] as List<dynamic>? ?? [];
+      final serverHistory = list
+          .whereType<Map>()
+          .map((item) => (item['query'] ?? '').toString())
+          .where((q) => q.isNotEmpty)
+          .toList();
+
+      if (serverHistory.isEmpty) {
+        return _getLocalSearchHistory(limit: limit);
+      }
+      return serverHistory;
+    } catch (e) {
+      debugPrint('Error getting search history from API: $e. Falling back to local history.');
+      return _getLocalSearchHistory(limit: limit);
+    }
+  }
+
+  @override
+  Future<bool> clearSearchHistory() async {
+    final url = AppConstants.searchHistory;
+    try {
+      await _clearLocalSearchHistory();
+      final response = await _apiClient.dio.delete(url);
+      final responseData = response.data;
+      return responseData?['success'] == true;
+    } catch (e) {
+      debugPrint('Error clearing search history on API: $e. Local history cleared.');
+      return true;
+    }
+  }
+
+  @override
+  Future<void> saveSearchHistory(String query) async {
+    if (query.trim().isEmpty) return;
+    try {
+      await _saveLocalSearchQuery(query.trim());
+    } catch (e) {
+      debugPrint('Error saving search query to local history: $e');
     }
   }
 }

@@ -13,7 +13,7 @@
 		<key>CFBundleInfoDictionaryVersion</key>
 		<string>6.0</string>
 		<key>CFBundleName</key>
-		<string>green_rabbit</string>
+		<string>Green Rabbit</string>
 		<key>CFBundlePackageType</key>
 		<string>APPL</string>
 		<key>CFBundleShortVersionString</key>
@@ -47,5 +47,9 @@
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>We need access to your microphone so you can ask the AI questions using your voice.</string>
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>We need speech recognition to transcribe your voice questions to the AI.</string>
 	</dict>
 </plist>

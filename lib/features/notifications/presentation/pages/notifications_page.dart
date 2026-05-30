@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
+import 'package:green_rabbit/shared/widgets/feature_guide_overlay.dart';
 import 'package:green_rabbit/features/market/presentation/pages/instrument_detail_page.dart';
 import 'package:green_rabbit/features/alerts/presentation/cubit/alert_cubit.dart';
 import '../../data/models/notification_model.dart';
@@ -45,6 +46,18 @@ class _NotificationsPageState extends State<NotificationsPage> {
               ),
             ),
             actions: [
+              IconButton(
+                icon: Icon(Icons.help_outline, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => FeatureGuideOverlay(
+                      type: GuideType.alerts,
+                      onDismiss: () => Navigator.pop(context),
+                    ),
+                  );
+                },
+              ),
               if (state.notifications.any((n) => !n.isRead))
                 TextButton(
                   onPressed: () {

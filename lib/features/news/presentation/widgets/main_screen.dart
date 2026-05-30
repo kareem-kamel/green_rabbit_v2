@@ -54,10 +54,12 @@ class _MainScreenState extends State<MainScreen> {
             height: 72,
             child: Center(
               child: Image.asset(
-                'assets/icons/rabbiticonAI.png',
+                'assets/ai.png',
                 width: 68,
                 height: 68,
                 fit: BoxFit.contain,
+                isAntiAlias: true,
+                filterQuality: FilterQuality.high,
               ),
             ),
           ),

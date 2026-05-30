@@ -68,6 +68,8 @@ dependencies:
   firebase_core: ^4.9.0
   firebase_messaging: ^16.2.2
   flutter_local_notifications: ^20.1.0
+  speech_to_text: ^7.4.0
+  permission_handler: ^12.0.1
 
 dev_dependencies:
   flutter_test:
@@ -155,11 +157,11 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/icons/app_icon.png"
-  adaptive_icon_background: "assets/icons/app_icon.png"
-  adaptive_icon_foreground: "assets/icons/app_icon.png"
+  image_path: "assets/green_rabbit.png"
+  adaptive_icon_background: "#0E1117"
+  adaptive_icon_foreground: "assets/green_rabbit.png"
+  remove_alpha_ios: true
 
-  
 flutter_native_splash:
   color: "#0e1117"
   image: "assets/icons/green_rabbit_splash.png" # Added quotes here

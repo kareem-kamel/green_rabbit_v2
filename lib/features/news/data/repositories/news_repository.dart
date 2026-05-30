@@ -24,12 +24,13 @@ class NewsRepository {
         'limit': limit,
       };
       
-      if (category != null && category.toLowerCase() != 'featured') {
-        if (category.toLowerCase() == 'popular') {
-          queryParameters['sort'] = 'popular';
-          queryParameters['type'] = 'popular';
-        } else {
-          queryParameters['type'] = category.toLowerCase();
+      if (category != null && category.isNotEmpty) {
+        String apiCategory = category.toLowerCase();
+        if (apiCategory == 'popular') apiCategory = 'most_popular';
+        if (apiCategory == 'stock') apiCategory = 'stocks';
+        
+        if (apiCategory != 'featured') {
+          queryParameters['category'] = apiCategory;
         }
       }
 
