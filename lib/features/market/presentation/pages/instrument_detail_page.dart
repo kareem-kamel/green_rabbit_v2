@@ -48,6 +48,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   ProChartMode _chartMode = ProChartMode.area;
   String _selectedTechnicalInterval = '15m';
   DateTimeRange? _selectedDateRange;
+  Set<String> _activeIndicators = {};
 
   List<CommentModel> _comments = [];
   bool _isLoadingComments = false;
@@ -364,6 +365,27 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     );
   }
 
+  String _getExchangeAndSectorText(MarketInstrumentDetail detail) {
+    final List<String> details = [];
+    if (detail.sector != null && detail.sector!.isNotEmpty) {
+      details.add(detail.sector!);
+    }
+    if (detail.industry != null && detail.industry!.isNotEmpty) {
+      details.add(detail.industry!);
+    }
+    
+    final exchange = detail.exchange ?? '';
+    if (details.isEmpty) {
+      return exchange;
+    }
+    
+    if (exchange.isEmpty) {
+      return '(${details.join(" • ")})';
+    }
+    
+    return '$exchange (${details.join(" • ")})';
+  }
+
   Widget _buildHeader(MarketInstrumentDetail detail) {
     final isUp = (detail.price.change ?? 0) >= 0;
     return LayoutBuilder(
@@ -375,17 +397,34 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    child: Text(
-                      '${detail.name} (${detail.symbol})',
-                      style: TextStyle(
-                        color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, 
-                        fontSize: 18, 
-                        fontWeight: FontWeight.bold,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${detail.name} (${detail.symbol})',
+                          style: TextStyle(
+                            color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, 
+                            fontSize: 18, 
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _getExchangeAndSectorText(detail),
+                          style: const TextStyle(
+                            color: AppColors.textSecondary, 
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -1120,41 +1159,74 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
               data: (chartData) {
                 final List<dynamic> candlesJson = chartData['candles'] != null ? List.from(chartData['candles']) : [];
                 
-                final sparkData = candlesJson.map((e) {
-                  final val = e['c'] ?? e['close'] ?? e['price'] ?? 0.0;
-                  return double.tryParse(val.toString()) ?? 0.0;
+                final List<CandleData> realCandles = candlesJson.map((json) {
+                  final ts = json['t'] ?? json['timestamp'];
+                  final timestamp = ts is int
+                      ? ts * 1000
+                      : (DateTime.tryParse(ts?.toString() ?? '')?.millisecondsSinceEpoch ?? 0);
+                  return CandleData(
+                    timestamp: timestamp,
+                    open: ((json['o'] ?? json['open'] ?? 0.0) as num).toDouble(),
+                    close: ((json['c'] ?? json['close'] ?? 0.0) as num).toDouble(),
+                    high: ((json['h'] ?? json['high'] ?? 0.0) as num).toDouble(),
+                    low: ((json['l'] ?? json['low'] ?? 0.0) as num).toDouble(),
+                    volume: ((json['v'] ?? json['volume'] ?? 0.0) as num).toDouble(),
+                  );
                 }).toList();
 
-                final currentPrice = detail.price.current ?? (sparkData.isNotEmpty ? sparkData.last : 0.0);
-                
-                if (sparkData.isEmpty) {
-                  return _buildChartError('Insufficient candle data', onRetry: () => ref.refresh(instrumentChartProvider('${widget.instrumentId}|$_selectedPeriod|$interval')));
-                }
+                if (_chartMode == ProChartMode.area) {
+                  final sparkData = candlesJson.map((e) {
+                    final val = e['c'] ?? e['close'] ?? e['price'] ?? 0.0;
+                    return double.tryParse(val.toString()) ?? 0.0;
+                  }).toList();
 
-                // Generate vertical labels based on price range
-                final min = sparkData.reduce((a, b) => a < b ? a : b);
-                final max = sparkData.reduce((a, b) => a > b ? a : b);
-                final range = max - min;
-                final yLabels = List.generate(5, (i) => (min + (i * range / 4)).toStringAsFixed(2));
+                  final currentPrice = detail.price.current ?? (sparkData.isNotEmpty ? sparkData.last : 0.0);
+                  
+                  if (sparkData.isEmpty) {
+                    return _buildChartError('Insufficient candle data', onRetry: () => ref.refresh(instrumentChartProvider('${widget.instrumentId}|$_selectedPeriod|$interval')));
+                  }
 
-                // Generate horizontal labels from actual timestamps
-                final List<String> xLabels = [];
-                if (candlesJson.length >= 3) {
-                  final first = candlesJson.first['timestamp']?.toString().split(' ').last ?? '';
-                  final mid = candlesJson[candlesJson.length ~/ 2]['timestamp']?.toString().split(' ').last ?? '';
-                  final last = candlesJson.last['timestamp']?.toString().split(' ').last ?? '';
-                  xLabels.addAll([first, mid, last]);
+                  // Generate vertical labels based on price range
+                  final min = sparkData.reduce((a, b) => a < b ? a : b);
+                  final max = sparkData.reduce((a, b) => a > b ? a : b);
+                  final range = max - min;
+                  final yLabels = List.generate(5, (i) => (min + (i * range / 4)).toStringAsFixed(2));
+
+                  // Generate horizontal labels from actual timestamps
+                  final List<String> xLabels = [];
+                  if (candlesJson.length >= 3) {
+                    final first = candlesJson.first['timestamp']?.toString().split(' ').last ?? '';
+                    final mid = candlesJson[candlesJson.length ~/ 2]['timestamp']?.toString().split(' ').last ?? '';
+                    final last = candlesJson.last['timestamp']?.toString().split(' ').last ?? '';
+                    xLabels.addAll([first, mid, last]);
+                  } else {
+                    xLabels.addAll(['Start', 'End']);
+                  }
+
+                  return SparklineChart(
+                    data: sparkData,
+                    currentPrice: currentPrice,
+                    labelsY: yLabels,
+                    labelsX: xLabels,
+                    color: (detail.price.change ?? 0) >= 0 ? AppColors.success : AppColors.error,
+                  );
                 } else {
-                  xLabels.addAll(['Start', 'End']);
+                  if (realCandles.isEmpty) {
+                    return _buildChartError('Insufficient candle data', onRetry: () => ref.refresh(instrumentChartProvider('${widget.instrumentId}|$_selectedPeriod|$interval')));
+                  }
+                  return ProTradingChart(
+                    candles: realCandles,
+                    showMovingAverages: _showMovingAverages,
+                    mode: _chartMode,
+                    period: _selectedPeriod,
+                    interval: interval,
+                    symbolName: '${detail.name} (${detail.symbol})',
+                    currency: detail.currency ?? 'USD',
+                    isLoading: false,
+                    onRetry: () => ref.refresh(instrumentChartProvider(providerKey)),
+                    activeIndicators: _activeIndicators,
+                  );
                 }
-
-                return SparklineChart(
-                  data: sparkData,
-                  currentPrice: currentPrice,
-                  labelsY: yLabels,
-                  labelsX: xLabels,
-                  color: (detail.price.change ?? 0) >= 0 ? AppColors.success : AppColors.error,
-                );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (err, _) => _buildChartError('Chart data unavailable: $err'),
@@ -1189,22 +1261,22 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  t,
-                                  style: TextStyle(
-                                    color: t == _selectedPeriod ? AppColors.textPrimary : AppColors.textSecondary,
-                                    fontSize: 13,
-                                    fontWeight: t == _selectedPeriod ? FontWeight.bold : FontWeight.normal,
+                                  Text(
+                                    t,
+                                    style: TextStyle(
+                                      color: t == _selectedPeriod ? AppColors.textPrimary : AppColors.textSecondary,
+                                      fontSize: 13,
+                                      fontWeight: t == _selectedPeriod ? FontWeight.bold : FontWeight.normal,
+                                    ),
                                   ),
-                                ),
-                                if (mightBeLocked)
-                                  const SizedBox(height: 2),
-                                if (mightBeLocked)
-                                  Icon(
-                                    Icons.lock_outline,
-                                    size: 8,
-                                    color: t == _selectedPeriod ? AppColors.premiumGold : AppColors.textMuted,
-                                  ),
+                                  if (mightBeLocked)
+                                    const SizedBox(height: 2),
+                                  if (mightBeLocked)
+                                    Icon(
+                                      Icons.lock_outline,
+                                      size: 8,
+                                      color: t == _selectedPeriod ? AppColors.premiumGold : AppColors.textMuted,
+                                    ),
                               ],
                             ),
                           ),
@@ -1215,18 +1287,111 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                 ),
               ),
               const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: AppColors.border),
+              GestureDetector(
+                onTapDown: (details) {
+                  final position = details.globalPosition;
+                  showMenu<ProChartMode>(
+                    context: context,
+                    color: Theme.of(context).cardColor,
+                    position: RelativeRect.fromLTRB(
+                      position.dx - 100,
+                      position.dy + 20,
+                      position.dx,
+                      position.dy,
+                    ),
+                    items: [
+                      PopupMenuItem(
+                        value: ProChartMode.area,
+                        child: Row(
+                          children: [
+                            Icon(Icons.show_chart, color: _chartMode == ProChartMode.area ? AppColors.primary : AppColors.textSecondary),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Area Chart',
+                              style: TextStyle(
+                                color: _chartMode == ProChartMode.area ? Colors.white : AppColors.textSecondary,
+                                fontWeight: _chartMode == ProChartMode.area ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: ProChartMode.candle,
+                        child: Row(
+                          children: [
+                            Icon(Icons.candlestick_chart, color: _chartMode == ProChartMode.candle ? AppColors.success : AppColors.textSecondary),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Candle Chart',
+                              style: TextStyle(
+                                color: _chartMode == ProChartMode.candle ? Colors.white : AppColors.textSecondary,
+                                fontWeight: _chartMode == ProChartMode.candle ? FontWeight.bold : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ).then((value) {
+                    if (value != null) {
+                      setState(() {
+                        _chartMode = value;
+                      });
+                    }
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: AppColors.border,
+                      width: 1.0,
+                    ),
+                  ),
+                  child: Image.asset(
+                    'assets/chart_group.png', 
+                    width: 24, 
+                    height: 24, 
+                    errorBuilder: (_, __, ___) => Icon(
+                      _chartMode == ProChartMode.candle 
+                          ? Icons.candlestick_chart 
+                          : Icons.show_chart, 
+                      color: AppColors.primary, 
+                      size: 20,
+                    ),
+                  ),
                 ),
-                child: Image.asset(
-                  'assets/chart_group.png', 
-                  width: 24, 
-                  height: 24, 
-                  errorBuilder: (_, __, ___) => const Icon(Icons.candlestick_chart, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () => _showIndicatorsBottomSheet(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: _activeIndicators.isNotEmpty ? AppColors.unlockBlue : AppColors.border,
+                      width: 1.0,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.add_chart, size: 18, color: _activeIndicators.isNotEmpty ? AppColors.unlockBlue : AppColors.textSecondary),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Indicators',
+                        style: TextStyle(
+                          color: _activeIndicators.isNotEmpty ? AppColors.unlockBlue : AppColors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -2450,6 +2615,74 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     );
   }
 
+  void _showIndicatorsBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final indicatorsList = [
+              {'id': 'SMA_Overlay', 'name': 'SMA (Overlay)', 'type': 'overlay'},
+              {'id': 'SMA_Subchart', 'name': 'SMA (Sub-chart)', 'type': 'subchart'},
+              {'id': 'EMA_Overlay', 'name': 'EMA (Overlay)', 'type': 'overlay'},
+              {'id': 'EMA_Subchart', 'name': 'EMA (Sub-chart)', 'type': 'subchart'},
+              {'id': 'BB_Overlay', 'name': 'Bollinger Bands (Overlay)', 'type': 'overlay'},
+              {'id': 'BB_Subchart', 'name': 'Bollinger Bands (Sub-chart)', 'type': 'subchart'},
+              {'id': 'Volume', 'name': 'Volume', 'type': 'subchart'},
+              {'id': 'RSI', 'name': 'Relative Strength Index (RSI)', 'type': 'subchart'},
+              {'id': 'MACD', 'name': 'MACD', 'type': 'subchart'},
+              {'id': 'ATR', 'name': 'Average True Range (ATR)', 'type': 'subchart'},
+              {'id': 'Stoch', 'name': 'Stochastic Oscillator', 'type': 'subchart'},
+            ];
+
+            return Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Technical Indicators', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: indicatorsList.length,
+                      itemBuilder: (context, index) {
+                        final ind = indicatorsList[index];
+                        final id = ind['id']!;
+                        final isSelected = _activeIndicators.contains(id);
+                        return CheckboxListTile(
+                          title: Text(ind['name']!, style: const TextStyle(color: Colors.white)),
+                          subtitle: Text(ind['type'] == 'overlay' ? 'Chart Overlay' : 'Sub-chart Pane', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                          value: isSelected,
+                          activeColor: AppColors.unlockBlue,
+                          checkColor: Colors.white,
+                          onChanged: (bool? value) {
+                            setSheetState(() {
+                              if (value == true) {
+                                _activeIndicators.add(id);
+                              } else {
+                                _activeIndicators.remove(id);
+                              }
+                            });
+                            setState(() {}); // Update the chart behind the sheet
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildLandscapeChart(MarketInstrumentDetail detail) {
     final interval = _getIntervalForPeriod(_selectedPeriod);
     final providerKey = '${widget.instrumentId}|$_selectedPeriod|$interval';
@@ -2499,6 +2732,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
             isLoading: isLoading,
             errorMessage: errorMsg,
             onRetry: () => ref.invalidate(instrumentChartProvider(providerKey)),
+            activeIndicators: _activeIndicators,
           ),
         ),
       ],
@@ -2583,7 +2817,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           // ── Chart Style Tools ─────────────────────────────────────
           _landscapeButton('', isIcon: true, icon: Icons.candlestick_chart_outlined, isActive: _chartMode == ProChartMode.candle, onTap: () => setState(() => _chartMode = ProChartMode.candle)),
           _landscapeButton('', isIcon: true, icon: Icons.show_chart, isActive: _chartMode == ProChartMode.area, onTap: () => setState(() => _chartMode = ProChartMode.area)),
-          _landscapeButton('', isIcon: true, icon: Icons.bar_chart, isActive: _chartMode == ProChartMode.indicators, onTap: () => setState(() => _chartMode = ProChartMode.indicators)),
+          _landscapeButton('', isIcon: true, icon: Icons.add_chart, isActive: _activeIndicators.isNotEmpty, onTap: () => _showIndicatorsBottomSheet(context)),
           const SizedBox(width: 8),
           _landscapeButton('', isIcon: true, icon: Icons.undo),
           _landscapeButton('', isIcon: true, icon: Icons.redo),

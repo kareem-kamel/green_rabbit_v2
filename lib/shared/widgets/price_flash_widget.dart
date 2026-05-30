@@ -24,7 +24,7 @@ class _PriceFlashWidgetState extends State<PriceFlashWidget> with SingleTickerPr
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 3000),
     );
     _colorAnimation = ColorTween(
       begin: Colors.transparent,
@@ -37,9 +37,9 @@ class _PriceFlashWidgetState extends State<PriceFlashWidget> with SingleTickerPr
     super.didUpdateWidget(oldWidget);
     if (widget.price != oldWidget.price && widget.price != null && oldWidget.price != null) {
       if (widget.price! > oldWidget.price!) {
-        _triggerFlash(Colors.green.withOpacity(0.2));
+        _triggerFlash(Colors.green.withValues(alpha: 0.18));
       } else if (widget.price! < oldWidget.price!) {
-        _triggerFlash(Colors.red.withOpacity(0.2));
+        _triggerFlash(Colors.red.withValues(alpha: 0.18));
       }
     }
   }
@@ -52,7 +52,7 @@ class _PriceFlashWidgetState extends State<PriceFlashWidget> with SingleTickerPr
         end: Colors.transparent,
       ).animate(CurvedAnimation(
         parent: _animationController,
-        curve: Curves.easeOut,
+        curve: Curves.easeOutCubic,
       ));
     });
     _animationController.forward(from: 0.0);
