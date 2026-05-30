@@ -10,7 +10,6 @@ import '../models/market_instrument.dart';
 import '../models/market_instrument_detail.dart';
 import '../../../../core/di/injection_container.dart' as di;
 import '../../../subscriptions/data/repository/subscription_repository.dart';
-import '../../../subscriptions/data/models/subscription_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 abstract class MarketRemoteDataSource {

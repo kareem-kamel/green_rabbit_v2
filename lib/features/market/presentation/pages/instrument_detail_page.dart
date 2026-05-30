@@ -48,7 +48,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   ProChartMode _chartMode = ProChartMode.area;
   String _selectedTechnicalInterval = '15m';
   DateTimeRange? _selectedDateRange;
-  Set<String> _activeIndicators = {};
+  final Set<String> _activeIndicators = {};
 
   List<CommentModel> _comments = [];
   bool _isLoadingComments = false;
