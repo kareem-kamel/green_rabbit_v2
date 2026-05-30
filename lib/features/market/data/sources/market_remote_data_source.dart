@@ -381,7 +381,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
       final subRepo = di.sl<SubscriptionRepository>();
       final currentSub = subRepo.currentSubscription;
 
-      int maxInstruments = 5; // Free tier limit
+      int maxInstruments = 100; // Free tier limit
       if (currentSub != null && currentSub.status == 'active') {
         final planId = currentSub.planId.toLowerCase();
         final planName = currentSub.planName.toLowerCase();
@@ -398,9 +398,9 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
             planName.contains('classic');
 
         if (isPro) {
-          maxInstruments = 100;
+          maxInstruments = 150;
         } else if (isClassic) {
-          maxInstruments = 25;
+          maxInstruments = 120;
         }
       }
 

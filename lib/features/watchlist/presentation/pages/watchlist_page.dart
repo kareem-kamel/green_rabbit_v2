@@ -7,6 +7,8 @@ import '../../../market/presentation/pages/instrument_detail_page.dart';
 import '../providers/watchlist_providers.dart';
 import 'package:green_rabbit/features/chatbot/presentation/screens/chatbot_screen.dart';
 import '../../../../shared/widgets/main_wrapper.dart';
+import '../../../../shared/widgets/price_flash_widget.dart';
+import '../../../market/presentation/providers/market_providers.dart';
 
 import 'package:green_rabbit/features/news/presentation/cubit/news_cubit.dart';
 import 'package:green_rabbit/features/news/presentation/cubit/news_state.dart';
@@ -24,10 +26,31 @@ class WatchlistPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final watchlistState = ref.watch(watchlistProvider);
+    ref.watch(visibleMarketLivePricesProvider);
 
     if (watchlistState.isLoading) {
       return const WatchlistSkeletonLoader();
     }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final instruments = watchlistState.selectedWatchlist?.instruments ?? [];
+      final ids = instruments.map((e) => e.id).toList();
+      final currentIds = ref.read(visibleInstrumentsProvider);
+      
+      bool isSame = currentIds.length == ids.length;
+      if (isSame) {
+        for (int i = 0; i < currentIds.length; i++) {
+          if (currentIds[i] != ids[i]) {
+            isSame = false;
+            break;
+          }
+        }
+      }
+      
+      if (!isSame) {
+        ref.read(visibleInstrumentsProvider.notifier).state = ids;
+      }
+    });
 
     return SafeArea(
       child: LayoutBuilder(
@@ -295,6 +318,7 @@ class WatchlistPage extends ConsumerWidget {
                     instrument.price?.toStringAsFixed(2) ?? 'N/A',
                     '${(instrument.change ?? 0) >= 0 ? '+' : ''}${instrument.change?.toStringAsFixed(2) ?? '0.00'} (${instrument.changePercent?.toStringAsFixed(2) ?? '0.00'}%)',
                     (instrument.change ?? 0) >= 0,
+                    rawPrice: instrument.price,
                     logoUrl: instrument.logoUrl,
                     onTap: () {
                       Navigator.push(
@@ -430,7 +454,7 @@ class WatchlistPage extends ConsumerWidget {
     );
   }
 
-  Widget _stockItem(BuildContext context, String name, String ticker, String price, String change, bool isUp, {String? logoUrl, VoidCallback? onTap}) {
+  Widget _stockItem(BuildContext context, String name, String ticker, String price, String change, bool isUp, {double? rawPrice, String? logoUrl, VoidCallback? onTap}) {
     return AppCard(
       onTap: onTap,
       padding: const EdgeInsets.all(16),
@@ -485,7 +509,10 @@ class WatchlistPage extends ConsumerWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(price, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
+              PriceFlashWidget(
+                price: rawPrice,
+                child: Text(price, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
               const SizedBox(height: 4),
               Text(
                 change,

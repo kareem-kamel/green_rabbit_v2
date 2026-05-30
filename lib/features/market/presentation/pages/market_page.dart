@@ -414,6 +414,8 @@ class _MarketPageState extends ConsumerState<MarketPage> {
           _tabItem('Forex', type: 'forex'),
           const SizedBox(width: 12),
           _tabItem('ETFs', type: 'etf'),
+          const SizedBox(width: 12),
+          _tabItem('Commodities', type: 'commodities'),
         ],
       ),
     );

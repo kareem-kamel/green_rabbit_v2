@@ -542,9 +542,50 @@ class MockInterceptor extends Interceptor {
     'sparkline7d': [408.3, 409.5, 410.8, 412.35, 413.7, 414.9, 415.6]
   };
 
+  static final _mockGold = {
+    'id': 'XAU-USD',
+    'symbol': 'XAU/USD',
+    'name': 'Gold / US Dollar',
+    'type': 'commodity',
+    'exchange': null,
+    'sector': 'Precious Metals',
+    'logoUrl': 'https://example.com/logos/gold.png',
+    'price': 2345.60,
+    'previousClose': 2330.10,
+    'change': 15.50,
+    'changePercent': 0.6652,
+    'dayHigh': 2350.00,
+    'dayLow': 2325.00,
+    'volume': 125000,
+    'marketCap': null,
+    'marketStatus': 'open',
+    'sparkline7d': [2320.50, 2322.10, 2325.00, 2330.10, 2345.60]
+  };
+
+  static final _mockOil = {
+    'id': 'CL',
+    'symbol': 'CL',
+    'name': 'Crude Oil WTI',
+    'type': 'commodity',
+    'exchange': 'NYMEX',
+    'sector': 'Energy',
+    'logoUrl': 'https://example.com/logos/oil.png',
+    'price': 78.50,
+    'previousClose': 79.10,
+    'change': -0.60,
+    'changePercent': -0.7585,
+    'dayHigh': 79.25,
+    'dayLow': 78.10,
+    'volume': 350000,
+    'marketCap': null,
+    'marketStatus': 'open',
+    'sparkline7d': [81.20, 80.50, 79.80, 79.10, 78.50]
+  };
+
   List<Map<String, dynamic>> _generateMockInstruments(String type) {
     if (type == 'crypto') return [_mockBTC, _mockETH];
     if (type == 'stocks') return [_mockAAPL, _mockNVDA, _mockMSFT];
+    if (type == 'commodity' || type == 'commodities') return [_mockGold, _mockOil];
     return [_mockBTC, _mockAAPL, _mockETH, _mockNVDA, _mockMSFT];
   }
 
@@ -635,6 +676,8 @@ class MockInterceptor extends Interceptor {
     if (id.contains('AAPL')) return _mockAAPL;
     if (id.contains('NVDA')) return _mockNVDA;
     if (id.contains('MSFT')) return _mockMSFT;
+    if (id.contains('XAU') || id.contains('Gold')) return _mockGold;
+    if (id.contains('CL') || id.contains('Oil')) return _mockOil;
     return _mockAAPL;
   }
 }

@@ -3,6 +3,7 @@ import '../../../../core/di/injection_container.dart';
 import '../../../market/data/models/market_instrument.dart';
 import '../../data/models/watchlist_model.dart';
 import '../../data/repositories/watchlist_repository_impl.dart';
+import '../../../market/presentation/providers/market_providers.dart';
 
 class WatchlistState {
   final List<WatchlistModel> watchlists;
@@ -30,9 +31,63 @@ class WatchlistState {
 
 class WatchlistNotifier extends StateNotifier<WatchlistState> {
   final WatchlistRepository _repository;
+  final Ref _ref;
+  ProviderSubscription? _livePricesSubscription;
 
-  WatchlistNotifier(this._repository) : super(WatchlistState(watchlists: [])) {
+  WatchlistNotifier(this._repository, this._ref) : super(WatchlistState(watchlists: [])) {
     loadWatchlists();
+    _updateLivePricesSubscription();
+  }
+
+  @override
+  void dispose() {
+    _livePricesSubscription?.close();
+    super.dispose();
+  }
+
+  void _updateLivePricesSubscription() {
+    _livePricesSubscription?.close();
+    _livePricesSubscription = _ref.listen<Map<String, LivePriceUpdate>>(
+      globalLivePricesProvider,
+      (previous, next) {
+        if (state.selectedWatchlist == null) return;
+        
+        bool updated = false;
+        final instruments = state.selectedWatchlist!.instruments.map((instrument) {
+          final cleanInstId = instrument.id.contains(':') ? instrument.id.split(':')[1] : instrument.id;
+          final update = next[cleanInstId];
+          if (update != null) {
+            if (update.price != instrument.price ||
+                update.change != instrument.change ||
+                update.changePercent != instrument.changePercent) {
+              updated = true;
+              return instrument.copyWith(
+                price: update.price,
+                change: update.change,
+                changePercent: update.changePercent,
+              );
+            }
+          }
+          return instrument;
+        }).toList();
+
+        if (updated) {
+          final updatedWatchlist = WatchlistModel(
+            id: state.selectedWatchlist!.id,
+            name: state.selectedWatchlist!.name,
+            instrumentsCount: state.selectedWatchlist!.instrumentsCount,
+            createdAt: state.selectedWatchlist!.createdAt,
+            updatedAt: state.selectedWatchlist!.updatedAt,
+            instruments: instruments,
+          );
+          state = state.copyWith(
+            selectedWatchlist: updatedWatchlist,
+            watchlists: state.watchlists.map((w) => w.id == updatedWatchlist.id ? updatedWatchlist : w).toList(),
+          );
+        }
+      },
+      fireImmediately: true,
+    );
   }
 
   Future<void> loadWatchlists() async {
@@ -153,7 +208,7 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
 
 final watchlistProvider =
     StateNotifierProvider<WatchlistNotifier, WatchlistState>((ref) {
-      return WatchlistNotifier(sl<WatchlistRepository>());
+      return WatchlistNotifier(sl<WatchlistRepository>(), ref);
     });
 
 // Selector for knowing if an instrument is in the current watchlist

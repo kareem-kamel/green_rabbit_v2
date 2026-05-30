@@ -4,6 +4,7 @@ import 'package:interactive_chart/interactive_chart.dart'; // For CandleData mod
 import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
+import 'package:green_rabbit/features/market/presentation/utils/indicator_calculator.dart';
 import 'package:green_rabbit/features/profile/presentation/screens/subscription_screen.dart';
 
 enum ProChartMode { area, candle, indicators }
@@ -38,6 +39,7 @@ class ProTradingChart extends StatefulWidget {
   final bool isLoading;
   final String? errorMessage;
   final VoidCallback? onRetry;
+  final Set<String> activeIndicators;
 
   const ProTradingChart({
     super.key,
@@ -51,6 +53,7 @@ class ProTradingChart extends StatefulWidget {
     this.isLoading = false,
     this.errorMessage,
     this.onRetry,
+    this.activeIndicators = const {},
   });
 
   @override
@@ -163,6 +166,7 @@ class _ProTradingChartState extends State<ProTradingChart> {
                     mode: widget.mode,
                     period: widget.period,
                     interval: widget.interval,
+                    activeIndicators: widget.activeIndicators,
                   ),
                 ),
               );
@@ -378,6 +382,7 @@ class _ChartPainter extends CustomPainter {
   final ProChartMode mode;
   final String period;
   final String interval;
+  final Set<String> activeIndicators;
 
   _ChartPainter({
     required this.candles,
@@ -386,14 +391,29 @@ class _ChartPainter extends CustomPainter {
     required this.mode,
     required this.period,
     required this.interval,
+    required this.activeIndicators,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     const labelWidth = 80.0;
     const xAxisHeight = 45.0;
+    
+    List<String> subCharts = [];
+    if (activeIndicators.contains('Volume')) subCharts.add('Volume');
+    if (activeIndicators.contains('RSI')) subCharts.add('RSI');
+    if (activeIndicators.contains('MACD')) subCharts.add('MACD');
+    if (activeIndicators.contains('ATR')) subCharts.add('ATR');
+    if (activeIndicators.contains('Stoch')) subCharts.add('Stoch');
+    if (activeIndicators.contains('SMA_Subchart')) subCharts.add('SMA_Subchart');
+    if (activeIndicators.contains('EMA_Subchart')) subCharts.add('EMA_Subchart');
+    if (activeIndicators.contains('BB_Subchart')) subCharts.add('BB_Subchart');
+
+    final subChartHeight = subCharts.isEmpty ? 0.0 : (size.height * 0.2).clamp(60.0, 100.0);
+    final totalSubChartsHeight = subChartHeight * subCharts.length;
+    
     final chartWidth = size.width - labelWidth;
-    final chartHeight = size.height - xAxisHeight;
+    final mainChartHeight = max(100.0, size.height - xAxisHeight - totalSubChartsHeight);
 
     final candleWidth = 8.0 * zoomLevel;
     final candleSpacing = 4.0 * zoomLevel;
@@ -418,35 +438,64 @@ class _ChartPainter extends CustomPainter {
     maxPrice *= 1.002;
 
     final priceRange = maxPrice - minPrice;
-    final scaleY = chartHeight / (priceRange == 0 ? 1 : priceRange);
+    final scaleY = mainChartHeight / (priceRange == 0 ? 1 : priceRange);
 
-    double getY(double price) => chartHeight - (price - minPrice) * scaleY;
+    double getY(double price) => mainChartHeight - (price - minPrice) * scaleY;
 
-    // ── Grid Lines ────────────────────────────────────────────────────
     final gridPaint = Paint()
       ..color = Colors.white.withOpacity(0.07)
       ..strokeWidth = 0.8;
     for (int i = 0; i <= 5; i++) {
-      final y = chartHeight * (i / 5);
+      final y = mainChartHeight * (i / 5);
       canvas.drawLine(Offset(0, y), Offset(chartWidth, y), gridPaint);
-
       final price = maxPrice - (i / 5) * priceRange;
       _drawText(canvas, Offset(chartWidth + 8, y - 8), price.toStringAsFixed(2), Colors.white.withOpacity(0.6));
     }
 
-    // ── Chart Body ────────────────────────────────────────────────────
     if (mode == ProChartMode.area) {
-      _drawAreaChart(canvas, chartHeight, getY, firstVisibleIdx, lastVisibleIdx, totalCandleWidth);
-    } else if (mode == ProChartMode.candle) {
-      _drawCandles(canvas, getY, firstVisibleIdx, lastVisibleIdx, totalCandleWidth);
+      _drawAreaChart(canvas, mainChartHeight, getY, firstVisibleIdx, lastVisibleIdx, totalCandleWidth);
     } else {
-      _drawIndicatorsChart(canvas, getY, firstVisibleIdx, lastVisibleIdx, totalCandleWidth);
+      _drawCandles(canvas, getY, firstVisibleIdx, lastVisibleIdx, totalCandleWidth);
     }
 
-    // ── X-Axis Labels ─────────────────────────────────────────────────
-    // Determine step to keep labels readable (at most ~8 labels)
+    if (activeIndicators.contains('SMA_Overlay') || activeIndicators.contains('SMA')) {
+      _drawMALine(canvas, getY, firstVisibleIdx, lastVisibleIdx, totalCandleWidth, IndicatorCalculator.calculateSMA(candles, 20), const Color(0xFF4A90E2));
+    }
+    if (activeIndicators.contains('EMA_Overlay') || activeIndicators.contains('EMA')) {
+      _drawMALine(canvas, getY, firstVisibleIdx, lastVisibleIdx, totalCandleWidth, IndicatorCalculator.calculateEMA(candles, 20), const Color(0xFF50E3C2));
+    }
+    if (activeIndicators.contains('BB_Overlay') || activeIndicators.contains('BB')) {
+      _drawBollingerBands(canvas, getY, firstVisibleIdx, lastVisibleIdx, totalCandleWidth, IndicatorCalculator.calculateBollingerBands(candles, 20, 2.0));
+    }
+
+    double currentSubChartTop = mainChartHeight;
+    for (String subChart in subCharts) {
+      canvas.drawLine(Offset(0, currentSubChartTop), Offset(chartWidth, currentSubChartTop), Paint()..color = Colors.white.withOpacity(0.2)..strokeWidth = 1);
+      
+      if (subChart == 'Volume') {
+        _drawVolumeChart(canvas, currentSubChartTop, subChartHeight, chartWidth, firstVisibleIdx, lastVisibleIdx, totalCandleWidth);
+      } else if (subChart == 'RSI') {
+        _drawRSIChart(canvas, currentSubChartTop, subChartHeight, chartWidth, firstVisibleIdx, lastVisibleIdx, totalCandleWidth);
+      } else if (subChart == 'MACD') {
+        _drawMACDChart(canvas, currentSubChartTop, subChartHeight, chartWidth, firstVisibleIdx, lastVisibleIdx, totalCandleWidth);
+      } else if (subChart == 'ATR') {
+        _drawATRChart(canvas, currentSubChartTop, subChartHeight, chartWidth, firstVisibleIdx, lastVisibleIdx, totalCandleWidth);
+      } else if (subChart == 'Stoch') {
+        _drawStochChart(canvas, currentSubChartTop, subChartHeight, chartWidth, firstVisibleIdx, lastVisibleIdx, totalCandleWidth);
+      } else if (subChart == 'SMA_Subchart') {
+        _drawSubChartMA(canvas, currentSubChartTop, subChartHeight, chartWidth, firstVisibleIdx, lastVisibleIdx, totalCandleWidth, IndicatorCalculator.calculateSMA(candles, 20), const Color(0xFF4A90E2), 'SMA');
+      } else if (subChart == 'EMA_Subchart') {
+        _drawSubChartMA(canvas, currentSubChartTop, subChartHeight, chartWidth, firstVisibleIdx, lastVisibleIdx, totalCandleWidth, IndicatorCalculator.calculateEMA(candles, 20), const Color(0xFF50E3C2), 'EMA');
+      } else if (subChart == 'BB_Subchart') {
+        _drawSubChartBB(canvas, currentSubChartTop, subChartHeight, chartWidth, firstVisibleIdx, lastVisibleIdx, totalCandleWidth, IndicatorCalculator.calculateBollingerBands(candles, 20, 2.0));
+      }
+      
+      currentSubChartTop += subChartHeight;
+    }
+
     final visibleCount = lastVisibleIdx - firstVisibleIdx + 1;
     final step = max(1, (visibleCount / 8).ceil());
+    final xAxisY = size.height - xAxisHeight;
 
     for (int i = firstVisibleIdx; i <= lastVisibleIdx; i += step) {
       final x = (i * totalCandleWidth) - scrollOffset + totalCandleWidth / 2;
@@ -454,11 +503,9 @@ class _ChartPainter extends CustomPainter {
 
       final candle = candles[i];
       final date = DateTime.fromMillisecondsSinceEpoch(candle.timestamp);
-
       String topText;
       String bottomText;
 
-      // Interval-aware label format
       if (interval == '1d' || interval == '1w' || interval == '1M') {
         topText = DateFormat('yyyy').format(date);
         bottomText = DateFormat('MMM dd').format(date);
@@ -470,16 +517,13 @@ class _ChartPainter extends CustomPainter {
         bottomText = DateFormat('HH:mm').format(date);
       }
 
-      _drawText(canvas, Offset(x - 30, chartHeight + 6), topText, Colors.white.withOpacity(0.45), fontSize: 11);
-      _drawText(canvas, Offset(x - 22, chartHeight + 20), bottomText, Colors.white.withOpacity(0.45), fontSize: 11);
+      _drawText(canvas, Offset(x - 30, xAxisY + 6), topText, Colors.white.withOpacity(0.45), fontSize: 11);
+      _drawText(canvas, Offset(x - 22, xAxisY + 20), bottomText, Colors.white.withOpacity(0.45), fontSize: 11);
     }
 
-    // ── Current Price Indicator ───────────────────────────────────────
     final lastPrice = candles.last.close ?? 0;
     final lastPriceY = getY(lastPrice);
-    final isInView = lastPriceY >= 0 && lastPriceY <= chartHeight;
-
-    if (isInView) {
+    if (lastPriceY >= 0 && lastPriceY <= mainChartHeight) {
       final dashPaint = Paint()
         ..color = AppColors.unlockBlue.withOpacity(0.6)
         ..strokeWidth = 1
@@ -488,20 +532,9 @@ class _ChartPainter extends CustomPainter {
       for (double x = 0; x < chartWidth; x += 10) {
         canvas.drawLine(Offset(x, lastPriceY), Offset(x + 5, lastPriceY), dashPaint);
       }
-
-      final rect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(chartWidth, lastPriceY - 14, labelWidth, 28),
-        const Radius.circular(4),
-      );
+      final rect = RRect.fromRectAndRadius(Rect.fromLTWH(chartWidth, lastPriceY - 14, labelWidth, 28), const Radius.circular(4));
       canvas.drawRRect(rect, Paint()..color = AppColors.unlockBlue);
-      _drawText(
-        canvas,
-        Offset(chartWidth + 6, lastPriceY - 8),
-        lastPrice.toStringAsFixed(2),
-        Colors.white,
-        isBold: true,
-        fontSize: 12,
-      );
+      _drawText(canvas, Offset(chartWidth + 6, lastPriceY - 8), lastPrice.toStringAsFixed(2), Colors.white, isBold: true, fontSize: 12);
     }
   }
 
@@ -566,37 +599,276 @@ class _ChartPainter extends CustomPainter {
     }
   }
 
-  void _drawIndicatorsChart(Canvas canvas, Function(double) getY, int start, int end, double stepX) {
-    _drawCandles(canvas, getY, start, end, stepX);
-    _drawMALine(canvas, getY, start, end, stepX, 5, const Color(0xFF4A90E2));
-    _drawMALine(canvas, getY, start, end, stepX, 10, const Color(0xFF50E3C2));
-    _drawMALine(canvas, getY, start, end, stepX, 20, const Color(0xFFF8E71C));
-    _drawMALine(canvas, getY, start, end, stepX, 30, const Color(0xFFE34F4F));
-  }
-
-  void _drawMALine(Canvas canvas, Function(double) getY, int start, int end, double stepX, int period, Color color) {
+  void _drawMALine(Canvas canvas, Function(double) getY, int start, int end, double stepX, List<double?> maData, Color color) {
     final path = Path();
     bool first = true;
     for (int i = start; i <= end; i++) {
-      if (i < period - 1) continue;
-      double sum = 0;
-      for (int j = 0; j < period; j++) {
-        sum += candles[i - j].close ?? 0;
-      }
+      if (maData[i] == null) continue;
       final x = (i * stepX) - scrollOffset + stepX / 2;
-      final y = getY(sum / period);
+      final y = getY(maData[i]!);
       if (first) {
         path.moveTo(x, y);
         first = false;
       } else {
         path.lineTo(x, y);
       }
-      canvas.drawCircle(Offset(x, y), 1.5, Paint()..color = color);
     }
     canvas.drawPath(path, Paint()
       ..color = color.withOpacity(0.85)
-      ..strokeWidth = 1.2
+      ..strokeWidth = 1.5
       ..style = PaintingStyle.stroke);
+  }
+
+  void _drawBollingerBands(Canvas canvas, Function(double) getY, int start, int end, double stepX, List<BollingerBandValue> bbData) {
+    final upperPath = Path();
+    final lowerPath = Path();
+    final middlePath = Path();
+    final fillPath = Path();
+    bool first = true;
+
+    for (int i = start; i <= end; i++) {
+      if (bbData[i].upper == null || bbData[i].lower == null || bbData[i].middle == null) continue;
+      final x = (i * stepX) - scrollOffset + stepX / 2;
+      final yu = getY(bbData[i].upper!);
+      final yl = getY(bbData[i].lower!);
+      final ym = getY(bbData[i].middle!);
+
+      if (first) {
+        upperPath.moveTo(x, yu);
+        lowerPath.moveTo(x, yl);
+        middlePath.moveTo(x, ym);
+        fillPath.moveTo(x, yu);
+        first = false;
+      } else {
+        upperPath.lineTo(x, yu);
+        lowerPath.lineTo(x, yl);
+        middlePath.lineTo(x, ym);
+        fillPath.lineTo(x, yu);
+      }
+    }
+
+    if (!first) {
+      for (int i = end; i >= start; i--) {
+        if (bbData[i].lower == null) continue;
+        final x = (i * stepX) - scrollOffset + stepX / 2;
+        final yl = getY(bbData[i].lower!);
+        fillPath.lineTo(x, yl);
+      }
+      fillPath.close();
+
+      canvas.drawPath(fillPath, Paint()..color = Colors.blueAccent.withOpacity(0.1));
+      final linePaint = Paint()..color = Colors.blueAccent.withOpacity(0.5)..strokeWidth = 1..style = PaintingStyle.stroke;
+      canvas.drawPath(upperPath, linePaint);
+      canvas.drawPath(lowerPath, linePaint);
+      canvas.drawPath(middlePath, Paint()..color = Colors.orangeAccent.withOpacity(0.6)..strokeWidth = 1..style = PaintingStyle.stroke);
+    }
+  }
+
+  void _drawVolumeChart(Canvas canvas, double top, double height, double width, int start, int end, double stepX) {
+    _drawText(canvas, Offset(8, top + 4), 'VOL', Colors.white54, fontSize: 10);
+    double maxVol = 0;
+    for (int i = start; i <= end; i++) {
+      double vol = candles[i].volume ?? 0;
+      if (vol > maxVol) maxVol = vol;
+    }
+    if (maxVol == 0) return;
+    
+    final candleWidth = max(2.0, stepX * 0.7);
+    for (int i = start; i <= end; i++) {
+      final candle = candles[i];
+      final vol = candle.volume ?? 0;
+      final h = (vol / maxVol) * (height - 10);
+      final x = (i * stepX) - scrollOffset + (stepX - candleWidth) / 2;
+      final isBull = (candle.close ?? 0) >= (candle.open ?? 0);
+      canvas.drawRect(
+        Rect.fromLTWH(x, top + height - h, candleWidth, h),
+        Paint()..color = isBull ? AppColors.success.withOpacity(0.6) : AppColors.error.withOpacity(0.6),
+      );
+    }
+  }
+
+  void _drawRSIChart(Canvas canvas, double top, double height, double width, int start, int end, double stepX) {
+    _drawText(canvas, Offset(8, top + 4), 'RSI(14)', Colors.white54, fontSize: 10);
+    final rsiData = IndicatorCalculator.calculateRSI(candles, 14);
+    
+    final y70 = top + height - (70 / 100) * (height - 10);
+    final y30 = top + height - (30 / 100) * (height - 10);
+    final linePaint = Paint()..color = Colors.white24..strokeWidth = 1;
+    canvas.drawLine(Offset(0, y70), Offset(width, y70), linePaint);
+    canvas.drawLine(Offset(0, y30), Offset(width, y30), linePaint);
+
+    final path = Path();
+    bool first = true;
+    for (int i = start; i <= end; i++) {
+      if (rsiData[i] == null) continue;
+      final x = (i * stepX) - scrollOffset + stepX / 2;
+      final y = top + height - (rsiData[i]! / 100) * (height - 10);
+      if (first) {
+        path.moveTo(x, y);
+        first = false;
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(path, Paint()..color = Colors.purpleAccent..strokeWidth = 1.5..style = PaintingStyle.stroke);
+  }
+
+  void _drawMACDChart(Canvas canvas, double top, double height, double width, int start, int end, double stepX) {
+    _drawText(canvas, Offset(8, top + 4), 'MACD(12,26,9)', Colors.white54, fontSize: 10);
+    final macdData = IndicatorCalculator.calculateMACD(candles, 12, 26, 9);
+    
+    double maxAbs = 0;
+    for (int i = start; i <= end; i++) {
+      if (macdData[i].macd != null && macdData[i].macd!.abs() > maxAbs) maxAbs = macdData[i].macd!.abs();
+      if (macdData[i].signal != null && macdData[i].signal!.abs() > maxAbs) maxAbs = macdData[i].signal!.abs();
+      if (macdData[i].histogram != null && macdData[i].histogram!.abs() > maxAbs) maxAbs = macdData[i].histogram!.abs();
+    }
+    if (maxAbs == 0) return;
+
+    final centerY = top + height / 2;
+    canvas.drawLine(Offset(0, centerY), Offset(width, centerY), Paint()..color = Colors.white24..strokeWidth = 1);
+
+    final macdPath = Path();
+    final signalPath = Path();
+    bool firstMacd = true, firstSignal = true;
+
+    final barWidth = max(1.0, stepX * 0.5);
+    for (int i = start; i <= end; i++) {
+      final data = macdData[i];
+      final x = (i * stepX) - scrollOffset + stepX / 2;
+      
+      if (data.histogram != null) {
+        final h = (data.histogram! / maxAbs) * (height / 2 - 5);
+        canvas.drawRect(
+          Rect.fromLTWH(x - barWidth / 2, h > 0 ? centerY - h : centerY, barWidth, h.abs()),
+          Paint()..color = data.histogram! > 0 ? AppColors.success.withOpacity(0.5) : AppColors.error.withOpacity(0.5),
+        );
+      }
+      
+      if (data.macd != null) {
+        final y = centerY - (data.macd! / maxAbs) * (height / 2 - 5);
+        if (firstMacd) { macdPath.moveTo(x, y); firstMacd = false; } else { macdPath.lineTo(x, y); }
+      }
+      if (data.signal != null) {
+        final y = centerY - (data.signal! / maxAbs) * (height / 2 - 5);
+        if (firstSignal) { signalPath.moveTo(x, y); firstSignal = false; } else { signalPath.lineTo(x, y); }
+      }
+    }
+    canvas.drawPath(macdPath, Paint()..color = Colors.blueAccent..strokeWidth = 1.5..style = PaintingStyle.stroke);
+    canvas.drawPath(signalPath, Paint()..color = Colors.orangeAccent..strokeWidth = 1.5..style = PaintingStyle.stroke);
+  }
+
+  void _drawATRChart(Canvas canvas, double top, double height, double width, int start, int end, double stepX) {
+    _drawText(canvas, Offset(8, top + 4), 'ATR(14)', Colors.white54, fontSize: 10);
+    final atrData = IndicatorCalculator.calculateATR(candles, 14);
+    
+    double maxAtr = 0;
+    double minAtr = double.infinity;
+    for (int i = start; i <= end; i++) {
+      if (atrData[i] != null) {
+        if (atrData[i]! > maxAtr) maxAtr = atrData[i]!;
+        if (atrData[i]! < minAtr) minAtr = atrData[i]!;
+      }
+    }
+    if (maxAtr == 0 || minAtr == double.infinity) return;
+    
+    final path = Path();
+    bool first = true;
+    for (int i = start; i <= end; i++) {
+      if (atrData[i] == null) continue;
+      final x = (i * stepX) - scrollOffset + stepX / 2;
+      final y = top + height - 5 - ((atrData[i]! - minAtr) / (maxAtr - minAtr)) * (height - 10);
+      if (first) {
+        path.moveTo(x, y);
+        first = false;
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(path, Paint()..color = Colors.cyanAccent..strokeWidth = 1.5..style = PaintingStyle.stroke);
+  }
+
+  void _drawStochChart(Canvas canvas, double top, double height, double width, int start, int end, double stepX) {
+    _drawText(canvas, Offset(8, top + 4), 'Stoch(14,3,3)', Colors.white54, fontSize: 10);
+    final stochData = IndicatorCalculator.calculateStochastic(candles, 14, 3);
+    
+    final y80 = top + height - (80 / 100) * (height - 10);
+    final y20 = top + height - (20 / 100) * (height - 10);
+    final linePaint = Paint()..color = Colors.white24..strokeWidth = 1;
+    canvas.drawLine(Offset(0, y80), Offset(width, y80), linePaint);
+    canvas.drawLine(Offset(0, y20), Offset(width, y20), linePaint);
+
+    final kPath = Path();
+    final dPath = Path();
+    bool firstK = true, firstD = true;
+
+    for (int i = start; i <= end; i++) {
+      final x = (i * stepX) - scrollOffset + stepX / 2;
+      if (stochData[i].k != null) {
+        final y = top + height - (stochData[i].k! / 100) * (height - 10);
+        if (firstK) { kPath.moveTo(x, y); firstK = false; } else { kPath.lineTo(x, y); }
+      }
+      if (stochData[i].d != null) {
+        final y = top + height - (stochData[i].d! / 100) * (height - 10);
+        if (firstD) { dPath.moveTo(x, y); firstD = false; } else { dPath.lineTo(x, y); }
+      }
+    }
+    canvas.drawPath(kPath, Paint()..color = Colors.blueAccent..strokeWidth = 1.5..style = PaintingStyle.stroke);
+    canvas.drawPath(dPath, Paint()..color = Colors.orangeAccent..strokeWidth = 1.5..style = PaintingStyle.stroke);
+  }
+
+  void _drawSubChartMA(Canvas canvas, double top, double height, double width, int start, int end, double stepX, List<double?> maData, Color color, String name) {
+    _drawText(canvas, Offset(8, top + 4), '$name(20)', color.withOpacity(0.8), fontSize: 10);
+    
+    double maxVal = double.negativeInfinity;
+    double minVal = double.infinity;
+    for (int i = start; i <= end; i++) {
+      if (maData[i] != null) {
+        if (maData[i]! > maxVal) maxVal = maData[i]!;
+        if (maData[i]! < minVal) minVal = maData[i]!;
+      }
+    }
+    
+    if (maxVal == double.negativeInfinity) return;
+    if (maxVal == minVal) {
+      maxVal += 1;
+      minVal -= 1;
+    }
+    
+    final range = maxVal - minVal;
+    final scaleY = (height - 20) / range;
+    
+    double getLocalY(double val) => top + height - 10 - (val - minVal) * scaleY;
+    
+    _drawMALine(canvas, getLocalY, start, end, stepX, maData, color);
+  }
+
+  void _drawSubChartBB(Canvas canvas, double top, double height, double width, int start, int end, double stepX, List<BollingerBandValue> bbData) {
+    _drawText(canvas, Offset(8, top + 4), 'BB(20,2.0)', Colors.white54, fontSize: 10);
+    
+    double maxVal = double.negativeInfinity;
+    double minVal = double.infinity;
+    for (int i = start; i <= end; i++) {
+      if (bbData[i].upper != null) {
+        if (bbData[i].upper! > maxVal) maxVal = bbData[i].upper!;
+      }
+      if (bbData[i].lower != null) {
+        if (bbData[i].lower! < minVal) minVal = bbData[i].lower!;
+      }
+    }
+    
+    if (maxVal == double.negativeInfinity) return;
+    if (maxVal == minVal) {
+      maxVal += 1;
+      minVal -= 1;
+    }
+    
+    final range = maxVal - minVal;
+    final scaleY = (height - 20) / range;
+    
+    double getLocalY(double val) => top + height - 10 - (val - minVal) * scaleY;
+    
+    _drawBollingerBands(canvas, getLocalY, start, end, stepX, bbData);
   }
 
   void _drawText(
@@ -626,5 +898,6 @@ class _ChartPainter extends CustomPainter {
       oldDelegate.mode != mode ||
       oldDelegate.candles != candles ||
       oldDelegate.period != period ||
+      oldDelegate.activeIndicators != activeIndicators ||
       oldDelegate.interval != interval;
 }
