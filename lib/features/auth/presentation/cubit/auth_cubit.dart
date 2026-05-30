@@ -24,12 +24,8 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> _initializeGoogle() async {
     try {
       await _googleSignIn.initialize(
-        // TODO:
-        // Replace with your Firebase Web Client ID
-        // Example:
-        // 123456789-abcxyz.apps.googleusercontent.com
         serverClientId:
-            '1073099404861-1kj7esvu34nas61v86jb7op1smadmgb8.apps.googleusercontent.com',
+            '963276687646-9ijmelnsmq6752a0fr64lk6q05l9sgoa.apps.googleusercontent.com',
       );
 
       debugPrint('Google Sign-In initialized successfully');
@@ -138,6 +134,8 @@ class AuthCubit extends Cubit<AuthState> {
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
       final String? idToken = googleAuth.idToken;
+
+
 
       if (idToken == null || idToken.isEmpty) {
         emit(AuthFailure(errorMessage: 'Failed to retrieve Google ID token.'));

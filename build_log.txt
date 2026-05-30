@@ -1,0 +1,7 @@
+Running Gradle task 'assembleRelease'...                        
+Picked up JAVA_TOOL_OPTIONS: -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8
+? key.properties found!
+storeFile: C:\flutterprojects\green_rabbit\android\app\upload-keystore.jks
+keyAlias: upload
+Running Gradle task 'assembleRelease'...                            ٧٫٦s
+√ Built build\app\outputs\flutter-apk\app-release.apk (66.4MB)

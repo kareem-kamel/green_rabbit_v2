@@ -1,4 +1,4 @@
-package com.example.green_rabbit
+package com.greenrabbit.app
 
 import io.flutter.embedding.android.FlutterActivity
 

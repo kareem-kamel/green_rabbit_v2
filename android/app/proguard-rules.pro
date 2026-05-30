@@ -1,21 +1,37 @@
-# Flutter Wrapper
--keep class io.flutter.app.** { *; }
--keep class io.flutter.plugin.**  { *; }
--keep class io.flutter.util.**  { *; }
--keep class io.flutter.view.**  { *; }
--keep class io.flutter.**  { *; }
--keep class io.flutter.plugins.**  { *; }
+# Flutter
+-keep class io.flutter.** { *; }
+-keep class io.flutter.plugin.** { *; }
+-keep class io.flutter.plugins.** { *; }
 
-# Prevent Pigeon classes from being obfuscated (Solves "Unable to establish connection on channel")
+# Pigeon generated code (critical for 7.x)
 -keep class dev.flutter.pigeon.** { *; }
+-keep interface dev.flutter.pigeon.** { *; }
 
-# Google Sign-In Plugin
+# Google Sign-In Android 7.x - Credential Manager
 -keep class io.flutter.plugins.googlesignin.** { *; }
+-keep class com.google.android.libraries.identity.googleid.** { *; }
+-keep class androidx.credentials.** { *; }
+-keep class androidx.credentials.provider.** { *; }
+-keep class androidx.credentials.playservices.** { *; }
 
-# Google Play Services Auth
--keep class com.google.android.gms.auth.api.signin.** { *; }
--keep class com.google.android.gms.common.api.** { *; }
+# Google Play Services
+-keep class com.google.android.gms.** { *; }
+-keep class com.google.android.gms.auth.** { *; }
+-keep class com.google.android.gms.tasks.** { *; }
+-keep class com.google.android.gms.internal.** { *; }
 
-# Ignore missing classes from Flutter's Play Core integrations during R8
--dontwarn com.google.android.play.core.**
+# Firebase
+-keep class com.google.firebase.** { *; }
+
+# Attributes
+-keepattributes Signature
+-keepattributes *Annotation*
+-keepattributes EnclosingMethod
+-keepattributes InnerClasses
+
+# Suppress warnings
+-dontwarn com.google.android.gms.**
+-dontwarn androidx.credentials.**
+-dontwarn com.google.android.libraries.identity.**
 -dontwarn io.flutter.embedding.**
+-dontwarn com.google.android.play.core.**

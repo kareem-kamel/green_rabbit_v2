@@ -12,7 +12,20 @@
           "package_name": "com.greenrabbit.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "963276687646-fa0b7pvr8t302ohrpjfjjn0i4eiv7e8n.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.greenrabbit.app",
+            "certificate_hash": "daf956efee0f8fe63fe448dfc4a06654e109031c"
+          }
+        },
+        {
+          "client_id": "963276687646-9ijmelnsmq6752a0fr64lk6q05l9sgoa.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB-1VuT28Lvg8Q_kHsr3GhMiMLE_NOlmtc"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "963276687646-6r596hq99qkm0mqmp3dtpnvrnqurg9ta.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "963276687646-g6htuquf3okdg29auu9qe0cj2uhefpt7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.greenrabbit.app"
+              }
+            }
+          ]
         }
       }
     }

@@ -20,22 +20,23 @@ class ApiClient {
     required Dio dio,
     required FlutterSecureStorage storage,
     required Logger logger,
-  })  : _dio = dio,
-        _storage = storage,
-        _logger = logger {
+  }) : _dio = dio,
+       _storage = storage,
+       _logger = logger {
     _setupInterceptors();
   }
 
   void _setupInterceptors() {
     _dio.options.baseUrl = AppConstants.apiBaseUrl;
-    _dio.options.connectTimeout = const Duration(seconds: 30);
-    _dio.options.receiveTimeout = const Duration(seconds: 30);
+    _dio.options.connectTimeout = const Duration(seconds: 60);
+    _dio.options.receiveTimeout = const Duration(seconds: 60);
     _dio.options.headers['Content-Type'] = 'application/json';
     _dio.options.headers['Accept'] = '*/*';
     _dio.options.headers['X-Pinggy-No-Screen'] = 'true';
 
     if (!kIsWeb) {
-      _dio.options.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+      _dio.options.headers['User-Agent'] =
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
       _dio.options.headers['Connection'] = 'keep-alive';
     }
 
@@ -49,13 +50,16 @@ class ApiClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           try {
-            final isAuthRequest = options.path.contains('auth/login') ||
+            final isAuthRequest =
+                options.path.contains('auth/login') ||
                 options.path.contains('auth/register') ||
                 options.path.contains('auth/verify-email');
 
             // Priority: Check storage first for a dynamic login token
-            String? token = await _storage.read(key: AppConstants.keyAccessToken);
-            
+            String? token = await _storage.read(
+              key: AppConstants.keyAccessToken,
+            );
+
             // If storage is empty, fall back to the hardcoded AppConstants.apiToken
             if (token == null || token.isEmpty) {
               token = AppConstants.apiToken;
@@ -72,9 +76,10 @@ class ApiClient {
         },
         onError: (DioException e, handler) async {
           _logger.e(
-              'API Error [${e.response?.statusCode}] for ${e.requestOptions.uri}: ${e.message}');
+            'API Error [${e.response?.statusCode}] for ${e.requestOptions.uri}: ${e.message}',
+          );
           _logger.e('API Error Response: ${e.response?.data}');
-          
+
           final isUnauthorized = e.response?.statusCode == 401;
           bool isUserNotFound = false;
           if (e.response?.data != null && e.response?.data is Map) {
@@ -83,20 +88,22 @@ class ApiClient {
               isUserNotFound = data['error']['code'] == 'USER_NOT_FOUND';
             }
           }
-          
+
           if (isUnauthorized || isUserNotFound) {
             _logger.w('Unauthorized or User Not Found: Auto-logging out');
             try {
-               di.sl<AuthCubit>().clearLocalSession();
-               globalNavigatorKey.currentState?.pushAndRemoveUntil(
-                 MaterialPageRoute(builder: (_) => const LoginScreen(isFromSignup: false)),
-                 (route) => false,
-               );
+              di.sl<AuthCubit>().clearLocalSession();
+              globalNavigatorKey.currentState?.pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (_) => const LoginScreen(isFromSignup: false),
+                ),
+                (route) => false,
+              );
             } catch (err) {
-               _logger.e('Error during auto-logout: $err');
+              _logger.e('Error during auto-logout: $err');
             }
           }
-          
+
           return handler.next(e);
         },
       ),
