@@ -615,4 +615,23 @@ class ChatCubit extends Cubit<ChatState> {
 
     emit(state.copyWith(isGenerating: false, messages: messages));
   }
+
+  void retryLastMessage() {
+    if (state.isGenerating) return;
+    
+    // Find the last user message in the current list
+    final userMessages = state.messages.where((m) => m.isUser).toList();
+    if (userMessages.isEmpty) return;
+    
+    final lastUserMessage = userMessages.last;
+    
+    // Remove the error message(s) if any from the end
+    final updatedMessages = List<ChatMessage>.from(state.messages);
+    while (updatedMessages.isNotEmpty && !updatedMessages.last.isUser) {
+      updatedMessages.removeLast();
+    }
+    
+    emit(state.copyWith(messages: updatedMessages));
+    sendMessage(lastUserMessage.content);
+  }
 }

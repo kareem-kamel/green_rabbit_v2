@@ -7,27 +7,64 @@ class NewsCubit extends Cubit<NewsState> {
 
   NewsCubit({required this.repository}) : super(NewsInitial());
 
-  // THIS NAME MUST MATCH WHAT YOU TYPE IN MAIN.DART
+  // Fetch initial news feed
   Future<void> fetchNewsFeed({int limit = 10, String? category}) async {
     try {
       emit(NewsLoading());
-      var articles = await repository.fetchNewsFeed(limit: limit, category: category);
+      final articles = await repository.fetchNewsFeed(page: 1, limit: limit, category: category);
       
-      // We rely entirely on the backend to filter categories.
-      // The backend uses 'category' query parameter properly now.
+      // If we got fewer articles than requested, we assume there's no more
+      final hasMore = articles.length >= limit;
       
-      emit(NewsLoaded(articles));
+      emit(NewsLoaded(
+        articles,
+        currentPage: 1,
+        hasMore: hasMore,
+        isLoadingMore: false,
+      ));
     } catch (e) {
       emit(NewsError("Error: ${e.toString()}"));
     }
   }
 
-  Future<void> fetchFavoriteNews({int limit = 10}) async {
+  // Load more news for pagination
+  Future<void> loadMoreNews({int limit = 10, String? category}) async {
+    if (state is! NewsLoaded) return;
+    
+    final currentState = state as NewsLoaded;
+    if (currentState.isLoadingMore || !currentState.hasMore) return;
+
+    try {
+      emit(currentState.copyWith(isLoadingMore: true));
+      
+      final nextPage = currentState.currentPage + 1;
+      final newArticles = await repository.fetchNewsFeed(
+        page: nextPage,
+        limit: limit,
+        category: category,
+      );
+      
+      final hasMore = newArticles.length >= limit;
+      final allArticles = [...currentState.articles, ...newArticles];
+      
+      emit(NewsLoaded(
+        allArticles,
+        currentPage: nextPage,
+        hasMore: hasMore,
+        isLoadingMore: false,
+      ));
+    } catch (e) {
+      // On error, we just stop loading more but keep existing articles
+      emit(currentState.copyWith(isLoadingMore: false));
+    }
+  }
+
+  Future<void> fetchFavoriteNews({int limit = 20}) async {
     try {
       // Load from cache first for immediate display
       final cachedArticles = repository.getCachedFavorites();
       if (cachedArticles.isNotEmpty) {
-        emit(NewsLoaded(cachedArticles));
+        emit(NewsLoaded(cachedArticles, hasMore: false)); // Favorites usually don't paginate in this app's logic yet
       } else {
         emit(NewsLoading());
       }
@@ -37,7 +74,7 @@ class NewsCubit extends Cubit<NewsState> {
       // Update cache with fresh data
       await repository.cacheFavorites(articles);
       
-      emit(NewsLoaded(articles));
+      emit(NewsLoaded(articles, hasMore: false));
     } catch (e) {
       // If we already have cached data, don't emit error
       if (state is! NewsLoaded) {

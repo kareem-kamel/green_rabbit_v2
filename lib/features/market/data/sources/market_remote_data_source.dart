@@ -666,7 +666,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
         });
         debugPrint('╚══════════════════════════════════════════════════════════════╝\n');
 
-        debugPrint('📡 [SSE] Sending request using Dio...');
+        debugPrint('[SSE] Sending request using Dio...');
 
         Response<ResponseBody>? response;
         try {
@@ -727,7 +727,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
         debugPrint('╚══════════════════════════════════════════════════════════════╝\n');
 
         if (response.statusCode == 200) {
-          debugPrint('🟢 [SSE] Successfully established stream connection for: $limitedInstruments');
+          debugPrint('[SSE] Successfully established stream connection for: $limitedInstruments');
         }
 
         if (response.statusCode != 200) {
@@ -741,7 +741,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
               final rawSymbol = inst.contains(':') ? inst.split(':')[1] : inst;
               try {
                 final restUrl = AppConstants.instrumentDetails(rawSymbol);
-                debugPrint('🔍 [SSE] Validating via REST: $inst → GET $restUrl');
+                debugPrint('[SSE] Validating via REST: $inst → GET $restUrl');
 
                 final restResp = await _apiClient.dio.get(
                   restUrl,
@@ -855,7 +855,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
             try {
               final Map<String, dynamic> data = jsonDecode(dataString);
               if (data['type'] == 'price_update') {
-                debugPrint('🔍 [SSE Raw Data] $data');
+                debugPrint('[SSE Raw Data] $data');
                 final instId = data['instrumentId']?.toString();
                 if (instId != null) {
                   if ((instId == 'stock:ADBE' || instId == 'ADBE') &&
@@ -863,7 +863,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
                     data['instrumentId'] = instId.replaceFirst('ADBE', 'AADBE');
                   }
                 }
-                debugPrint('📈 [SSE] Decoded price update: ${data['symbol'] ?? data['instrumentId']} -> \$${data['price']} (Change: ${data['changePercent']}%)');
+                debugPrint('[SSE] Decoded price update: ${data['symbol'] ?? data['instrumentId']} -> \$${data['price']} (Change: ${data['changePercent']}%)');
               }
               yield data;
             } catch (e) {
@@ -875,7 +875,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
 
       } catch (e) {
         if (cancelToken?.isCancelled ?? false) {
-          debugPrint('🛑 [SSE] Stream explicitly cancelled (likely due to scrolling or navigation).');
+          debugPrint('[SSE] Stream explicitly cancelled (likely due to scrolling or navigation).');
         } else {
           debugPrint('\n╔══════════════════════════════════════════════════════════════╗');
           debugPrint('║  [SSE] ERROR                                                   ║');

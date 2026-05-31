@@ -72,10 +72,6 @@ class GreenRabbitApp extends StatelessWidget {
         BlocProvider<AuthCubit>(create: (context) => di.sl<AuthCubit>()..checkAuth()),
       ],
 
-      child: BlocListener<AuthCubit, AuthState>(
-        listener: (context, state) {
-          showGlobalCalculator.value = (state is AuthSuccess);
-        },
         child: BlocBuilder<SettingsCubit, SettingsState>(
           builder: (context, settingsState) {
             return MaterialApp(
@@ -91,7 +87,15 @@ class GreenRabbitApp extends StatelessWidget {
               return Stack(
                 children: [
                   if (child != null) child,
-                  const GlobalCalculatorOverlay(),
+                  // Only show the calculator overlay when authenticated
+                  BlocBuilder<AuthCubit, AuthState>(
+                    builder: (context, authState) {
+                      if (authState is AuthSuccess) {
+                        return const GlobalCalculatorOverlay();
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
                 ],
               );
             },
@@ -140,7 +144,6 @@ class GreenRabbitApp extends StatelessWidget {
           );
         },
       ),
-    ),
     );
   }
 }

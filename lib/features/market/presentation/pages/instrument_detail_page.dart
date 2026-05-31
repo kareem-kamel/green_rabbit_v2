@@ -592,12 +592,21 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           const Spacer(),
           GestureDetector(
             onTap: () {
+              final price = detail.price.current?.toStringAsFixed(2) ?? 'N/A';
+              final change = detail.price.change?.toStringAsFixed(2) ?? '0.00';
+              final pct = detail.price.changePercent?.toStringAsFixed(2) ?? '0.00';
+              final sector = detail.sector ?? 'N/A';
+              final mktCap = detail.fundamentals?.marketCap?.toString() ?? 'N/A';
+              
+              final prompt = 'Provide a detailed financial analysis and market outlook for ${detail.name} (${detail.symbol}). '
+                  'Current market data: Price \$ $price, Change \$ $change ($pct%), Sector: $sector, Market Cap: $mktCap. '
+                  'Based on this and the latest market trends, what is your recommendation?';
+
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => ChatBotScreen(
-                    summaryId: detail.id,
-                    summaryType: 'instrument',
+                    initialPrompt: prompt,
                   ),
                 ),
               );
@@ -724,7 +733,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
 
   Widget _buildNewsTab(MarketInstrumentDetail detail) {
     final newsAsync = ref.watch(instrumentNewsProvider(_getNewsProviderKey(detail)));
-    debugPrint('📰 [DEBUG] _buildNewsTab building, state: $newsAsync');
+    debugPrint('[DEBUG] _buildNewsTab building, state: $newsAsync');
     return newsAsync.when(
       data: (articles) {
         if (articles.isEmpty) {
@@ -1146,7 +1155,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   Widget _buildSparklineSection(MarketInstrumentDetail detail) {
     final interval = _getIntervalForPeriod(_selectedPeriod);
     final providerKey = '${widget.instrumentId}|$_selectedPeriod|$interval';
-    debugPrint('📊 [DEBUG] Portrait Chart Request: $providerKey');
+    debugPrint('[DEBUG] Portrait Chart Request: $providerKey');
     final chartAsync = ref.watch(instrumentChartProvider(providerKey));
 
     return Padding(
@@ -1639,7 +1648,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
 
   Widget _buildNewsDashboardTab(MarketInstrumentDetail detail) {
     final newsAsync = ref.watch(instrumentNewsProvider(_getNewsProviderKey(detail)));
-    debugPrint('📰 [DEBUG] _buildNewsDashboardTab building, state: $newsAsync');
+    debugPrint('[DEBUG] _buildNewsDashboardTab building, state: $newsAsync');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

@@ -241,11 +241,12 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
           children: [
             Row(
               children: List.generate(3, (index) {
+                final isHighlighted = importance > index;
                 return Padding(
                   padding: const EdgeInsets.only(right: 2),
                   child: Image.asset(
-                    importance > index
-                        ? 'assets/rabbit_highlighted.png'
+                    isHighlighted
+                        ? 'assets/green_rabbit.png'
                         : 'assets/rabbit_dark.png',
                     width: 14,
                     height: 14,

@@ -122,7 +122,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
       
       if (!isSame) {
         ref.read(visibleInstrumentsProvider.notifier).state = visibleIds;
-        debugPrint('👁️ [SSE] Calculated visible instruments: $visibleIds');
+        debugPrint('[SSE] Calculated visible instruments: $visibleIds');
       }
     });
   }
@@ -405,24 +405,31 @@ class _MarketPageState extends ConsumerState<MarketPage> {
       child: Row(
         mainAxisAlignment: width > 600 ? MainAxisAlignment.center : MainAxisAlignment.start,
         children: [
-          _tabItem('🔥 Popular', type: 'popular'),
+          _tabItem('Popular', Icons.local_fire_department_rounded, type: 'popular'),
           const SizedBox(width: 12),
-          _tabItem('📈 Stocks', type: 'stocks'),
+          _tabItem('Stocks', Icons.show_chart_rounded, type: 'stocks'),
           const SizedBox(width: 12),
-          _tabItem('💎 Crypto', type: 'crypto'),
+          _tabItem('Cryptocurrency', Icons.currency_bitcoin_rounded, type: 'crypto'),
           const SizedBox(width: 12),
-          _tabItem('💱 Forex', type: 'forex'),
+          _tabItem('Forex', Icons.swap_horiz_rounded, type: 'forex'),
           const SizedBox(width: 12),
-          _tabItem('💼 ETFs', type: 'etf'),
+          _tabItem('ETFs', Icons.layers_rounded, type: 'etf'),
           const SizedBox(width: 12),
-          _tabItem('🛢️ Commodities', type: 'commodities'),
+          _tabItem('Commodities', Icons.oil_barrel_rounded, type: 'commodities'),
         ],
       ),
     );
   }
 
-  Widget _tabItem(String label, {required String type}) {
+  Widget _tabItem(String label, IconData icon, {required String type}) {
     final bool isActive = _selectedType == type;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    final Color contentColor = isActive 
+        ? (isDark ? Colors.white : AppColors.primary) 
+        : theme.textTheme.bodyMedium?.color ?? Colors.grey;
+
     return GestureDetector(
       onTap: () {
         setState(() => _selectedType = type);
@@ -431,23 +438,33 @@ class _MarketPageState extends ConsumerState<MarketPage> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isActive ? Colors.transparent : Theme.of(context).cardColor,
+          color: isActive ? Colors.transparent : theme.cardColor,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isActive ? AppColors.primary : Theme.of(context).dividerColor,
+            color: isActive ? AppColors.primary : theme.dividerColor,
             width: 1.5,
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isActive 
-                ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primary) 
-                : Theme.of(context).textTheme.bodyMedium?.color,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: contentColor,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: contentColor,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
       ),
     );

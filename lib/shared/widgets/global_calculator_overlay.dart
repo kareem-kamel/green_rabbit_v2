@@ -8,9 +8,6 @@ import '../../features/market/data/models/market_instrument.dart';
 
 import 'package:green_rabbit/shared/widgets/feature_guide_overlay.dart';
 
-// Global flag to control visibility
-final ValueNotifier<bool> showGlobalCalculator = ValueNotifier<bool>(false);
-
 // Persistent state for Standard Calculator
 double _globalPrincipal = 1000.0;
 double _globalAnnualRate = 10.0;
@@ -35,6 +32,7 @@ class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
   double _xOffset = 42.0;
   bool _isHidden = true;
   bool _isPageOpen = false;
+  bool _hasInteracted = false;
 
   @override
   void initState() {
@@ -44,11 +42,17 @@ class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
     _isHidden = true;
   }
 
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   void _openCalculator() async {
     if (_isHidden) {
       setState(() {
         _isHidden = false;
         _xOffset = 0.0;
+        _hasInteracted = true;
       });
       return;
     }
@@ -71,39 +75,63 @@ class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
     if (mounted) {
       setState(() {
         _isPageOpen = false;
+        // Keep it revealed after coming back so user can easily open it again or swipe it away
+        _isHidden = false;
+        _xOffset = 0.0;
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<bool>(
-      valueListenable: showGlobalCalculator,
-      builder: (context, show, child) {
-        if (!show || _isPageOpen) return const SizedBox.shrink();
+    if (_isPageOpen) return const SizedBox.shrink();
 
-        return Positioned(
-          bottom: 60, // Lower position
-          right: -_xOffset + 16,
-          child: SafeArea(
-            child: GestureDetector(
-              onHorizontalDragUpdate: (details) {
-                setState(() {
-                  _xOffset -= details.delta.dx;
-                  if (_xOffset < 0) _xOffset = 0;
-                  if (_xOffset > 42) _xOffset = 42; // Max hide offset
-                });
-              },
-              onHorizontalDragEnd: (details) {
-                setState(() {
-                  if (_xOffset > 20) {
-                    _xOffset = 42;
-                    _isHidden = true;
-                  } else {
-                    _xOffset = 0;
-                    _isHidden = false;
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      bottom: 60,
+      right: -_xOffset + 16,
+      child: SafeArea(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_isHidden && !_hasInteracted)
+              const _AnimatedSwipeHint(),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onPanUpdate: (details) {
+                if (_isHidden) {
+                  // If hidden, only allow horizontal pulling to reveal
+                  if (details.delta.dx.abs() > details.delta.dy.abs()) {
+                    setState(() {
+                      _xOffset -= details.delta.dx;
+                      if (_xOffset < 0) _xOffset = 0;
+                      if (_xOffset > 42) _xOffset = 42;
+                    });
                   }
-                });
+                } else {
+                  // If revealed, ANY significant movement in ANY direction closes it
+                  if (details.delta.dx.abs() > 2 || details.delta.dy.abs() > 2) {
+                    setState(() {
+                      _xOffset = 42;
+                      _isHidden = true;
+                    });
+                  }
+                }
+              },
+              onPanEnd: (details) {
+                if (_isHidden) {
+                  setState(() {
+                    if (_xOffset > 20) {
+                      _xOffset = 42;
+                      _isHidden = true;
+                    } else {
+                      _xOffset = 0;
+                      _isHidden = false;
+                      _hasInteracted = true;
+                    }
+                  });
+                }
               },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
@@ -134,7 +162,7 @@ class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
                             child: Icon(
                               _isHidden ? Icons.chevron_left : Icons.calculate_outlined,
                               color: Colors.white,
-                              size: _isHidden ? 20 : 28, // Slightly larger hidden icon
+                              size: _isHidden ? 20 : 28,
                             ),
                           ),
                         ),
@@ -158,6 +186,76 @@ class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
                     ),
                   ),
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedSwipeHint extends StatefulWidget {
+  const _AnimatedSwipeHint();
+
+  @override
+  State<_AnimatedSwipeHint> createState() => _AnimatedSwipeHintState();
+}
+
+class _AnimatedSwipeHintState extends State<_AnimatedSwipeHint> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _positionAnimation;
+  late Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat();
+
+    _positionAnimation = Tween<double>(begin: 0.0, end: 30.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+
+    _opacityAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(-_positionAnimation.value, 0),
+          child: Opacity(
+            opacity: _opacityAnimation.value,
+            child: const Material(
+              color: Colors.transparent,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "SWIPE", 
+                    style: TextStyle(
+                      color: AppColors.primaryPurple, 
+                      fontWeight: FontWeight.bold, 
+                      fontSize: 12,
+                      letterSpacing: 1,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                  Icon(Icons.arrow_back_ios_rounded, color: AppColors.primaryPurple, size: 20),
+                ],
               ),
             ),
           ),

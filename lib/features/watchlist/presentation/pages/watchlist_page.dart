@@ -158,7 +158,7 @@ class WatchlistPage extends ConsumerWidget {
             MaterialPageRoute(
               builder: (context) => ChatBotScreen(
                 summaryId: state.selectedWatchlist!.id,
-                summaryType: 'watchlist',
+                summaryType: 'watch_list',
               ),
             ),
           );
