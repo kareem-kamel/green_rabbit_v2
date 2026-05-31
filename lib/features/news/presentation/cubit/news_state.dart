@@ -11,7 +11,30 @@ class NewsLoading extends NewsState {}
 // 3. The state when the data is successfully fetched
 class NewsLoaded extends NewsState {
   final List<NewsArticle> articles;
-  NewsLoaded(this.articles);
+  final bool hasMore;
+  final int currentPage;
+  final bool isLoadingMore;
+
+  NewsLoaded(
+    this.articles, {
+    this.hasMore = true,
+    this.currentPage = 1,
+    this.isLoadingMore = false,
+  });
+
+  NewsLoaded copyWith({
+    List<NewsArticle>? articles,
+    bool? hasMore,
+    int? currentPage,
+    bool? isLoadingMore,
+  }) {
+    return NewsLoaded(
+      articles ?? this.articles,
+      hasMore: hasMore ?? this.hasMore,
+      currentPage: currentPage ?? this.currentPage,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    );
+  }
 }
 
 // 4. The state if the API link fails or there is no internet

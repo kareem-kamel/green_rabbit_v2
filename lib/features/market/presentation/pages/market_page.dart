@@ -1,7 +1,9 @@
+import '../../../profile/presentation/screens/subscription_screen.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:green_rabbit/features/profile/presentation/cubit/profile_cubit.dart';
 import 'package:green_rabbit/features/profile/presentation/cubit/profile_state.dart';
 import 'package:green_rabbit/core/theme/app_theme.dart';
@@ -122,7 +124,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
       
       if (!isSame) {
         ref.read(visibleInstrumentsProvider.notifier).state = visibleIds;
-        debugPrint('👁️ [SSE] Calculated visible instruments: $visibleIds');
+        debugPrint('[SSE] Calculated visible instruments: $visibleIds');
       }
     });
   }
@@ -180,6 +182,10 @@ class _MarketPageState extends ConsumerState<MarketPage> {
         ? ref.watch(marketOverviewLoadingMoreProvider(_selectedType))
         : false;
 
+    final hasHitRateLimit = (_selectedType != 'popular' && _selectedType != 'etf')
+        ? ref.watch(marketRateLimitHitProvider(_selectedType))
+        : false;
+
     return SafeArea(
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -208,7 +214,9 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                       const AppSectionHeader(title: 'Market'),
                       const SizedBox(height: 16),
                       _buildTabs(context, constraints.maxWidth),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
+                      if (hasHitRateLimit) _buildThrottledNotice(context),
+                      const SizedBox(height: 8),
                       instrumentsAsync.when(
                         data: (instruments) {
                           return Column(
@@ -263,6 +271,74 @@ class _MarketPageState extends ConsumerState<MarketPage> {
               }
             },
             child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildThrottledNotice(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.secondaryBlue.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.secondaryBlue.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.info_outline_rounded,
+            color: AppColors.secondaryBlue,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Rate Limit Reached',
+                  style: TextStyle(
+                    color: AppColors.secondaryBlue,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'You have reached the free plan rate limit. Loading will resume shortly. Upgrade to Pro for unlimited instant data.',
+                  style: TextStyle(
+                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => SubscriptionScreen()),
+              );
+              if (context.mounted) {
+                context.read<ProfileCubit>().getProfile();
+              }
+            },
+            child: const Text(
+              'UPGRADE',
+              style: TextStyle(
+                color: AppColors.secondaryBlue,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -405,49 +481,69 @@ class _MarketPageState extends ConsumerState<MarketPage> {
       child: Row(
         mainAxisAlignment: width > 600 ? MainAxisAlignment.center : MainAxisAlignment.start,
         children: [
-          _tabItem('🔥 Popular', type: 'popular'),
+          _tabItem('Popular', Icons.local_fire_department_rounded, type: 'popular'),
           const SizedBox(width: 12),
-          _tabItem('📈 Stocks', type: 'stocks'),
+          _tabItem('Stocks', Icons.show_chart_rounded, type: 'stocks'),
           const SizedBox(width: 12),
-          _tabItem('💎 Crypto', type: 'crypto'),
+          _tabItem('Cryptocurrency', Icons.currency_bitcoin_rounded, type: 'crypto'),
           const SizedBox(width: 12),
-          _tabItem('💱 Forex', type: 'forex'),
+          _tabItem('Forex', Icons.swap_horiz_rounded, type: 'forex'),
           const SizedBox(width: 12),
-          _tabItem('💼 ETFs', type: 'etf'),
+          _tabItem('ETFs', Icons.layers_rounded, type: 'etf'),
           const SizedBox(width: 12),
-          _tabItem('🛢️ Commodities', type: 'commodities'),
+          _tabItem('Commodities', Icons.oil_barrel_rounded, type: 'commodities'),
         ],
       ),
     );
   }
 
-  Widget _tabItem(String label, {required String type}) {
+  Widget _tabItem(String label, IconData icon, {required String type}) {
     final bool isActive = _selectedType == type;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    final Color contentColor = isActive 
+        ? (isDark ? Colors.white : AppColors.primary) 
+        : theme.textTheme.bodyMedium?.color ?? Colors.grey;
+
     return GestureDetector(
       onTap: () {
+        if (_selectedType == type) return;
         setState(() => _selectedType = type);
+        // Reset rate limit notice when switching tabs
+        ref.read(marketRateLimitHitProvider(_selectedType).notifier).state = false;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           _updateVisibleInstruments();
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isActive ? Colors.transparent : Theme.of(context).cardColor,
+          color: isActive ? Colors.transparent : theme.cardColor,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isActive ? AppColors.primary : Theme.of(context).dividerColor,
+            color: isActive ? AppColors.primary : theme.dividerColor,
             width: 1.5,
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isActive 
-                ? (Theme.of(context).brightness == Brightness.dark ? Colors.white : AppColors.primary) 
-                : Theme.of(context).textTheme.bodyMedium?.color,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: contentColor,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: contentColor,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -607,6 +703,17 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                     ),
                 ],
               ),
+              if (instrument.type.toLowerCase() == 'crypto' && (instrument.cryptoMetrics?.marketCap != null || instrument.marketCap != null))
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    'MCap: ${_formatLargeNumber(instrument.cryptoMetrics?.marketCap ?? instrument.marketCap, isCurrency: true)}',
+                    style: TextStyle(
+                      color: isDark ? Colors.grey[500] : Colors.grey[500],
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
             ],
           )
         : Column( // Redesigned layout for list items
@@ -656,22 +763,39 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                 children: [
                   // Symbol and Exchange Section
                   Expanded(
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.access_time, size: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            '${instrument.symbol} | ${instrument.exchange ?? 'Global'}',
-                            style: TextStyle(
-                              color: isDark ? Colors.grey[400] : Colors.grey[600],
-                              fontSize: 12,
-                              fontWeight: FontWeight.w400,
+                        Row(
+                          children: [
+                            Icon(Icons.access_time, size: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                '${instrument.symbol} | ${instrument.exchange ?? 'Global'}',
+                                style: TextStyle(
+                                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                          ],
                         ),
+                        if (instrument.type.toLowerCase() == 'crypto' && (instrument.cryptoMetrics?.marketCap != null || instrument.marketCap != null))
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'MCap: ${_formatLargeNumber(instrument.cryptoMetrics?.marketCap ?? instrument.marketCap, isCurrency: true)}',
+                              style: TextStyle(
+                                color: isDark ? Colors.grey[500] : Colors.grey[500],
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -728,6 +852,20 @@ class _MarketPageState extends ConsumerState<MarketPage> {
         ),
       ],
     );
+  }
+
+  String _formatLargeNumber(num? number, {bool isCurrency = false}) {
+    if (number == null) return '-';
+    final prefix = isCurrency ? '\$' : '';
+    if (number >= 1e12) {
+      return '$prefix${(number / 1e12).toStringAsFixed(2)}T';
+    } else if (number >= 1e9) {
+      return '$prefix${(number / 1e9).toStringAsFixed(2)}B';
+    } else if (number >= 1e6) {
+      return '$prefix${(number / 1e6).toStringAsFixed(2)}M';
+    } else {
+      return '$prefix${NumberFormat('#,##0', 'en_US').format(number)}';
+    }
   }
 }
 

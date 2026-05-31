@@ -28,14 +28,25 @@ abstract class MarketRemoteDataSource {
   Future<List<String>> getSearchHistory({int? limit});
   Future<bool> clearSearchHistory();
   Future<void> saveSearchHistory(String query);
+  
+  // Rate limit event stream
+  Stream<int> get rateLimitStream;
 }
 
 class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
   final ApiClient _apiClient;
+  final _rateLimitController = StreamController<int>.broadcast();
 
   static final Set<String> _streamBlacklistedSymbols = {};
 
-  MarketRemoteDataSourceImpl(this._apiClient);
+  MarketRemoteDataSourceImpl(this._apiClient) {
+    _apiClient.onRateLimit = (seconds) {
+      _rateLimitController.add(seconds);
+    };
+  }
+
+  @override
+  Stream<int> get rateLimitStream => _rateLimitController.stream;
 
   @override
   Future<MarketOverviewResponse> getMarketOverview(String type, {String? search, int? page, int? limit}) async {
@@ -348,6 +359,12 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
           },
         },
       },
+      'cryptoMetrics': {
+        'market_cap': 1000000000.0 + (hash % 1000) * 1000000,
+        'circulating_supply': 1000000.0 + (hash % 500) * 1000,
+        'total_supply': 21000000.0,
+        'dominance': (hash % 500) / 100.0, // 0-5%
+      }
     };
   }
 
@@ -666,7 +683,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
         });
         debugPrint('╚══════════════════════════════════════════════════════════════╝\n');
 
-        debugPrint('📡 [SSE] Sending request using Dio...');
+        debugPrint('[SSE] Sending request using Dio...');
 
         Response<ResponseBody>? response;
         try {
@@ -727,10 +744,26 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
         debugPrint('╚══════════════════════════════════════════════════════════════╝\n');
 
         if (response.statusCode == 200) {
-          debugPrint('🟢 [SSE] Successfully established stream connection for: $limitedInstruments');
+          debugPrint('[SSE] Successfully established stream connection for: $limitedInstruments');
         }
 
         if (response.statusCode != 200) {
+          if (response.statusCode == 401) {
+            debugPrint('⛔ [SSE] Unauthorized (401). Check API token. Retrying in 10s...');
+            await Future.delayed(const Duration(seconds: 10));
+            retryDelaySec = 1; // Reset normal retry delay
+            continue;
+          }
+          
+          if (response.statusCode == 429) {
+            final retryAfterStr = response.headers.value('retry-after');
+            final retryAfterSeconds = int.tryParse(retryAfterStr ?? '') ?? 20;
+            debugPrint('⚠️ [SSE] Rate limited (429). Waiting $retryAfterSeconds seconds before retry...');
+            await Future.delayed(Duration(seconds: retryAfterSeconds));
+            retryDelaySec = 1;
+            continue;
+          }
+
           if (response.statusCode == 404) {
             debugPrint('⚠️ [SSE] Connection failed with 404. Diagnosing invalid instruments...');
 
@@ -741,7 +774,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
               final rawSymbol = inst.contains(':') ? inst.split(':')[1] : inst;
               try {
                 final restUrl = AppConstants.instrumentDetails(rawSymbol);
-                debugPrint('🔍 [SSE] Validating via REST: $inst → GET $restUrl');
+                debugPrint('[SSE] Validating via REST: $inst → GET $restUrl');
 
                 final restResp = await _apiClient.dio.get(
                   restUrl,
@@ -855,7 +888,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
             try {
               final Map<String, dynamic> data = jsonDecode(dataString);
               if (data['type'] == 'price_update') {
-                debugPrint('🔍 [SSE Raw Data] $data');
+                debugPrint('[SSE Raw Data] $data');
                 final instId = data['instrumentId']?.toString();
                 if (instId != null) {
                   if ((instId == 'stock:ADBE' || instId == 'ADBE') &&
@@ -863,7 +896,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
                     data['instrumentId'] = instId.replaceFirst('ADBE', 'AADBE');
                   }
                 }
-                debugPrint('📈 [SSE] Decoded price update: ${data['symbol'] ?? data['instrumentId']} -> \$${data['price']} (Change: ${data['changePercent']}%)');
+                debugPrint('[SSE] Decoded price update: ${data['symbol'] ?? data['instrumentId']} -> \$${data['price']} (Change: ${data['changePercent']}%)');
               }
               yield data;
             } catch (e) {
@@ -875,7 +908,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
 
       } catch (e) {
         if (cancelToken?.isCancelled ?? false) {
-          debugPrint('🛑 [SSE] Stream explicitly cancelled (likely due to scrolling or navigation).');
+          debugPrint('[SSE] Stream explicitly cancelled (likely due to scrolling or navigation).');
         } else {
           debugPrint('\n╔══════════════════════════════════════════════════════════════╗');
           debugPrint('║  [SSE] ERROR                                                   ║');

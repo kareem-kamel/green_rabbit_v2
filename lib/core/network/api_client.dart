@@ -20,6 +20,7 @@ class ApiClient {
   bool _isRefreshing = false;
 
   VoidCallback? onUnauthorized;
+  Function(int seconds)? onRateLimit;
 
   ApiClient({
     required Dio dio,

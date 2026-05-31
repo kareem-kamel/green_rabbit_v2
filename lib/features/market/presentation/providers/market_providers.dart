@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,8 @@ import '../../data/repositories/market_repository_impl.dart';
 final marketRepositoryProvider = Provider<MarketRepository>((ref) => sl<MarketRepository>());
 
 final marketOverviewLoadingMoreProvider = StateProvider.family<bool, String>((ref, type) => false);
+final marketThrottledLoadingProvider = StateProvider.family<bool, String>((ref, type) => false);
+final marketRateLimitHitProvider = StateProvider.family<bool, String>((ref, type) => false);
 
 class MarketOverviewNotifier extends StateNotifier<AsyncValue<List<MarketInstrument>>> {
   final MarketRepository _repository;
@@ -20,15 +23,42 @@ class MarketOverviewNotifier extends StateNotifier<AsyncValue<List<MarketInstrum
   bool _hasNext = true;
   List<MarketInstrument> _instruments = [];
   ProviderSubscription? _livePricesSubscription;
+  StreamSubscription<int>? _rateLimitSubscription;
 
   MarketOverviewNotifier(this._repository, this._type, this._ref, this._searchQuery)
       : super(const AsyncValue.loading()) {
     _fetchFirstPage();
+    _setupVisibleStatsListener();
+    _setupRateLimitListener();
+  }
+
+  void _setupRateLimitListener() {
+    _rateLimitSubscription = _repository.rateLimitStream.listen((seconds) {
+      if (mounted) {
+        _ref.read(marketRateLimitHitProvider(_type).notifier).state = true;
+      }
+    });
+  }
+
+  void _setupVisibleStatsListener() {
+    if (_type != 'crypto') return;
+
+    _ref.listen<List<String>>(visibleInstrumentsProvider, (previous, next) {
+      if (next.isNotEmpty) {
+        final visibleInstruments = _instruments.where((inst) => next.contains(inst.id)).toList();
+        final needsStats = visibleInstruments.where((inst) => inst.cryptoMetrics == null).toList();
+        
+        if (needsStats.isNotEmpty) {
+          _fetchCryptoStatsThrottled(needsStats);
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
     _livePricesSubscription?.close();
+    _rateLimitSubscription?.cancel();
     super.dispose();
   }
 
@@ -44,10 +74,71 @@ class MarketOverviewNotifier extends StateNotifier<AsyncValue<List<MarketInstrum
       _currentPage = 1;
       _hasNext = response.meta.hasNext;
       _instruments = response.instruments;
+
       state = AsyncValue.data(_instruments);
       _updateLivePricesSubscription();
     } catch (e, stack) {
       state = AsyncValue.error(e, stack);
+    }
+  }
+
+  final Set<String> _statsFetchQueue = {};
+  bool _isProcessingStats = false;
+
+  Future<void> _fetchCryptoStatsThrottled(List<MarketInstrument> targetInstruments) async {
+    // Add new instruments to the queue
+    for (final inst in targetInstruments) {
+      if (inst.cryptoMetrics == null) {
+        _statsFetchQueue.add(inst.id);
+      }
+    }
+
+    if (_isProcessingStats) return;
+    _isProcessingStats = true;
+
+    _ref.read(marketThrottledLoadingProvider(_type).notifier).state = true;
+    
+    try {
+      while (_statsFetchQueue.isNotEmpty) {
+        final currentId = _statsFetchQueue.first;
+        _statsFetchQueue.remove(currentId);
+
+        // Check if we still need to fetch it
+        final inst = _instruments.firstWhere((i) => i.id == currentId, orElse: () => _instruments.first);
+        if (inst.id != currentId || inst.cryptoMetrics != null) continue;
+
+        // Conservative delay (4 seconds)
+        await Future.delayed(const Duration(milliseconds: 4000));
+        
+        if (!mounted) break;
+
+        try {
+          final stats = await _repository.getInstrumentStats(currentId);
+          
+          _instruments = _instruments.map((item) {
+            if (item.id == currentId) {
+              return item.copyWith(cryptoMetrics: stats.cryptoMetrics);
+            }
+            return item;
+          }).toList();
+          
+          state = AsyncValue.data(List.of(_instruments));
+        } catch (e) {
+          debugPrint('Throttled fetch error for $currentId: $e');
+          if (e.toString().contains('429')) {
+            // Mark that we hit the rate limit to show the notice in the UI
+            if (mounted) {
+              _ref.read(marketRateLimitHitProvider(_type).notifier).state = true;
+            }
+            await Future.delayed(const Duration(seconds: 15));
+          }
+        }
+      }
+    } finally {
+      _isProcessingStats = false;
+      if (mounted) {
+        _ref.read(marketThrottledLoadingProvider(_type).notifier).state = false;
+      }
     }
   }
 
@@ -68,7 +159,9 @@ class MarketOverviewNotifier extends StateNotifier<AsyncValue<List<MarketInstrum
       
       _currentPage = nextPage;
       _hasNext = response.meta.hasNext;
-      _instruments.addAll(response.instruments);
+      
+      final newInstruments = response.instruments;
+      _instruments.addAll(newInstruments);
       state = AsyncValue.data(List.of(_instruments));
       _updateLivePricesSubscription();
     } catch (e) {
@@ -170,7 +263,7 @@ final visibleMarketLivePricesProvider = StreamProvider.autoDispose<Map<String, d
     cancelToken.cancel();
   });
   
-  debugPrint('🔄 [SSE] visibleMarketLivePricesProvider establishing stream for: $visibleIds');
+  debugPrint('[SSE] visibleMarketLivePricesProvider establishing stream for: $visibleIds');
   final stream = repository.getMarketStream(visibleIds, cancelToken: cancelToken);
 
   return stream.map((data) {
@@ -298,6 +391,43 @@ class LiveInstrumentDetailNotifier extends StateNotifier<AsyncValue<MarketInstru
       (previous, next) {
         if (next is AsyncError) {
           debugPrint('❌ [Details] instrumentLivePriceProvider Error: ${next.error}\n${next.stackTrace}');
+        }
+      },
+      fireImmediately: true,
+    );
+
+    _ref.listen<AsyncValue<MarketInstrumentStats>>(
+      instrumentStatsProvider('$_instrumentId|15m'),
+      (previous, next) {
+        if (next is AsyncData<MarketInstrumentStats>) {
+          final stats = next.value;
+          final currentDetail = state.valueOrNull;
+          if (currentDetail != null && stats.cryptoMetrics != null) {
+            state = AsyncValue.data(MarketInstrumentDetail(
+              id: currentDetail.id,
+              symbol: currentDetail.symbol,
+              name: currentDetail.name,
+              type: currentDetail.type,
+              exchange: currentDetail.exchange,
+              sector: currentDetail.sector,
+              industry: currentDetail.industry,
+              currency: currentDetail.currency,
+              description: currentDetail.description,
+              website: currentDetail.website,
+              logoUrl: currentDetail.logoUrl,
+              country: currentDetail.country,
+              price: currentDetail.price,
+              volume: currentDetail.volume,
+              fundamentals: currentDetail.fundamentals,
+              marketStatus: currentDetail.marketStatus,
+              tradingHours: currentDetail.tradingHours,
+              relatedInstruments: currentDetail.relatedInstruments,
+              contracts: currentDetail.contracts,
+              comments: currentDetail.comments,
+              cryptoMetrics: stats.cryptoMetrics, // Merge crypto metrics from stats
+              forexMetrics: currentDetail.forexMetrics,
+            ));
+          }
         }
       },
       fireImmediately: true,
@@ -438,7 +568,7 @@ final instrumentNewsProvider = FutureProvider.autoDispose.family<List<MarketNews
   final id = parts[0];
   final type = parts.length > 1 ? parts[1] : null;
   
-  debugPrint('📰 [DEBUG] Riverpod instrumentNewsProvider called with ID: $id, type: $type');
+  debugPrint('[DEBUG] Riverpod instrumentNewsProvider called with ID: $id, type: $type');
   return ref.watch(marketRepositoryProvider).getInstrumentNews(id, type: type);
 });
 
