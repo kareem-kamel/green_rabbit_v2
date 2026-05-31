@@ -20,6 +20,8 @@ const Map<String, String> kTierSafeIntervals = {
   '6M': '1d',   // Classic+
   '1Y': '1d',   // Classic+
   '5Y': '1w',   // Pro only
+  '10Y': '1M',  // Pro only
+  '15Y': '1M',  // Pro only
   'ALL': '1M',  // Pro only
 };
 

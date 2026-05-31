@@ -76,7 +76,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
 
       if (isMobile) {
         const double headerHeight = 350.0; 
-        const double itemHeight = 108.0; 
+        const double itemHeight = 92.0; 
         
         for (int i = 0; i < instruments.length; i++) {
           final double itemTop = headerHeight + (i * itemHeight);
@@ -405,17 +405,17 @@ class _MarketPageState extends ConsumerState<MarketPage> {
       child: Row(
         mainAxisAlignment: width > 600 ? MainAxisAlignment.center : MainAxisAlignment.start,
         children: [
-          _tabItem('Popular', type: 'popular'),
+          _tabItem('🔥 Popular', type: 'popular'),
           const SizedBox(width: 12),
-          _tabItem('Stocks', type: 'stocks'),
+          _tabItem('📈 Stocks', type: 'stocks'),
           const SizedBox(width: 12),
-          _tabItem('Crypto', type: 'crypto'),
+          _tabItem('💎 Crypto', type: 'crypto'),
           const SizedBox(width: 12),
-          _tabItem('Forex', type: 'forex'),
+          _tabItem('💱 Forex', type: 'forex'),
           const SizedBox(width: 12),
-          _tabItem('ETFs', type: 'etf'),
+          _tabItem('💼 ETFs', type: 'etf'),
           const SizedBox(width: 12),
-          _tabItem('Commodities', type: 'commodities'),
+          _tabItem('🛢️ Commodities', type: 'commodities'),
         ],
       ),
     );
@@ -483,7 +483,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: instruments.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final instrument = instruments[index];
         return _instrumentCard(
@@ -507,7 +507,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
     final isDark = theme.brightness == Brightness.dark;
 
     return AppCard(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: isGrid ? 12 : 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       onTap: () {
         Navigator.push(
           context,
@@ -521,56 +521,67 @@ class _MarketPageState extends ConsumerState<MarketPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF131722) : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.all(6),
-                    child: instrument.logoUrl != null 
-                      ? Image.network(
-                          instrument.logoUrl!,
-                          errorBuilder: (_, __, ___) => Icon(Icons.diamond_outlined, color: theme.iconTheme.color?.withOpacity(0.5), size: 18),
-                        )
-                      : Icon(Icons.diamond_outlined, color: theme.iconTheme.color?.withOpacity(0.5), size: 18),
-                  ),
                   _buildPriceColumn(context, instrument, isUp),
                 ],
               ),
               const Spacer(),
-              (() {
-                final words = instrument.name.trim().split(RegExp(r'\s+'));
-                final style = TextStyle(
-                  color: theme.textTheme.bodyLarge?.color,
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                );
-                return words.length > 1
-                    ? Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
-                        children: words.map((word) => Text(
-                          word,
-                          style: style,
-                          maxLines: 1,
-                          softWrap: false,
-                        )).toList(),
-                      )
-                    : FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          instrument.name,
-                          style: style,
-                          maxLines: 1,
-                          softWrap: false,
-                        ),
+              Row(
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF131722) : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    padding: const EdgeInsets.all(2),
+                    child: instrument.logoUrl != null 
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: Image.network(
+                            instrument.logoUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(Icons.diamond_outlined, color: theme.iconTheme.color?.withOpacity(0.5), size: 12),
+                          ),
+                        )
+                      : Icon(Icons.diamond_outlined, color: theme.iconTheme.color?.withOpacity(0.5), size: 12),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: (() {
+                      final words = instrument.name.trim().split(RegExp(r'\s+'));
+                      final style = TextStyle(
+                        color: theme.textTheme.bodyLarge?.color,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
                       );
-              })(),
+                      return words.length > 1
+                          ? Wrap(
+                              spacing: 4,
+                              runSpacing: 4,
+                              children: words.map((word) => Text(
+                                word,
+                                style: style,
+                                maxLines: 1,
+                                softWrap: false,
+                              )).toList(),
+                            )
+                          : FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                instrument.name,
+                                style: style,
+                                maxLines: 1,
+                                softWrap: false,
+                              ),
+                            );
+                    })(),
+                  ),
+                ],
+              ),
               const SizedBox(height: 4),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -578,7 +589,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                   Expanded(
                     child: Text(
                       instrument.symbol,
-                      style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600], fontSize: 12),
+                      style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600], fontSize: 11),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -598,18 +609,38 @@ class _MarketPageState extends ConsumerState<MarketPage> {
               ),
             ],
           )
-        : Column( // Redesigned layout for list items to have the name in its own row
+        : Column( // Redesigned layout for list items
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Name Row
+              // Name Row with Logo
               Row(
                 children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF131722) : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    padding: const EdgeInsets.all(2),
+                    child: instrument.logoUrl != null 
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: Image.network(
+                            instrument.logoUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Icon(Icons.diamond_outlined, color: theme.iconTheme.color?.withOpacity(0.5), size: 12),
+                          ),
+                        )
+                      : Icon(Icons.diamond_outlined, color: theme.iconTheme.color?.withOpacity(0.5), size: 12),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       instrument.name,
                       style: TextStyle(
                         color: theme.textTheme.bodyLarge?.color,
-                        fontSize: 18,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.5,
                       ),
@@ -619,27 +650,10 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              // Other Components Row
+              const SizedBox(height: 8),
+              // Other Components Row (without logo)
               Row(
                 children: [
-                  // Logo Section
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF131722) : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    padding: const EdgeInsets.all(6),
-                    child: instrument.logoUrl != null 
-                      ? Image.network(
-                          instrument.logoUrl!,
-                          errorBuilder: (_, __, ___) => Icon(Icons.diamond_outlined, color: theme.iconTheme.color?.withOpacity(0.5), size: 16),
-                        )
-                      : Icon(Icons.diamond_outlined, color: theme.iconTheme.color?.withOpacity(0.5), size: 16),
-                  ),
-                  const SizedBox(width: 12),
                   // Symbol and Exchange Section
                   Expanded(
                     child: Row(
@@ -665,8 +679,8 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                   // Sparkline Section
                   if (instrument.sparkline7d != null && instrument.sparkline7d!.isNotEmpty)
                     SizedBox(
-                      width: 70,
-                      height: 30,
+                      width: 60,
+                      height: 22,
                       child: CustomPaint(
                         painter: SparklinePainter(
                           instrument.sparkline7d!,
