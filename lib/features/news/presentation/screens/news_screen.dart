@@ -65,6 +65,7 @@ class _NewsScreenState extends State<NewsScreen> {
       builder: (context) => const CreateAlertSheet(
         assetName: "Silver", 
         lastPrice: 113.225,
+        instrumentType: "commodities",
       ),
     );
   }

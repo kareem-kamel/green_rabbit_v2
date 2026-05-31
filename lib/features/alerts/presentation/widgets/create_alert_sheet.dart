@@ -9,12 +9,14 @@ class CreateAlertSheet extends StatefulWidget {
   final String assetName;
   final double lastPrice;
   final String? instrumentId;
+  final String? instrumentType;
 
   const CreateAlertSheet({
     super.key,
     required this.assetName,
     required this.lastPrice,
     this.instrumentId,
+    this.instrumentType,
   });
 
   @override
@@ -174,7 +176,6 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
               _buildPickerOption(context, cubit, "Gain / Loses", state.gainCondition == "Gain / Loses"),
             ] else ...[
               _buildPickerOption(context, cubit, "Exceeds", state.volumeCondition == "Exceeds"),
-              _buildPickerOption(context, cubit, "Below", state.volumeCondition == "Below"),
             ],
           ],
         ),
@@ -218,8 +219,18 @@ class _CreateAlertSheetState extends State<CreateAlertSheet> {
   }
 
   Widget _buildTabPicker(AlertCubit cubit, String selectedTab) {
+    final List<String> tabs = ["Price", "Charge %"];
+    
+    // Volume alert is not available for Forex, Crypto, and Commodities
+    final type = widget.instrumentType?.toLowerCase();
+    final bool isVolumeAllowed = type != 'forex' && type != 'crypto' && type != 'commodities' && type != 'commodity';
+    
+    if (isVolumeAllowed) {
+      tabs.add("Volume");
+    }
+
     return Row(
-      children: ["Price", "Charge %", "Volume"].map((tab) {
+      children: tabs.map((tab) {
         bool isSelected = selectedTab == tab;
         return Expanded(
           child: GestureDetector(
