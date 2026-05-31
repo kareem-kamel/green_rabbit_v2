@@ -5,7 +5,6 @@ import 'package:green_rabbit/core/di/injection_container.dart' as di;
 import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/verify_otp_cubit.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/verify_otp_state.dart';
-import 'package:green_rabbit/features/auth/presentation/screens/login_screen.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/set_password_screen.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/preferences_screen.dart';

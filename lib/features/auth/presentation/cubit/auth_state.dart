@@ -1,6 +1,5 @@
 
 import 'package:flutter/material.dart';
-import 'package:green_rabbit/core/theme/app_colors.dart';
 import 'package:green_rabbit/features/auth/presentation/widget/auth_text_field.dart';
 
 abstract class AuthState {}

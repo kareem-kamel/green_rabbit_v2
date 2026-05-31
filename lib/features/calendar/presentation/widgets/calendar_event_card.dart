@@ -181,7 +181,7 @@ class CalendarEventCard extends StatelessWidget {
                     if (currencyVal != null && currencyVal.isNotEmpty) ...[
                       const SizedBox(width: 6),
                       Text(
-                        '${cSymbol(currencyVal!)} $currencyVal',
+                        '${cSymbol(currencyVal)} $currencyVal',
                         style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.w500),
                       ),
                     ],

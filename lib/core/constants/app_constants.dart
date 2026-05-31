@@ -46,6 +46,7 @@ class AppConstants {
   static const String activateFreeTrial = "auth/activate-free-trial";
   static const String signInWithGoogle = "auth/google";
   static const String signInWithApple = "auth/apple";
+  static const String refresh = "/auth/refresh";
 
   // Storage Keys
   static const String keyAccessToken = 'access_token';

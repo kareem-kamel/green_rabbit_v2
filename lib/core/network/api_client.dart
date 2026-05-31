@@ -3,7 +3,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logger/logger.dart';
 import '../constants/app_constants.dart';
-import 'mock_interceptor.dart'; // TODO: DELETE THIS AND THE INTERCEPTOR BELOW TO REVERT TO LIVE API
 import 'package:flutter/material.dart';
 import '../../main.dart';
 import '../di/injection_container.dart' as di;
@@ -14,6 +13,12 @@ class ApiClient {
   final Dio _dio;
   final FlutterSecureStorage _storage;
   final Logger _logger;
+
+  /// Tracks whether a token refresh is currently in progress.
+  /// This is the key flag that prevents race conditions — if multiple
+  /// 401s fire at once, only the first one triggers a refresh.
+  bool _isRefreshing = false;
+
   VoidCallback? onUnauthorized;
 
   ApiClient({
@@ -36,89 +41,237 @@ class ApiClient {
 
     if (!kIsWeb) {
       _dio.options.headers['User-Agent'] =
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+          '(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
       _dio.options.headers['Connection'] = 'keep-alive';
     }
 
-    // Mock Interceptor for local development
-    if (AppConstants.useMockApi) {
-      _dio.interceptors.add(MockInterceptor());
-    }
-
-    // Request-response Interceptor for Auth and Errors
+    // ─── QueuedInterceptorsWrapper ────────────────────────────────────────────
+    // Using QueuedInterceptorsWrapper instead of InterceptorsWrapper ensures
+    // that interceptor callbacks are executed one at a time (serially).
+    // This is critical: if 5 requests all get a 401 simultaneously, they line
+    // up here. The first one refreshes the token; the rest wait and then
+    // retry with the new token automatically.
     _dio.interceptors.add(
-      InterceptorsWrapper(
+      QueuedInterceptorsWrapper(
+        // ── onRequest ────────────────────────────────────────────────────────
         onRequest: (options, handler) async {
           try {
-            final isAuthRequest =
+            // Do NOT attach tokens to auth-related endpoints — these either
+            // don't need them or will break if an expired token is sent.
+            final isAuthPath =
                 options.path.contains('auth/login') ||
                 options.path.contains('auth/register') ||
-                options.path.contains('auth/verify-email');
+                options.path.contains('auth/verify-email') ||
+                options.path.contains(AppConstants.refresh);
 
-            // Priority: Check storage first for a dynamic login token
-            String? token = await _storage.read(
-              key: AppConstants.keyAccessToken,
-            );
+            if (!isAuthPath) {
+              // Prefer the stored token (post-login). Fall back to the
+              // hardcoded AppConstants.apiToken for unauthenticated flows.
+              String? token = await _storage.read(
+                key: AppConstants.keyAccessToken,
+              );
 
-            // If storage is empty, fall back to the hardcoded AppConstants.apiToken
-            if (token == null || token.isEmpty) {
-              token = AppConstants.apiToken;
-            }
+              if (token == null || token.isEmpty) {
+                token = AppConstants.apiToken;
+              }
 
-            if (token != null && token.isNotEmpty && !isAuthRequest) {
-              options.headers['Authorization'] = 'Bearer $token';
+              if (token != null && token.isNotEmpty) {
+                options.headers['Authorization'] = 'Bearer $token';
+              }
             }
           } catch (e) {
-            _logger.e('Error reading token: $e');
+            _logger.e('onRequest — error reading token: $e');
           }
-          _logger.d('Proceeding with actual request to: ${options.uri}');
+
+          _logger.d('→ ${options.method} ${options.uri}');
           return handler.next(options);
         },
+
+        // ── onResponse ───────────────────────────────────────────────────────
+        onResponse: (response, handler) {
+          _logger.d('← ${response.statusCode} ${response.requestOptions.uri}');
+          return handler.next(response);
+        },
+
+        // ── onError ──────────────────────────────────────────────────────────
         onError: (DioException e, handler) async {
           _logger.e(
             'API Error [${e.response?.statusCode}] for ${e.requestOptions.uri}: ${e.message}',
           );
-          _logger.e('API Error Response: ${e.response?.data}');
 
-          final isUnauthorized = e.response?.statusCode == 401;
-          bool isUserNotFound = false;
-          if (e.response?.data != null && e.response?.data is Map) {
-            final data = e.response?.data as Map;
-            if (data['error'] != null && data['error'] is Map) {
-              isUserNotFound = data['error']['code'] == 'USER_NOT_FOUND';
-            }
-          }
+          final statusCode = e.response?.statusCode;
+          final requestPath = e.requestOptions.path;
+          final isRefreshRequest = requestPath.contains(AppConstants.refresh);
 
-          if (isUnauthorized || isUserNotFound) {
-            _logger.w('Unauthorized or User Not Found: Auto-logging out');
-            try {
-              di.sl<AuthCubit>().clearLocalSession();
-              globalNavigatorKey.currentState?.pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (_) => const LoginScreen(isFromSignup: false),
-                ),
-                (route) => false,
+          if (statusCode == 401 && !isRefreshRequest) {
+            // 👇 1. التشيك الذكي: هل التوكن اللي في الستوريدج اتغير عن التوكن اللي فشل؟
+            final latestToken = await _storage.read(
+              key: AppConstants.keyAccessToken,
+            );
+            final requestToken = e.requestOptions.headers['Authorization']
+                ?.toString()
+                .replaceFirst('Bearer ', '');
+
+            if (latestToken != null && latestToken != requestToken) {
+              _logger.i(
+                'Token was already refreshed by a previous request. Retrying directly...',
               );
-            } catch (err) {
-              _logger.e('Error during auto-logout: $err');
+              // حط التوكن الجديد اللي ريكويست (أ) جابه، ونفذ الريكويست فوراً بدون ريفريش جديد
+              e.requestOptions.headers['Authorization'] = 'Bearer $latestToken';
+              final retryResponse = await _dio.fetch(e.requestOptions);
+              return handler.resolve(retryResponse);
+            }
+
+            // ── Race-condition guard ─────────────────────────────────────────
+            if (_isRefreshing) {
+              _logger.w('Refresh already in progress — forcing logout...');
+              await _forceLogout();
+              return handler.reject(e);
+            }
+
+            _isRefreshing = true;
+
+            try {
+              // ── Isolated Dio for the refresh call ──────────────────────────
+              // We spin up a brand-new Dio instance with no interceptors so
+              // the refresh POST cannot recursively trigger this same error
+              // handler. Headers are clean and independent of the main client.
+              final refreshDio = Dio(
+                BaseOptions(
+                  baseUrl: AppConstants.apiBaseUrl,
+                  connectTimeout: const Duration(seconds: 30),
+                  receiveTimeout: const Duration(seconds: 30),
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': '*/*',
+                  },
+                ),
+              );
+
+              // Read the refresh token from secure storage.
+              final refreshToken = await _storage.read(
+                key: AppConstants.keyRefreshToken,
+              );
+
+              if (refreshToken == null || refreshToken.isEmpty) {
+                _logger.w('No refresh token found — forcing logout.');
+                await _forceLogout();
+                return handler.reject(e);
+              }
+
+              _logger.i('Attempting token refresh…');
+
+              final refreshResponse = await refreshDio.post(
+                AppConstants.refresh,
+                data: {'refreshToken': refreshToken},
+              );
+
+              // ── Flexible payload extraction ────────────────────────────────
+              // The backend may return tokens at the root level or nested
+              // inside a `data` object. We handle both shapes safely.
+              //
+              // Shape A — root level:
+              //   { "accessToken": "...", "refreshToken": "..." }
+              //
+              // Shape B — nested:
+              //   { "data": { "accessToken": "...", "refreshToken": "..." } }
+              final responseBody = refreshResponse.data;
+              final payload =
+                  (responseBody is Map && responseBody['data'] is Map)
+                  ? responseBody['data'] as Map<String, dynamic>
+                  : responseBody as Map<String, dynamic>;
+
+              final newAccessToken = payload['accessToken'] as String?;
+              final newRefreshToken = payload['refreshToken'] as String?;
+
+              if (newAccessToken == null || newAccessToken.isEmpty) {
+                _logger.e('Refresh succeeded but accessToken was empty.');
+                await _forceLogout();
+                return handler.reject(e);
+              }
+
+              // ── Persist the fresh tokens ───────────────────────────────────
+              await _storage.write(
+                key: AppConstants.keyAccessToken,
+                value: newAccessToken,
+              );
+
+              if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
+                await _storage.write(
+                  key: AppConstants.keyRefreshToken,
+                  value: newRefreshToken,
+                );
+              }
+
+              _logger.i(
+                'Token refresh successful — retrying original request.',
+              );
+
+              // ── Retry the original request with the new token ──────────────
+              // Clone the original RequestOptions and inject the new header so
+              // the retry goes out exactly like the original request but
+              // authenticated with the fresh token.
+              final retryOptions = e.requestOptions.copyWith(
+                headers: {
+                  ...e.requestOptions.headers,
+                  'Authorization': 'Bearer $newAccessToken',
+                },
+              );
+
+              final retryResponse = await _dio.fetch(retryOptions);
+              return handler.resolve(retryResponse);
+            } catch (refreshError) {
+              // ── Refresh failed entirely ────────────────────────────────────
+              // This covers: expired refresh token, network failure, 401 on
+              // the refresh endpoint, or USER_NOT_FOUND from the backend.
+              _logger.e('Token refresh failed: $refreshError');
+              await _forceLogout();
+              return handler.reject(e);
+            } finally {
+              // Always reset the flag so future 401s can trigger a refresh
+              // once the user logs back in.
+              _isRefreshing = false;
             }
           }
 
+          // ── Non-401 errors: pass through unchanged ─────────────────────────
           return handler.next(e);
         },
       ),
     );
-
-    // Logging Interceptor (added after Auth for request visibility, but runs before for error/response)
-    // _dio.interceptors.add(LogInterceptor(
-    //   requestBody: true,
-    //   responseBody: true,
-    //   logPrint: (obj) => _logger.d(obj),
-    // ));
   }
+
+  // ── Force Logout ────────────────────────────────────────────────────────────
+  /// Wipes all stored tokens, clears the local auth session via AuthCubit,
+  /// and navigates the user back to LoginScreen, removing all back-stack routes.
+  Future<void> _forceLogout() async {
+    _logger.w('Force logout triggered — clearing session and redirecting.');
+
+    try {
+      // Wipe tokens from secure storage first so any in-flight requests
+      // that complete after this point cannot use stale credentials.
+      await _storage.delete(key: AppConstants.keyAccessToken);
+      await _storage.delete(key: AppConstants.keyRefreshToken);
+
+      // Clear the in-app auth state (Cubit/BLoC layer).
+      di.sl<AuthCubit>().clearLocalSession();
+    } catch (err) {
+      _logger.e('Error during session cleanup: $err');
+    }
+
+    // Navigate to Login, clearing the entire navigation stack.
+    globalNavigatorKey.currentState?.pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen(isFromSignup: false)),
+      (route) => false,
+    );
+  }
+
+  // ── Public API ──────────────────────────────────────────────────────────────
 
   Dio get dio => _dio;
 
+  /// Resolves the best available auth token: stored token first, then fallback.
   Future<String?> resolveAuthToken() async {
     var token = await _storage.read(key: AppConstants.keyAccessToken);
     if (token == null || token.isEmpty) {
@@ -127,6 +280,7 @@ class ApiClient {
     return token;
   }
 
+  /// Posts to [path] and returns a streaming response — used for AI/SSE flows.
   Future<Response<dynamic>> postStreamResponse(
     String path, {
     required Map<String, dynamic> data,
