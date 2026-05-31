@@ -51,13 +51,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               'Payment & Billing',
               style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.search, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54, size: 24),
-                onPressed: () {},
-              ),
-              const SizedBox(width: 8),
-            ],
+            
+
           ),
           body: LayoutBuilder(
             builder: (context, constraints) {

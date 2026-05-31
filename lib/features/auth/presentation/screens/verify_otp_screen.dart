@@ -7,6 +7,9 @@ import 'package:green_rabbit/features/auth/presentation/cubit/verify_otp_cubit.d
 import 'package:green_rabbit/features/auth/presentation/cubit/verify_otp_state.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/login_screen.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/set_password_screen.dart';
+import 'package:green_rabbit/features/auth/presentation/cubit/auth_cubit.dart';
+import 'package:green_rabbit/features/auth/presentation/screens/preferences_screen.dart';
+import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
 import 'package:pinput/pinput.dart';
 import 'package:green_rabbit/core/widgets/primary_button.dart'; // Your shared button
 
@@ -125,28 +128,41 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
 
                   // 2. 🔀 DYNAMIC ROUTING BASED ON THE FLOW
                   if (widget.isForgotPasswordFlow == false) {
-                    // LOGIC 1: Signup Flow -> Go to Preferences/Onboarding
+                    // Update global AuthCubit state to reflect authenticated status
+                    context.read<AuthCubit>().setAuthenticated(
+                          onboardingDone: state.onboardingDone,
+                        );
+
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
+                      SnackBar(
                         content: Text(
-                          'Email verified successfully! Please log in.',
+                          state.onboardingDone
+                              ? 'Email verified successfully!'
+                              : 'Email verified! Let\'s customize your experience.',
                         ),
                         backgroundColor: Colors.green,
-                        duration: Duration(
-                          seconds: 4,
-                        ), // Leave it on screen a bit longer
+                        duration: const Duration(seconds: 2),
                       ),
                     );
 
-                    // 2. Wipe the stack and send them to Login
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const LoginScreen(isFromSignup: true),
-                      ),
-                      (Route<dynamic> route) =>
-                          false, // This destroys all previous screens
-                    );
+                    // Navigate directly (not to LoginScreen)
+                    if (state.onboardingDone) {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MainWrapper(),
+                        ),
+                        (Route<dynamic> route) => false,
+                      );
+                    } else {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PreferencesScreen(),
+                        ),
+                        (Route<dynamic> route) => false,
+                      );
+                    }
                   }
                 } else if (state is VerifyOtpError) {
                   // Don't forget to show errors if the code is wrong!

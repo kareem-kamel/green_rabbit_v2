@@ -6,6 +6,7 @@ import 'package:green_rabbit/features/auth/presentation/cubit/preferences_cubit.
 import 'package:green_rabbit/features/auth/presentation/widget/selectable_card.dart';
 import 'package:green_rabbit/core/di/injection_container.dart' as di;
 import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
+import 'package:green_rabbit/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
 
 // import 'package:green_rabbit/core/widgets/primary_button.dart'; // Add your custom button import
@@ -67,6 +68,8 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                   children: [
                     GestureDetector(
                       onTap: () {
+                        // Update global AuthCubit state to reflect authenticated status
+                        context.read<AuthCubit>().setAuthenticated(onboardingDone: true);
                         // Navigate to Home immediately
                         Navigator.pushAndRemoveUntil(
                           context,
@@ -113,6 +116,8 @@ class _PreferencesScreenState extends State<PreferencesScreen> {
                 child: BlocConsumer<PreferencesCubit, PreferencesState>(
                   listener: (context, state) {
                     if (state.status == PreferencesStatus.success) {
+                      // Update global AuthCubit state to reflect authenticated status
+                      context.read<AuthCubit>().setAuthenticated(onboardingDone: true);
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Preferences saved successfully!'),

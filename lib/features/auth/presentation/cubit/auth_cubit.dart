@@ -295,6 +295,17 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   // --------------------------------------------------
+  // SET AUTHENTICATED MANUALLY
+  // --------------------------------------------------
+  void setAuthenticated({required bool onboardingDone}) {
+    if (onboardingDone) {
+      emit(AuthSuccess());
+    } else {
+      emit(AuthNeedsPreferences());
+    }
+  }
+
+  // --------------------------------------------------
   // ERROR PARSER
   // --------------------------------------------------
 

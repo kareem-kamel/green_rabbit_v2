@@ -84,19 +84,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ── Key fix: read viewInsets here so the scaffold reacts to keyboard ──
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final topPadding = MediaQuery.of(context).padding.top;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
-      // ✅ IMPORTANT: false so we manually handle padding via viewInsets
       resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.scaffoldBg,
       body: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is AuthNeedsVerification) {
-            // 1. Optional: Show a quick success message
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Please verify your email.'),
@@ -104,20 +101,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
               ),
             );
 
-            // 2. 🚀 NAVIGATE TO OTP SCREEN
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => VerifyOtpScreen(
-                  email:
-                      _emailController.text, // Pass the email they just typed!
-                  isForgotPasswordFlow:
-                      false, // 👇 Make sure this is FALSE for Signup!
+                  email: _emailController.text,
+                  isForgotPasswordFlow: false,
                 ),
               ),
             );
           } else if (state is AuthFailure) {
-            // Show error message if backend rejects the signup
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.errorMessage),
@@ -130,15 +123,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
           return GestureDetector(
             onTap: () => FocusScope.of(context).unfocus(),
             child: AnimatedPadding(
-              // ✅ This is the core fix:
-              // When keyboard appears, bottom padding grows → content scrolls up
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOut,
               padding: EdgeInsets.only(
                 top: topPadding,
-                bottom: keyboardHeight > 0
-                    ? keyboardHeight // keyboard is open
-                    : bottomPadding, // keyboard is closed (safe area)
+                bottom: keyboardHeight > 0 ? keyboardHeight : bottomPadding,
               ),
               child: SingleChildScrollView(
                 controller: _scrollController,
@@ -213,8 +202,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           if (value.length < 8) {
                             return 'Must be at least 8 characters';
                           }
-                          if (!value.contains(RegExp(r'[A-Z]'))) {
-                            return 'Must contain at least one uppercase letter';
+                          if (!value.contains(RegExp(r'[A-Z]')) ||
+                              !value.contains(RegExp(r'[a-z]'))) {
+                            return 'Must contain at least one uppercase and lowercase letter';
                           }
                           if (!value.contains(RegExp(r'[0-9]'))) {
                             return 'Must contain at least one number';
@@ -222,6 +212,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           return null;
                         },
                       ),
+
+                      // 👇 Added the real-time UI Validator here
+                      _buildPasswordRules(),
+
                       const SizedBox(height: 20),
 
                       // ── 4. Confirm Password Field ──────────────────────
@@ -251,8 +245,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         text: 'Sign Up',
                         isLoading: state is AuthLoading,
                         onPressed: () {
+                          // 👇 1. Force the fields to lose focus BEFORE validation!
+                          FocusScope.of(context).unfocus();
+
+                          // 👇 2. Then check validation
                           if (_formKey.currentState!.validate()) {
-                            FocusScope.of(context).unfocus();
                             context.read<AuthCubit>().register(
                               email: _emailController.text.trim(),
                               password: _passwordController.text.trim(),
@@ -299,8 +296,63 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ),
     );
   }
-}
 
-// ─────────────────────────────────────────────
-// REUSABLE SOCIAL BUTTON
-// ─────────────────────────────────────────────
+  // ─── NEW HELPER METHODS FOR PASSWORD RULES ───────────────────────────────
+
+  Widget _buildPasswordRules() {
+    // ValueListenableBuilder listens to the controller and rebuilds ONLY this part
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: _passwordController,
+      builder: (context, value, child) {
+        final password = value.text;
+
+        // Check the 3 rules in real-time
+        final hasMinLength = password.length >= 8;
+        final hasUpperAndLower =
+            password.contains(RegExp(r'[A-Z]')) &&
+            password.contains(RegExp(r'[a-z]'));
+        final hasNumber = password.contains(RegExp(r'[0-9]'));
+
+        return Padding(
+          padding: const EdgeInsets.only(top: 12.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildRuleRow('Must be at least 8 characters', hasMinLength),
+              const SizedBox(height: 6),
+              _buildRuleRow(
+                'Must contain at least one uppercase and lowercase letter',
+                hasUpperAndLower,
+              ),
+              const SizedBox(height: 6),
+              _buildRuleRow('Must contain at least one number', hasNumber),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRuleRow(String text, bool isMet) {
+    return Row(
+      children: [
+        Icon(
+          isMet ? Icons.check_circle : Icons.cancel,
+          color: isMet
+              ? Colors.green
+              : Colors.white38, // Green if met, faded grey if not
+          size: 16,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            color: isMet ? Colors.green : Colors.white38,
+            fontSize: 12,
+            fontWeight: isMet ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ],
+    );
+  }
+}

@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart'; // 1. Import url_launcher
 
 class HelpCenterScreen extends StatelessWidget {
   const HelpCenterScreen({super.key});
+
+  // 2. Helper method to open URLs and Email
+  Future<void> _launchURL(String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      debugPrint('Could not launch $url');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,6 +24,7 @@ class HelpCenterScreen extends StatelessWidget {
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios,
               color: isDark ? Colors.white : Colors.black, size: 20),
+          // Replaced onPressed with onTap for consistency or kept onPressed
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -25,14 +35,7 @@ class HelpCenterScreen extends StatelessWidget {
             fontWeight: FontWeight.w600,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.search,
-                color: isDark ? Colors.white : Colors.black, size: 24),
-            onPressed: () {},
-          ),
-          const SizedBox(width: 8),
-        ],
+        // 3. Search icon removed from here
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -57,27 +60,38 @@ class HelpCenterScreen extends StatelessWidget {
               crossAxisSpacing: 16,
               childAspectRatio: 1.2,
               children: [
-                _buildSocialCard(context, 'X', 'assets/x.png', Icons.close),
-                _buildSocialCard(context, 'Email', 'assets/gmail.png', Icons.email_outlined),
-                _buildSocialCard(context, 'Instagram', 'assets/instagram.png', Icons.camera_alt_outlined),
-                _buildSocialCard(context, 'Facebook', 'assets/facebook.png', Icons.facebook),
+                // 4. Added URLs to each card. Note the "mailto:" for the email!
+                _buildSocialCard(
+                  context,
+                  'X',
+                  'assets/x.png',
+                  Icons.close,
+                  'https://x.com/GreenRabbitAi',
+                ),
+                _buildSocialCard(
+                  context,
+                  'Email',
+                  'assets/gmail.png',
+                  Icons.email_outlined,
+                  'mailto:info@greenrabbit.ai', // "mailto:" triggers the email app
+                ),
+                _buildSocialCard(
+                  context,
+                  'Instagram',
+                  'assets/instagram.png',
+                  Icons.camera_alt_outlined,
+                  'https://www.instagram.com/greenrabbitai/',
+                ),
+                _buildSocialCard(
+                  context,
+                  'Facebook',
+                  'assets/facebook.png',
+                  Icons.facebook,
+                  'https://www.facebook.com/people/Green-Rabbit-Ai/61590006963552/',
+                ),
               ],
             ),
-            const SizedBox(height: 32),
-            Text(
-              'Send message',
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            _buildTextField(context, 'Full name'),
-            const SizedBox(height: 12),
-            _buildTextField(context, 'Message....', maxLines: 5),
-            const SizedBox(height: 24),
-            _buildSendMessageButton(context),
+            // 5. Form and Send Message button removed from here
             const SizedBox(height: 40),
           ],
         ),
@@ -85,36 +99,49 @@ class HelpCenterScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSocialCard(BuildContext context, String title, String assetPath, IconData fallbackIcon) {
+  // 6. Added "url" parameter and wrapped in an InkWell for tapping
+  Widget _buildSocialCard(BuildContext context, String title, String assetPath,
+      IconData fallbackIcon, String url) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1B1E2B) : Colors.grey.shade100,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _launchURL(url), // Trigger the launch URL function
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: _buildSocialIcon(assetPath, fallbackIcon),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1B1E2B) : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+                color: isDark
+                    ? Colors.white.withOpacity(0.05)
+                    : Colors.black.withOpacity(0.05)),
           ),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: TextStyle(
-              color: isDark ? Colors.white : Colors.black,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color:
+                      isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: _buildSocialIcon(assetPath, fallbackIcon),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                title,
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -125,73 +152,8 @@ class HelpCenterScreen extends StatelessWidget {
       width: 32,
       height: 32,
       fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) => Icon(fallbackIcon, size: 24, color: Colors.white),
-    );
-  }
-
-  Widget _buildTextField(BuildContext context, String hintText, {int maxLines = 1}) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return TextField(
-      maxLines: maxLines,
-      style: TextStyle(color: isDark ? Colors.white : Colors.black),
-      decoration: InputDecoration(
-        hintText: hintText,
-        hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.black38),
-        filled: true,
-        fillColor: isDark ? const Color(0xFF1B1E2B) : Colors.grey.shade100,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: isDark ? Colors.white10 : Colors.black.withOpacity(0.05)),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFF4C3BC9)),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSendMessageButton(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: 54,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF6366F1), Color(0xFF4338CA)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF4C3BC9).withOpacity(0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: () {},
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        ),
-        child: const Text(
-          'Send Message',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+      errorBuilder: (context, error, stackTrace) =>
+          Icon(fallbackIcon, size: 24, color: Colors.white),
     );
   }
 }

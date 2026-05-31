@@ -128,7 +128,7 @@ class AuthRepository {
   }
 
   // --- VERIFY OTP ---
-  Future<void> verifyEmailCode({
+  Future<bool> verifyEmailCode({
     required String email,
     required String code,
   }) async {
@@ -139,6 +139,48 @@ class AuthRepository {
       );
 
       _checkResponseSuccess(response, "Invalid code. Please try again.");
+
+      final responseData = response.data is Map
+          ? (response.data['data'] ?? response.data)
+          : null;
+
+      if (responseData is Map &&
+          (responseData['accessToken'] != null ||
+              responseData['token'] != null)) {
+        final accessToken =
+            responseData['accessToken'] ?? responseData['token'];
+        final refreshToken =
+            responseData['refreshToken'] ?? responseData['refresh_token'];
+
+        // Save Token
+        await storage.write(
+          key: AppConstants.keyAccessToken,
+          value: accessToken,
+        );
+
+        // Save Remember Me choice
+        await storage.write(key: 'rememberMe', value: 'true');
+
+        if (refreshToken != null) {
+          await storage.write(
+            key: AppConstants.keyRefreshToken,
+            value: refreshToken,
+          );
+        }
+
+        // Check if onboarding is done
+        bool onboardingDone = false;
+        if (responseData['user'] != null && responseData['user']['onboardingDone'] != null) {
+          onboardingDone = responseData['user']['onboardingDone'] == true;
+        } else if (responseData['user'] != null && responseData['user']['status'] == 'pending_onboarding') {
+          onboardingDone = false;
+        } else if (responseData['onboardingDone'] != null) {
+          onboardingDone = responseData['onboardingDone'] == true;
+        }
+
+        return onboardingDone;
+      }
+      return false;
     } on DioException catch (e) {
       throw Exception(_getErrorMessage(e, 'Invalid code. Try again.'));
     } catch (e) {

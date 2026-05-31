@@ -229,30 +229,30 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             const SizedBox(height: 32),
 
             // --- Add Account Button ---
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: () {},
-                icon: const Icon(Icons.add, color: Color(0xFF4C3BC9), size: 18),
-                label: const Text(
-                  'Add Account',
-                  style: TextStyle(
-                    color: Color(0xFF4C3BC9),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(
-                    0xFFE5E7EB,
-                  ), // light grey/off-white
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
-              ),
-            ),
+            // SizedBox(
+            //   width: double.infinity,
+            //   child: ElevatedButton.icon(
+            //     onPressed: () {},
+            //     icon: const Icon(Icons.add, color: Color(0xFF4C3BC9), size: 18),
+            //     label: const Text(
+            //       'Add Account',
+            //       style: TextStyle(
+            //         color: Color(0xFF4C3BC9),
+            //         fontWeight: FontWeight.w600,
+            //       ),
+            //     ),
+            //     style: ElevatedButton.styleFrom(
+            //       backgroundColor: const Color(
+            //         0xFFE5E7EB,
+            //       ), // light grey/off-white
+            //       padding: const EdgeInsets.symmetric(vertical: 14),
+            //       shape: RoundedRectangleBorder(
+            //         borderRadius: BorderRadius.circular(12),
+            //       ),
+            //       elevation: 0,
+            //     ),
+            //   ),
+            // ),
 
             const SizedBox(height: 24),
 

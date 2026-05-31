@@ -20,6 +20,9 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  // 1. Add a GlobalKey for the Form
+  final _formKey = GlobalKey<FormState>();
+
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _rememberMe = true;
@@ -73,154 +76,199 @@ class _LoginScreenState extends State<LoginScreen> {
             child: SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 40),
+                // 2. Wrap your Column in a Form widget
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 40),
 
-                    // --- 1. Header Text ---
-                    Text(
-                      'Welcome back!',
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Please enter your details to access your\ndashboard.',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white70,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-
-                    // --- 2. Form Fields ---
-                    AuthTextField(
-                      label: 'Email',
-                      hintText: 'Content@gmail.com',
-                      controller: _emailController,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) {},
-                    ),
-                    const SizedBox(height: 20),
-                    AuthTextField(
-                      label: 'Password',
-                      hintText: '********',
-                      isPassword: true,
-                      controller: _passwordController,
-                      textInputAction: TextInputAction.done,
-                      onFieldSubmitted: (_) {},
-                    ),
-                    const SizedBox(height: 16),
-
-                    // --- 3. Remember Me & Forget Password ---
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
-                          children: [
-                            SizedBox(
-                              height: 24,
-                              width: 24,
-                              child: Checkbox(
-                                value: _rememberMe,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _rememberMe = value ?? false;
-                                  });
-                                },
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                side: const BorderSide(color: Colors.white54),
-                                activeColor: AppColors.primaryPurple,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'Remember me',
-                              style: TextStyle(color: Colors.white70),
-                            ),
-                          ],
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) =>
-                                    const ForgotPasswordScreen(),
-                              ),
-                            );
-                          },
-                          style: TextButton.styleFrom(
-                            padding: EdgeInsets.zero,
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          child: const Text(
-                            'Forget password?',
-                            style: TextStyle(
-                              color: Colors.blueAccent,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-
-                    // --- 4. Login Button ---
-                    PrimaryButton(
-                      text: 'Login',
-                      isLoading: state is AuthLoading,
-                      onPressed: () {
-                        context.read<AuthCubit>().login(
-                          email: _emailController.text.trim(),
-                          password: _passwordController.text.trim(),
-                          rememberMe: _rememberMe,
-                          isFromSignup: widget.isFromSignup,
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 40),
-
-                    // --- 5. Social Login Section ---
-                    const SocialLoginSection(text: 'Login With'),
-                    const SizedBox(height: 48),
-
-                    // --- 7. Sign Up Row ---
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          "Don't have an account ? ",
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            // Because AuthCubit is in main.dart, standard navigation works perfectly!
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const RegisterScreen(),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            'Sign Up',
-                            style: TextStyle(
-                              color: Colors.blueAccent,
+                      // --- 1. Header Text ---
+                      Text(
+                        'Welcome back!',
+                        style: Theme.of(context).textTheme.displaySmall
+                            ?.copyWith(
+                              color: Colors.white,
                               fontWeight: FontWeight.bold,
                             ),
-                          ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Please enter your details to access your\ndashboard.',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.white70,
+                          height: 1.5,
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                  ],
+                      ),
+                      const SizedBox(height: 40),
+
+                      // --- 2. Form Fields ---
+                      AuthTextField(
+                        label: 'Email',
+                        hintText: 'Content@gmail.com',
+                        controller: _emailController,
+                        textInputAction: TextInputAction
+                            .next, // Changed to next for better UX
+                        // 3. Add email validator
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter your email';
+                          }
+                          // Simple regex for email validation
+                          final emailRegex = RegExp(
+                            r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                          );
+                          if (!emailRegex.hasMatch(value.trim())) {
+                            return 'Please enter a valid email address';
+                          }
+                          return null;
+                        },
+                        onFieldSubmitted: (_) {},
+                      ),
+                      const SizedBox(height: 20),
+                      AuthTextField(
+                        label: 'Password',
+                        hintText: '********',
+                        isPassword: true,
+                        controller: _passwordController,
+                        textInputAction: TextInputAction.done,
+                        onFieldSubmitted: (_) {
+                          // Optional: Trigger login when pressing 'Done' on keyboard
+                          if (_formKey.currentState!.validate()) {
+                            context.read<AuthCubit>().login(
+                              email: _emailController.text.trim(),
+                              password: _passwordController.text.trim(),
+                              rememberMe: _rememberMe,
+                              isFromSignup: widget.isFromSignup,
+                            );
+                          }
+                        },
+                        // 4. Add password validator
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter your password';
+                          }
+                          if (value.trim().length < 6) {
+                            return 'Password must be at least 6 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // --- 3. Remember Me & Forget Password ---
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              SizedBox(
+                                height: 24,
+                                width: 24,
+                                child: Checkbox(
+                                  value: _rememberMe,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _rememberMe = value ?? false;
+                                    });
+                                  },
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  side: const BorderSide(color: Colors.white54),
+                                  activeColor: AppColors.primaryPurple,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Remember me',
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                            ],
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ForgotPasswordScreen(),
+                                ),
+                              );
+                            },
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'Forget password?',
+                              style: TextStyle(
+                                color: Colors.blueAccent,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+
+                      // --- 4. Login Button ---
+                      PrimaryButton(
+                        text: 'Login',
+                        isLoading: state is AuthLoading,
+                        onPressed: () {
+                          FocusScope.of(context).unfocus();
+                          // 5. Check validation before submitting!
+                          if (_formKey.currentState!.validate()) {
+                            // Unfocus keyboard
+
+                            context.read<AuthCubit>().login(
+                              email: _emailController.text.trim(),
+                              password: _passwordController.text.trim(),
+                              rememberMe: _rememberMe,
+                              isFromSignup: widget.isFromSignup,
+                            );
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 40),
+
+                      // --- 5. Social Login Section ---
+                      const SocialLoginSection(text: 'Login With'),
+                      const SizedBox(height: 48),
+
+                      // --- 7. Sign Up Row ---
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            "Don't have an account ? ",
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const RegisterScreen(),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              'Sign Up',
+                              style: TextStyle(
+                                color: Colors.blueAccent,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
               ),
             ),

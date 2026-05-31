@@ -25,11 +25,11 @@ class VerifyOtpCubit extends Cubit<VerifyOtpState> {
 
     try {
       // Call the real backend
-      await repository.verifyEmailCode(email: email, code: code);
+      final onboardingDone = await repository.verifyEmailCode(email: email, code: code);
       
       // If it doesn't crash, it was a success!
       if (isClosed) return;
-      emit(VerifyOtpSuccess());
+      emit(VerifyOtpSuccess(onboardingDone: onboardingDone));
     } catch (e) {
       // Clean up the error message
       if (isClosed) return;
