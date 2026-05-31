@@ -244,6 +244,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
               builder: (context) => CreateAlertSheet(
                 assetName: detail.symbol,
                 instrumentId: detail.id,
+                instrumentType: detail.type,
                 lastPrice: detail.price.current ?? 0.0,
               ),
             );
