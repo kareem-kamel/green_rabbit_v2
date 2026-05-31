@@ -1240,24 +1240,14 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
-                      ...['1D', '1W', '1M', '3M', '1Y', '5Y'].map((t) {
-                        // 1D and 1W return 503 on free/classic – show with a subtle lock hint
-                        final bool mightBeLocked = (t == '1D' || t == '1W' || t == '3M' || t == '1Y' || t == '5Y');
+                      ...['1D', '1W', '1M', '3M', '1Y', '5Y', '10Y', '15Y'].map((t) {
+                        const bool mightBeLocked = false;
                         return Padding(
                           padding: const EdgeInsets.only(right: 16),
                           child: GestureDetector(
-                            onTap: mightBeLocked
-                                ? () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const SubscriptionScreen(),
-                                      ),
-                                    );
-                                  }
-                                : () {
-                                    setState(() { _selectedPeriod = t; });
-                                  },
+                            onTap: () {
+                              setState(() { _selectedPeriod = t; });
+                            },
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -1362,35 +1352,6 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                       color: AppColors.primary, 
                       size: 20,
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: () => _showIndicatorsBottomSheet(context),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface,
-                    borderRadius: BorderRadius.circular(6),
-                    border: Border.all(
-                      color: _activeIndicators.isNotEmpty ? AppColors.unlockBlue : AppColors.border,
-                      width: 1.0,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.add_chart, size: 18, color: _activeIndicators.isNotEmpty ? AppColors.unlockBlue : AppColors.textSecondary),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Indicators',
-                        style: TextStyle(
-                          color: _activeIndicators.isNotEmpty ? AppColors.unlockBlue : AppColors.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
                   ),
                 ),
               ),
@@ -1558,7 +1519,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   Widget _buildTechnicalBadge(TechnicalIndicator tech) {
-    final isLocked = tech.isLocked;
+    final isLocked = false;
     final isBullish = tech.signal.contains('Bullish');
     final isBearish = tech.signal.contains('Bearish');
     final signalColor = isBullish ? AppColors.success : (isBearish ? AppColors.error : AppColors.textSecondary);
@@ -2153,7 +2114,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       children: [
         Row(
           children: [
-            _buildTimeframeItem('15 Min.', interval: '15m', isPremium: true, stats: stats),
+            _buildTimeframeItem('15 Min.', interval: '15m', isPremium: false, stats: stats),
           ],
         ),
         const SizedBox(height: 12),
@@ -2179,7 +2140,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     
     // In a real app, isLocked would depend on user tier and backend status
     // For now, mirroring the reference image design
-    final bool isLocked = isPremium; 
+    final bool isLocked = false; 
 
     Color signalColor = Colors.white60;
     IconData? signalIcon;
@@ -2770,6 +2731,8 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       {'label': '3M', 'period': '3M'},
       {'label': '1Y', 'period': '1Y'},
       {'label': '5Y', 'period': '5Y'},
+      {'label': '10Y', 'period': '10Y'},
+      {'label': '15Y', 'period': '15Y'},
     ];
 
     return Container(
@@ -2777,51 +2740,50 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       color: AppColors.backgroundSubtle,
       child: Row(
         children: [
-          // ── Period Buttons (drive API calls) ──────────────────────
-          ...periods.map((p) {
-            final isActive = _selectedPeriod == p['period'];
-            final bool mightBeLocked = (p['period'] == '1D' || p['period'] == '1W' ||
-                p['period'] == '3M' || p['period'] == '1Y' || p['period'] == '5Y');
-            return _landscapeButton(
-              p['label']!,
-              isActive: isActive,
-              onTap: mightBeLocked
-                  ? () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const SubscriptionScreen(),
-                        ),
-                      );
-                    }
-                  : () => setState(() => _selectedPeriod = p['period']!),
-              trailingIcon: mightBeLocked ? Icons.lock_outline : null,
-            );
-          }),
-          const SizedBox(width: 4),
-          // Interval badge (informational)
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            margin: const EdgeInsets.only(right: 8),
-            decoration: BoxDecoration(
-              color: AppColors.unlockBlue.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: AppColors.unlockBlue.withOpacity(0.4)),
-            ),
-            child: Text(
-              interval,
-              style: const TextStyle(color: AppColors.unlockBlue, fontSize: 12, fontWeight: FontWeight.bold),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  // ── Period Buttons (drive API calls) ──────────────────────
+                  ...periods.map((p) {
+                    final isActive = _selectedPeriod == p['period'];
+                    const bool mightBeLocked = false;
+                    return _landscapeButton(
+                      p['label']!,
+                      isActive: isActive,
+                      onTap: () => setState(() => _selectedPeriod = p['period']!),
+                      trailingIcon: null,
+                    );
+                  }),
+                  const SizedBox(width: 4),
+                  // Interval badge (informational)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.unlockBlue.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.unlockBlue.withOpacity(0.4)),
+                    ),
+                    child: Text(
+                      interval,
+                      style: const TextStyle(color: AppColors.unlockBlue, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // ── Chart Style Tools ─────────────────────────────────────
+                  _landscapeButton('', isIcon: true, icon: Icons.candlestick_chart_outlined, isActive: _chartMode == ProChartMode.candle, onTap: () => setState(() => _chartMode = ProChartMode.candle)),
+                  _landscapeButton('', isIcon: true, icon: Icons.show_chart, isActive: _chartMode == ProChartMode.area, onTap: () => setState(() => _chartMode = ProChartMode.area)),
+                  _landscapeButton('', isIcon: true, icon: Icons.add_chart, isActive: _activeIndicators.isNotEmpty, onTap: () => _showIndicatorsBottomSheet(context)),
+                  const SizedBox(width: 8),
+                  _landscapeButton('', isIcon: true, icon: Icons.undo),
+                  _landscapeButton('', isIcon: true, icon: Icons.redo),
+                ],
+              ),
             ),
           ),
-          const SizedBox(width: 8),
-          // ── Chart Style Tools ─────────────────────────────────────
-          _landscapeButton('', isIcon: true, icon: Icons.candlestick_chart_outlined, isActive: _chartMode == ProChartMode.candle, onTap: () => setState(() => _chartMode = ProChartMode.candle)),
-          _landscapeButton('', isIcon: true, icon: Icons.show_chart, isActive: _chartMode == ProChartMode.area, onTap: () => setState(() => _chartMode = ProChartMode.area)),
-          _landscapeButton('', isIcon: true, icon: Icons.add_chart, isActive: _activeIndicators.isNotEmpty, onTap: () => _showIndicatorsBottomSheet(context)),
-          const SizedBox(width: 8),
-          _landscapeButton('', isIcon: true, icon: Icons.undo),
-          _landscapeButton('', isIcon: true, icon: Icons.redo),
-          const Spacer(),
+          const SizedBox(width: 16),
           // Actions
           InkWell(
             onTap: () {

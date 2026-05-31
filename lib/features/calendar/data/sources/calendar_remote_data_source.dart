@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/constants/app_constants.dart';
 
@@ -8,6 +9,13 @@ abstract class CalendarRemoteDataSource {
     bool? watchlist,
     String? symbol,
     String? country,
+  });
+
+  Future<Map<String, dynamic>> searchCalendarEvents({
+    required String category,
+    required String query,
+    int? page,
+    int? limit,
   });
 }
 
@@ -35,6 +43,27 @@ class CalendarRemoteDataSourceImpl implements CalendarRemoteDataSource {
       queryParameters: queryParams,
     );
 
+    return response.data;
+  }
+
+  @override
+  Future<Map<String, dynamic>> searchCalendarEvents({
+    required String category,
+    required String query,
+    int? page,
+    int? limit,
+  }) async {
+    final Map<String, dynamic> searchParams = {
+      'q': query,
+      'type': category,
+      if (page != null) 'page': page,
+      if (limit != null) 'limit': limit,
+    };
+
+    final response = await apiClient.dio.get(
+      AppConstants.search,
+      queryParameters: searchParams,
+    );
     return response.data;
   }
 }

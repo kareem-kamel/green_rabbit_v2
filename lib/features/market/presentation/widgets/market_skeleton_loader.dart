@@ -31,7 +31,7 @@ class MarketSkeletonLoader extends StatelessWidget {
             baseColor: baseColor,
             highlightColor: highlightColor,
             child: AppCard(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -119,13 +119,13 @@ class MarketSkeletonLoader extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: 5, // Show 5 list items for list
-      separatorBuilder: (_, __) => const SizedBox(height: 16),
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         return Shimmer.fromColors(
           baseColor: baseColor,
           highlightColor: highlightColor,
           child: AppCard(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -138,7 +138,7 @@ class MarketSkeletonLoader extends StatelessWidget {
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 6),
                 Row(
                   children: [
                     // Logo placeholder
@@ -164,8 +164,8 @@ class MarketSkeletonLoader extends StatelessWidget {
                     const SizedBox(width: 12),
                     // Sparkline placeholder
                     Container(
-                      width: 70,
-                      height: 30,
+                      width: 60,
+                      height: 22,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(4),

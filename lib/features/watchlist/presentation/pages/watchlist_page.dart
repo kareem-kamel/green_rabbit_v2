@@ -457,21 +457,21 @@ class WatchlistPage extends ConsumerWidget {
   Widget _stockItem(BuildContext context, String name, String ticker, String price, String change, bool isUp, {double? rawPrice, String? logoUrl, VoidCallback? onTap}) {
     return AppCard(
       onTap: onTap,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
-          const Icon(Icons.unfold_more, color: AppColors.textMuted, size: 24),
+          const Icon(Icons.unfold_more, color: AppColors.textMuted, size: 20),
           const SizedBox(width: 12),
           Container(
-            width: 48,
-            height: 48,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               color: AppColors.background,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppColors.border),
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(8),
               child: logoUrl != null && logoUrl.isNotEmpty
                 ? Image.network(ImageUtils.getSafeImageUrl(logoUrl), fit: BoxFit.cover, errorBuilder: (_, __, ___) => _fallbackIcon(name))
                 : _fallbackIcon(name),
@@ -484,14 +484,14 @@ class WatchlistPage extends ConsumerWidget {
               children: [
                 Text(
                   name, 
-                  style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, fontSize: 15, fontWeight: FontWeight.bold),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.access_time, color: AppColors.textMuted, size: 14),
+                    const Icon(Icons.access_time, color: AppColors.textMuted, size: 12),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
