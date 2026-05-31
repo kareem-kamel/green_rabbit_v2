@@ -20,6 +20,7 @@ abstract class MarketRepository {
   Future<List<String>> getSearchHistory({int? limit});
   Future<bool> clearSearchHistory();
   Future<void> saveSearchHistory(String query);
+  Stream<int> get rateLimitStream;
 }
 
 class MarketRepositoryImpl implements MarketRepository {
@@ -101,4 +102,7 @@ class MarketRepositoryImpl implements MarketRepository {
   Future<void> saveSearchHistory(String query) async {
     return _remoteDataSource.saveSearchHistory(query);
   }
+
+  @override
+  Stream<int> get rateLimitStream => _remoteDataSource.rateLimitStream;
 }

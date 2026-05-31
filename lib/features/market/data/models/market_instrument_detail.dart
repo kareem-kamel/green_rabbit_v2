@@ -324,6 +324,7 @@ class MarketInstrumentStats {
   final AnalystRatings? analystRatings;
   final DividendsInfo? dividends;
   final List<EarningsResult>? earningsHistory;
+  final CryptoMetricsInfo? cryptoMetrics;
 
   MarketInstrumentStats({
     required this.performance,
@@ -332,6 +333,7 @@ class MarketInstrumentStats {
     this.analystRatings,
     this.dividends,
     this.earningsHistory,
+    this.cryptoMetrics,
   });
 
   factory MarketInstrumentStats.fromJson(Map<String, dynamic> json) {
@@ -347,6 +349,9 @@ class MarketInstrumentStats {
               .map((e) => EarningsResult.fromJson(Map<String, dynamic>.from(e)))
               .toList()
           : [],
+      cryptoMetrics: json['cryptoMetrics'] is Map 
+          ? CryptoMetricsInfo.fromJson(Map<String, dynamic>.from(json['cryptoMetrics'] as Map))
+          : (json['crypto_metrics'] is Map ? CryptoMetricsInfo.fromJson(Map<String, dynamic>.from(json['crypto_metrics'] as Map)) : null),
     );
   }
 }

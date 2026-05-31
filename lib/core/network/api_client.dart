@@ -15,6 +15,7 @@ class ApiClient {
   final FlutterSecureStorage _storage;
   final Logger _logger;
   VoidCallback? onUnauthorized;
+  Function(int seconds)? onRateLimit;
 
   ApiClient({
     required Dio dio,
@@ -79,6 +80,43 @@ class ApiClient {
             'API Error [${e.response?.statusCode}] for ${e.requestOptions.uri}: ${e.message}',
           );
           _logger.e('API Error Response: ${e.response?.data}');
+
+          // Handle 429 Too Many Requests (Rate Limit)
+          if (e.response?.statusCode == 429) {
+            final responseData = e.response?.data;
+            String? retryAfterStr;
+            
+            if (responseData is Map) {
+              retryAfterStr = responseData['error']?['details']?['retryAfter']?.toString();
+            }
+            
+            retryAfterStr ??= e.response?.headers.value('retry-after');
+            
+            final retryAfterSeconds = int.tryParse(retryAfterStr ?? '') ?? 5;
+            
+            // Notify listeners about the rate limit immediately
+            if (onRateLimit != null) {
+              onRateLimit!(retryAfterSeconds);
+            }
+            
+            _logger.w('Rate limited. Retrying after $retryAfterSeconds seconds...');
+            await Future.delayed(Duration(seconds: retryAfterSeconds));
+            
+            try {
+              final response = await _dio.request(
+                e.requestOptions.path,
+                data: e.requestOptions.data,
+                queryParameters: e.requestOptions.queryParameters,
+                options: Options(
+                  method: e.requestOptions.method,
+                  headers: e.requestOptions.headers,
+                ),
+              );
+              return handler.resolve(response);
+            } catch (retryError) {
+              return handler.next(retryError is DioException ? retryError : e);
+            }
+          }
 
           final isUnauthorized = e.response?.statusCode == 401;
           bool isUserNotFound = false;

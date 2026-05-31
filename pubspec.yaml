@@ -158,9 +158,9 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/green_rabbit.png"
+  image_path: "assets/GreenRabbit_icon.jpg"
   adaptive_icon_background: "#0E1117"
-  adaptive_icon_foreground: "assets/green_rabbit.png"
+  adaptive_icon_foreground: "assets/GreenRabbit_icon.jpg"
   remove_alpha_ios: true
 
 flutter_native_splash:
