@@ -26,7 +26,7 @@ class NewsScreen extends StatefulWidget {
 
 class _NewsScreenState extends State<NewsScreen> {
   String selectedCategory = "Featured";
-  bool _showAllNews = false;
+  bool _isExpanded = false;
   
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
@@ -36,6 +36,24 @@ class _NewsScreenState extends State<NewsScreen> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _triggerLoadMore(BuildContext context) {
+    String? categoryParam;
+    if (selectedCategory == "Stocks") {
+      categoryParam = "stocks";
+    } else if (selectedCategory == "Cryptocurrency") {
+      categoryParam = "crypto";
+    } else if (selectedCategory == "Forex") {
+      categoryParam = "forex";
+    } else if (selectedCategory == "Popular") {
+      categoryParam = "most_popular";
+    }
+    
+    context.read<NewsCubit>().loadMoreNews(
+      limit: 10,
+      category: categoryParam,
+    );
   }
 
   // --- OPEN THE ALERT MENU ---
@@ -55,7 +73,7 @@ class _NewsScreenState extends State<NewsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<NewsCubit>().fetchNewsFeed(limit: 20);
+      context.read<NewsCubit>().fetchNewsFeed(limit: 5);
     });
   }
 
@@ -135,6 +153,8 @@ class _NewsScreenState extends State<NewsScreen> {
             );
           } else if (state is NewsLoaded) {
             final articles = state.articles;
+            final hasMore = state.hasMore;
+            final isLoadingMore = state.isLoadingMore;
             
             if (_isSearching) {
               final filteredArticles = _searchQuery.isEmpty 
@@ -161,16 +181,10 @@ class _NewsScreenState extends State<NewsScreen> {
             }
 
             final featuredArticle = articles.isNotEmpty ? articles.first : null;
+            final otherArticles = articles.length > 1 ? articles.sublist(1) : <NewsArticle>[];
             
-            // Show only the first 5 small articles initially (total 6 with featured)
-            final initialSmallArticles = articles.length > 1 
-                ? articles.sublist(1, articles.length > 6 ? 6 : articles.length) 
-                : <NewsArticle>[];
-                
-            // The rest of the news
-            final remainingArticles = articles.length > 6 
-                ? articles.sublist(6) 
-                : <NewsArticle>[];
+            // Limit display to 5 articles total if not expanded
+            final displayedArticles = _isExpanded ? otherArticles : otherArticles.take(4).toList();
 
             return SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -225,47 +239,60 @@ class _NewsScreenState extends State<NewsScreen> {
                     _buildSeparator(),
                     const SizedBox(height: 16),
 
-                    // Initial articles
-                    ...initialSmallArticles.map((article) => _buildSmallArticle(context, article)),
+                    // List of small articles (either 4 or all depending on expansion)
+                    ...displayedArticles.map((article) => _buildSmallArticle(context, article)),
 
-                    // Top-to-bottom animated expansion
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 400),
-                      transitionBuilder: (Widget child, Animation<double> animation) {
-                        return SizeTransition(
-                          sizeFactor: animation,
-                          axisAlignment: -1.0, // Expand from top to bottom
-                          child: FadeTransition(
-                            opacity: animation,
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: _showAllNews 
-                        ? Column(
-                            key: const ValueKey("remaining_news"),
-                            children: remainingArticles.map((article) => _buildSmallArticle(context, article)).toList(),
-                          )
-                        : const SizedBox.shrink(key: ValueKey("hidden_news")),
-                    ),
-
-                    if (articles.length > 6)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Center(
-                          child: TextButton(
-                            onPressed: () => setState(() => _showAllNews = !_showAllNews),
-                            child: Text(
-                              _showAllNews ? "View Less" : "View All News",
-                              style: const TextStyle(
-                                color: AppColors.secondaryBlue,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                    // Unified Controls: View More / View Less / Load More
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Column(
+                        children: [
+                          if (!_isExpanded && (otherArticles.length > 4 || hasMore))
+                            Center(
+                              child: TextButton(
+                                onPressed: () {
+                                  setState(() => _isExpanded = true);
+                                  // If we only have the initial batch, fetch more immediately to populate the list
+                                  if (otherArticles.length <= 4 && hasMore) {
+                                    _triggerLoadMore(context);
+                                  }
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                  backgroundColor: AppColors.secondaryBlue.withOpacity(0.1),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                ),
+                                child: const Text("View More", style: TextStyle(color: AppColors.secondaryBlue, fontWeight: FontWeight.bold, fontSize: 16)),
                               ),
                             ),
-                          ),
-                        ),
+                          
+                          if (_isExpanded) ...[
+                            if (isLoadingMore)
+                              const Center(child: CircularProgressIndicator(color: AppColors.secondaryBlue))
+                            else if (hasMore)
+                              Center(
+                                child: TextButton(
+                                  onPressed: () => _triggerLoadMore(context),
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                                    backgroundColor: AppColors.secondaryBlue.withOpacity(0.1),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                                  ),
+                                  child: const Text("Load More News", style: TextStyle(color: AppColors.secondaryBlue, fontWeight: FontWeight.bold, fontSize: 16)),
+                                ),
+                              ),
+                            
+                            const SizedBox(height: 12),
+                            Center(
+                              child: TextButton(
+                                onPressed: () => setState(() => _isExpanded = false),
+                                child: const Text("View Less", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold, fontSize: 14)),
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
+                    ),
                   ],
 
                   const SizedBox(height: 8),
@@ -401,6 +428,7 @@ class _NewsScreenState extends State<NewsScreen> {
         if (selectedCategory == label) return;
         setState(() {
           selectedCategory = label;
+          _isExpanded = false; // Reset expansion on category change
         });
         if (label == "Favorites") {
           context.read<NewsCubit>().fetchFavoriteNews(limit: 20);
@@ -409,11 +437,15 @@ class _NewsScreenState extends State<NewsScreen> {
           String? categoryParam;
           if (label == "Stocks") {
             categoryParam = "stocks";
-          } else if (label == "Cryptocurrency") categoryParam = "crypto";
-          else if (label == "Forex") categoryParam = "forex";
-          else if (label == "Popular") categoryParam = "most_popular";
+          } else if (label == "Cryptocurrency") {
+            categoryParam = "crypto";
+          } else if (label == "Forex") {
+            categoryParam = "forex";
+          } else if (label == "Popular") {
+            categoryParam = "most_popular";
+          }
           
-          context.read<NewsCubit>().fetchNewsFeed(limit: 20, category: categoryParam);
+          context.read<NewsCubit>().fetchNewsFeed(limit: 5, category: categoryParam);
         }
       },
       child: Container(

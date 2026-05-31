@@ -440,9 +440,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: AppColors.panelBg,
+        color: AppColors.primaryPurple.withOpacity(0.05),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: AppColors.primaryPurple.withOpacity(0.15)),
       ),
       child: Row(
         children: [
@@ -486,15 +486,15 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.panelBg,
+        color: AppColors.primaryPurple.withOpacity(0.05),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.06)),
+        border: Border.all(color: AppColors.primaryPurple.withOpacity(0.15)),
       ),
       child: Column(
         children: [
           const Row(
             children: [
-              _SparkIcon(size: 14),
+              _SparkIcon(size: 14, color: AppColors.primaryPurple),
               SizedBox(width: 6),
               Expanded(
                 child: Text(
@@ -517,9 +517,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
-                  border: Border.all(color: const Color(0xFF8B5CF6).withOpacity(0.5)),
+                  border: Border.all(color: AppColors.primaryPurple.withOpacity(0.4)),
                   borderRadius: BorderRadius.circular(8),
-                  color: Colors.white.withOpacity(0.02),
+                  color: AppColors.primaryPurple.withOpacity(0.1),
                 ),
                 child: Text(s["label"]!, style: const TextStyle(color: Colors.white, fontSize: 12)),
               ),
@@ -581,12 +581,16 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         margin: const EdgeInsets.only(bottom: 12, right: 40),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.07),
+          color: AppColors.primaryPurple.withOpacity(0.08),
           borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(4),
             topRight: Radius.circular(16),
             bottomLeft: Radius.circular(16),
             bottomRight: Radius.circular(16),
+          ),
+          border: Border.all(
+            color: AppColors.primaryPurple.withOpacity(0.15),
+            width: 1,
           ),
         ),
         child: const SizedBox(
@@ -607,19 +611,33 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           margin: const EdgeInsets.only(bottom: 12, left: 60),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: const Color(0xFF3730A3).withOpacity(0.7),
+            gradient: LinearGradient(
+              colors: [
+                AppColors.primaryPurple,
+                AppColors.primaryPurple.withOpacity(0.8),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(16),
               topRight: Radius.circular(16),
               bottomLeft: Radius.circular(16),
               bottomRight: Radius.circular(4),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryPurple.withOpacity(0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: MarkdownBody(
             data: msg.content,
             selectable: true,
             styleSheet: MarkdownStyleSheet(
-              p: const TextStyle(color: Colors.white, fontSize: 14),
+              p: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
               strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
             ),
           ),
@@ -641,16 +659,19 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             decoration: BoxDecoration(
               color: isError
                   ? Colors.red.withOpacity(0.12)
-                  : Colors.white.withOpacity(0.07),
+                  : AppColors.primaryPurple.withOpacity(0.08),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(4),
                 topRight: Radius.circular(16),
                 bottomLeft: Radius.circular(16),
                 bottomRight: Radius.circular(16),
               ),
-              border: isError
-                  ? Border.all(color: Colors.redAccent.withOpacity(0.5))
-                  : null,
+              border: Border.all(
+                color: isError
+                    ? Colors.redAccent.withOpacity(0.5)
+                    : AppColors.primaryPurple.withOpacity(0.15),
+                width: 1,
+              ),
             ),
             child: msg.content.isEmpty && isLastGenerating
                 ? const SizedBox(width: 40, child: TypingIndicator())
@@ -716,6 +737,35 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ] else if (isError) ...[
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: () => context.read<ChatCubit>().retryLastMessage(),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.redAccent.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.refresh_rounded, color: Colors.redAccent, size: 16),
+                    SizedBox(width: 6),
+                    Text(
+                      "Retry",
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -868,14 +918,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
                       colors: state.isListening
-                          ? [Colors.redAccent, Colors.red.shade900]
+                          ? [AppColors.primaryPurple, AppColors.primaryPurple.withOpacity(0.6)]
                           : [const Color(0xFF8B5CF6), const Color(0xFF6D28D9)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: (state.isListening ? Colors.redAccent : const Color(0xFF8B5CF6)).withOpacity(0.3),
+                        color: AppColors.primaryPurple.withOpacity(0.3),
                         blurRadius: 20,
                         spreadRadius: 5,
                       ),
@@ -953,7 +1003,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                                 onTap: () => cubit.stopListening(submit: false),
                                 child: const Text(
                                   "Cancel",
-                                  style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ],
@@ -1089,7 +1139,7 @@ class _VoiceRippleState extends State<_VoiceRipple> with SingleTickerProviderSta
         width: 120,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.redAccent.withOpacity(opacity * 0.5), width: 2),
+          border: Border.all(color: AppColors.primaryPurple.withOpacity(opacity * 0.5), width: 2),
         ),
       ),
     );
@@ -1129,7 +1179,7 @@ class _PulseIconState extends State<_PulseIcon> with SingleTickerProviderStateMi
         width: 10,
         height: 10,
         decoration: const BoxDecoration(
-          color: Colors.redAccent,
+          color: AppColors.primaryPurple,
           shape: BoxShape.circle,
         ),
       ),
@@ -1139,14 +1189,15 @@ class _PulseIconState extends State<_PulseIcon> with SingleTickerProviderStateMi
 
 class _SparkIcon extends StatelessWidget {
   final double size;
-  const _SparkIcon({required this.size});
+  final Color color;
+  const _SparkIcon({this.size = 20, this.color = AppColors.primaryPurple});
 
   @override
   Widget build(BuildContext context) {
     return Icon(
       Icons.auto_awesome_rounded,
       size: size,
-      color: const Color(0xFF8B5CF6),
+      color: color,
     );
   }
 }

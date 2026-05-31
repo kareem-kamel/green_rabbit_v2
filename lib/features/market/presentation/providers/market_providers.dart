@@ -170,7 +170,7 @@ final visibleMarketLivePricesProvider = StreamProvider.autoDispose<Map<String, d
     cancelToken.cancel();
   });
   
-  debugPrint('🔄 [SSE] visibleMarketLivePricesProvider establishing stream for: $visibleIds');
+  debugPrint('[SSE] visibleMarketLivePricesProvider establishing stream for: $visibleIds');
   final stream = repository.getMarketStream(visibleIds, cancelToken: cancelToken);
 
   return stream.map((data) {
@@ -438,7 +438,7 @@ final instrumentNewsProvider = FutureProvider.autoDispose.family<List<MarketNews
   final id = parts[0];
   final type = parts.length > 1 ? parts[1] : null;
   
-  debugPrint('📰 [DEBUG] Riverpod instrumentNewsProvider called with ID: $id, type: $type');
+  debugPrint('[DEBUG] Riverpod instrumentNewsProvider called with ID: $id, type: $type');
   return ref.watch(marketRepositoryProvider).getInstrumentNews(id, type: type);
 });
 
