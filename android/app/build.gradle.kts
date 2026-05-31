@@ -61,13 +61,20 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
-            getDefaultProguardFile("proguard-android-optimize.txt"),
-            "proguard-rules.pro"
-        )
-            signingConfig = signingConfigs.getByName("release")
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
             
+            // Fallback to debug signing if key.properties is missing or contains placeholders
+            val hasValidKeystore = keystorePropertiesFile.exists() && 
+                                  keystoreProperties.containsKey("storeFile") && 
+                                  keystoreProperties["storePassword"] != "YOUR_STORE_PASSWORD"
             
-            // Use the newly configured release keystore instead of the debug key!
+            signingConfig = if (hasValidKeystore) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
             
         }
     }
