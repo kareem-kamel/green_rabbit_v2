@@ -17,10 +17,29 @@ class CalendarScreen extends StatefulWidget {
 }
 
 class _CalendarScreenState extends State<CalendarScreen> {
-  String _selectedCategory = 'earnings'; // Changed to earnings as economic is not supported
+  String _selectedCategory = 'economic'; // Supported now
   String _selectedTab = 'this_week'; // Track selected tab
   final Set<String> _expandedDates = {}; // Track expanded sections
   CalendarFilterSettings _filterSettings = CalendarFilterSettings();
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
+  String? _lastLoadedStateKey;
+
+  void _triggerSearch() {
+    final query = _searchController.text.trim();
+    if (query.length >= 2) {
+      context.read<CalendarCubit>().searchCalendar(
+        category: _selectedCategory,
+        query: query,
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   List<String> get _tabs {
     if (_selectedCategory == 'ipo') {
@@ -50,6 +69,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
     'Australia': 'AU',
     'Brazil': 'BR',
     'Mexico': 'MX',
+  };
+
+  static const Map<String, String> _categoryDisplayNames = {
+    'economic': 'Economic Calendar',
+    'earnings': 'Earnings Calendar',
+    'dividends': 'Dividend Calendar',
+    'splits': 'Splits Calendar',
+    'ipo': 'IPO Calendar',
   };
 
   void _fetchData() {
@@ -104,55 +131,104 @@ class _CalendarScreenState extends State<CalendarScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: InkWell(
-          onTap: () => _showCategoryDialog(),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _selectedCategory.isEmpty 
-                    ? "Calendar" 
-                    : "${_selectedCategory[0].toUpperCase()}${_selectedCategory.substring(1)} Calendar",
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+        title: _isSearching
+            ? Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF161922),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.primary.withOpacity(0.5), width: 1),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  autofocus: true,
+                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  decoration: const InputDecoration(
+                    hintText: 'Search event or symbol...',
+                    hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
+                    prefixIcon: Icon(Icons.search, color: Colors.grey, size: 20),
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onChanged: (val) {
+                    final trimmed = val.trim();
+                    if (trimmed.length >= 2) {
+                      _triggerSearch();
+                    } else if (trimmed.isEmpty) {
+                      _fetchData();
+                    }
+                  },
+                  onSubmitted: (value) {
+                    _triggerSearch();
+                  },
+                ),
+              )
+            : InkWell(
+                onTap: () => _showCategoryDialog(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _categoryDisplayNames[_selectedCategory] ?? "Calendar",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Icon(Icons.arrow_drop_down, color: Colors.white, size: 24),
+                  ],
                 ),
               ),
-              const Icon(Icons.arrow_drop_down, color: Colors.white, size: 24),
-            ],
-          ),
-        ),
         actions: [
-          _buildCircularIconButton(
-            icon: Icon(
-              Icons.filter_alt_outlined,
-              color: _isFilterActive ? const Color(0xFFFFD700) : Colors.white,
-              size: 20,
-            ),
-            onPressed: () async {
-              final result = await Navigator.push<CalendarFilterSettings>(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CalendarFilterScreen(
-                    initialSettings: _filterSettings,
-                    category: _selectedCategory,
-                  ),
-                ),
-              );
-              if (result != null) {
+          if (_isSearching)
+            _buildCircularIconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 20),
+              onPressed: () {
                 setState(() {
-                  _filterSettings = result;
+                  _isSearching = false;
+                  _searchController.clear();
                   _expandedDates.clear();
                 });
                 _fetchData();
-              }
-            },
-          ),
-          _buildCircularIconButton(
-            icon: const Icon(Icons.search, color: Colors.white, size: 20),
-            onPressed: () {},
-          ),
+              },
+            )
+          else ...[
+            _buildCircularIconButton(
+              icon: Icon(
+                Icons.filter_alt_outlined,
+                color: _isFilterActive ? const Color(0xFFFFD700) : Colors.white,
+                size: 20,
+              ),
+              onPressed: () async {
+                final result = await Navigator.push<CalendarFilterSettings>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CalendarFilterScreen(
+                      initialSettings: _filterSettings,
+                      category: _selectedCategory,
+                    ),
+                  ),
+                );
+                if (result != null) {
+                  setState(() {
+                    _filterSettings = result;
+                    _expandedDates.clear();
+                  });
+                  _fetchData();
+                }
+              },
+            ),
+            _buildCircularIconButton(
+              icon: const Icon(Icons.search, color: Colors.white, size: 20),
+              onPressed: () {
+                setState(() {
+                  _isSearching = true;
+                });
+              },
+            ),
+          ],
           _buildCircularIconButton(
             icon: const Icon(Icons.menu, color: Colors.white, size: 20),
             onPressed: () {
@@ -170,47 +246,49 @@ class _CalendarScreenState extends State<CalendarScreen> {
           constraints: const BoxConstraints(maxWidth: 800),
           child: Column(
             children: [
-              const SizedBox(height: 16),
-              // Tabs
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: _tabs.map((tab) {
-                    final isActive = _selectedTab == tab;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: InkWell(
-                        onTap: () {
-                          setState(() {
-                            _selectedTab = tab;
-                            _expandedDates.clear(); // Clear expansions on tab change
-                          });
-                          _fetchData();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isActive ? Colors.transparent : const Color(0xFF161922),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: isActive ? const Color(0xFF2D5CFF) : Colors.transparent,
-                              width: 1.5,
+              if (!_isSearching) ...[
+                const SizedBox(height: 16),
+                // Tabs
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: _tabs.map((tab) {
+                      final isActive = _selectedTab == tab;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedTab = tab;
+                              _expandedDates.clear(); // Clear expansions on tab change
+                            });
+                            _fetchData();
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isActive ? Colors.transparent : const Color(0xFF161922),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isActive ? const Color(0xFF2D5CFF) : Colors.transparent,
+                                width: 1.5,
+                              ),
                             ),
-                          ),
-                          child: Text(
-                            tab.isEmpty ? '' : tab[0].toUpperCase() + tab.substring(1).replaceAll('_', ' '),
-                            style: TextStyle(
-                              color: isActive ? Colors.white : Colors.grey,
-                              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                            child: Text(
+                              tab.isEmpty ? '' : tab[0].toUpperCase() + tab.substring(1).replaceAll('_', ' '),
+                              style: TextStyle(
+                                color: isActive ? Colors.white : Colors.grey,
+                                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    );
-                  }).toList(),
+                      );
+                    }).toList(),
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 24),
               Expanded(
                 child: BlocBuilder<CalendarCubit, CalendarState>(
@@ -218,33 +296,61 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     if (state is CalendarLoading) {
                       return const CalendarSkeletonLoader();
                     } else if (state is CalendarLoaded) {
-                      final List<CalendarDay> displayDays = (state.days ?? [
-                        CalendarDay(
-                          date: state.date ?? '',
-                          dayName: _getDayName(state.date),
-                          eventCount: state.totalEvents,
-                          events: state.events ?? [],
-                        )
-                      ]).map((day) {
-                        // Filter events by importance locally using safe importance check
-                        final filteredEvents = day.events.where((e) {
-                          return _filterSettings.selectedImportance.contains(e.importance ?? e.impact ?? 1);
+                      final List<CalendarDay> displayDays;
+                      if (state.tab == 'search') {
+                        final Map<String, List<CalendarEvent>> grouped = {};
+                        for (final event in (state.events ?? <CalendarEvent>[])) {
+                          final dateStr = event.reportDate ?? event.paymentDate ?? '';
+                          grouped.putIfAbsent(dateStr, () => []).add(event);
+                        }
+                        displayDays = grouped.entries.map((entry) {
+                          final dateStr = entry.key;
+                          final dateEvents = entry.value;
+                          final filteredEvents = dateEvents.where((e) {
+                            return _filterSettings.selectedImportance.contains(e.importance ?? e.impact ?? 1);
+                          }).toList();
+                          return CalendarDay(
+                            date: dateStr,
+                            dayName: _getDayName(dateStr),
+                            eventCount: filteredEvents.length,
+                            events: filteredEvents,
+                          );
                         }).toList();
-                        return CalendarDay(
-                          date: day.date,
-                          dayName: day.dayName,
-                          eventCount: filteredEvents.length,
-                          events: filteredEvents,
-                        );
-                      }).toList();
+                        displayDays.sort((a, b) => a.date.compareTo(b.date));
+                      } else {
+                        displayDays = (state.days ?? [
+                          CalendarDay(
+                            date: state.date ?? '',
+                            dayName: _getDayName(state.date),
+                            eventCount: state.totalEvents,
+                            events: state.events ?? [],
+                          )
+                        ]).map((day) {
+                          // Filter events by importance locally using safe importance check
+                          final filteredEvents = day.events.where((e) {
+                            return _filterSettings.selectedImportance.contains(e.importance ?? e.impact ?? 1);
+                          }).toList();
+                          return CalendarDay(
+                            date: day.date,
+                            dayName: day.dayName,
+                            eventCount: filteredEvents.length,
+                            events: filteredEvents,
+                          );
+                        }).toList();
+                      }
                       
                       if (displayDays.every((d) => d.events.isEmpty)) {
                         return _buildEmptyState();
                       }
 
-                      // Auto-expand first day with events if nothing expanded
-                      if (_expandedDates.isEmpty && displayDays.any((d) => d.events.isNotEmpty)) {
-                        _expandedDates.add(displayDays.firstWhere((d) => d.events.isNotEmpty).date);
+                      // Auto-expand first day with events on initial load of this dataset
+                      final stateKey = "${state.category}|${state.tab}|${_searchController.text}";
+                      if (_lastLoadedStateKey != stateKey) {
+                        _lastLoadedStateKey = stateKey;
+                        _expandedDates.clear();
+                        if (displayDays.any((d) => d.events.isNotEmpty)) {
+                          _expandedDates.add(displayDays.firstWhere((d) => d.events.isNotEmpty).date);
+                        }
                       }
 
                       // Flatten the structure for ListView.builder to allow lazy loading and prevent slowness/lag
@@ -373,6 +479,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            _buildCategoryItem("Economic Calendar", 'economic', Icons.analytics_outlined),
             _buildCategoryItem("Earnings Calendar", 'earnings', Icons.monetization_on_outlined),
             _buildCategoryItem("Dividend Calendar", 'dividends', Icons.money_outlined),
             _buildCategoryItem("Splits Calendar", 'splits', Icons.call_split_outlined),
@@ -391,7 +498,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
           _selectedCategory = category;
           _expandedDates.clear();
         });
-        _fetchData();
+        if (_isSearching && _searchController.text.trim().isNotEmpty) {
+          _triggerSearch();
+        } else {
+          _fetchData();
+        }
         Navigator.pop(context);
       },
       child: Padding(
@@ -494,6 +605,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   String _formatTabTitle(String tab) {
+    if (tab == 'search') {
+      return 'Search Results for "${_searchController.text}"';
+    }
     if (tab.isEmpty) return '';
     return tab
         .replaceAll('_', ' ')

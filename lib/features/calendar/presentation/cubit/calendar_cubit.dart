@@ -110,4 +110,37 @@ class CalendarCubit extends Cubit<CalendarState> {
       emit(CalendarError(e.toString()));
     }
   }
+
+  Future<void> searchCalendar({
+    required String category,
+    required String query,
+    int? page,
+    int? limit,
+  }) async {
+    emit(CalendarLoading());
+    try {
+      final response = await repository.searchCalendarEvents(
+        category: category,
+        query: query,
+        page: page,
+        limit: limit,
+      );
+
+      if (response['success'] == true) {
+        final data = response['data'];
+        final events = (data['events'] as List).map((e) => CalendarEvent.fromJson(e)).toList();
+
+        emit(CalendarLoaded(
+          category: category,
+          tab: 'search',
+          events: events,
+          totalEvents: events.length,
+        ));
+      } else {
+        emit(CalendarError(response['error']?['message'] ?? 'Failed to load search results'));
+      }
+    } catch (e) {
+      emit(CalendarError(e.toString()));
+    }
+  }
 }

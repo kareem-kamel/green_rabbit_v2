@@ -8,6 +8,13 @@ abstract class CalendarRepository {
     String? symbol,
     String? country,
   });
+
+  Future<Map<String, dynamic>> searchCalendarEvents({
+    required String category,
+    required String query,
+    int? page,
+    int? limit,
+  });
 }
 
 class CalendarRepositoryImpl implements CalendarRepository {
@@ -29,6 +36,21 @@ class CalendarRepositoryImpl implements CalendarRepository {
       watchlist: watchlist,
       symbol: symbol,
       country: country,
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> searchCalendarEvents({
+    required String category,
+    required String query,
+    int? page,
+    int? limit,
+  }) async {
+    return await remoteDataSource.searchCalendarEvents(
+      category: category,
+      query: query,
+      page: page,
+      limit: limit,
     );
   }
 }

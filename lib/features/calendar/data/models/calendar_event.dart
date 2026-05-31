@@ -38,6 +38,13 @@ class CalendarEvent {
   final int? impact; // 1, 2, 3 stars
   final int? importance; // returned by API for all categories
 
+  // New Economic Calendar fields
+  final String? isoCountryCode;
+  final String? reportName;
+  final String? reportDate;
+  final String? consensus;
+  final String? unit;
+
   CalendarEvent({
     required this.symbol,
     this.name,
@@ -71,12 +78,17 @@ class CalendarEvent {
     this.previous,
     this.impact,
     this.importance,
+    this.isoCountryCode,
+    this.reportName,
+    this.reportDate,
+    this.consensus,
+    this.unit,
   });
 
   factory CalendarEvent.fromJson(Map<String, dynamic> json) {
     return CalendarEvent(
       symbol: json['symbol'] ?? '',
-      name: json['name'],
+      name: json['name'] ?? json['reportName'],
       exchange: json['exchange'],
       currency: json['currency'],
       time: json['time'],
@@ -101,12 +113,17 @@ class CalendarEvent {
       revenueEstimate: _toDouble(json['revenueEstimate']),
       revenueActual: _toDouble(json['revenueActual']),
       instrument: json['instrument'] != null ? MarketInstrument.fromJson(json['instrument']) : null,
-      country: json['country']?.toString(),
+      country: json['country']?.toString() ?? json['isoCountryCode']?.toString(),
       actual: json['actual']?.toString(),
-      forecast: json['forecast']?.toString(),
+      forecast: json['forecast']?.toString() ?? json['consensus']?.toString(),
       previous: json['previous']?.toString(),
       impact: _toInt(json['impact']),
       importance: _toInt(json['importance']),
+      isoCountryCode: json['isoCountryCode']?.toString(),
+      reportName: json['reportName']?.toString(),
+      reportDate: json['reportDate']?.toString(),
+      consensus: json['consensus']?.toString(),
+      unit: json['unit']?.toString(),
     );
   }
 }
