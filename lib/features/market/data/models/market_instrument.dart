@@ -1,4 +1,5 @@
 import '../../../../core/constants/app_constants.dart';
+import 'market_instrument_detail.dart';
 
 class MarketInstrument {
   final String id;
@@ -20,6 +21,7 @@ class MarketInstrument {
   final List<double>? sparkline7d;
   final int? displayOrder;
   final String? addedAt;
+  final CryptoMetricsInfo? cryptoMetrics;
 
   const MarketInstrument({
     required this.id,
@@ -41,6 +43,7 @@ class MarketInstrument {
     this.sparkline7d,
     this.displayOrder,
     this.addedAt,
+    this.cryptoMetrics,
   });
 
   factory MarketInstrument.fromJson(Map<String, dynamic> json) {
@@ -114,6 +117,9 @@ class MarketInstrument {
       sparkline7d: _parseSparkline(findValue(['sparkline7d', 'sparkline', 'chartData', 'history', 'sparkline_7d'])),
       displayOrder: json['displayOrder'] as int?,
       addedAt: json['addedAt'] as String?,
+      cryptoMetrics: json['cryptoMetrics'] is Map 
+          ? CryptoMetricsInfo.fromJson(Map<String, dynamic>.from(json['cryptoMetrics'] as Map))
+          : (json['crypto_metrics'] is Map ? CryptoMetricsInfo.fromJson(Map<String, dynamic>.from(json['crypto_metrics'] as Map)) : null),
     );
   }
 
@@ -148,6 +154,7 @@ class MarketInstrument {
       'sparkline7d': sparkline7d,
       'displayOrder': displayOrder,
       'addedAt': addedAt,
+      'cryptoMetrics': cryptoMetrics,
     };
   }
 
@@ -171,6 +178,7 @@ class MarketInstrument {
     List<double>? sparkline7d,
     int? displayOrder,
     String? addedAt,
+    CryptoMetricsInfo? cryptoMetrics,
   }) {
     return MarketInstrument(
       id: id ?? this.id,
@@ -192,6 +200,7 @@ class MarketInstrument {
       sparkline7d: sparkline7d ?? this.sparkline7d,
       displayOrder: displayOrder ?? this.displayOrder,
       addedAt: addedAt ?? this.addedAt,
+      cryptoMetrics: cryptoMetrics ?? this.cryptoMetrics,
     );
   }
 }
