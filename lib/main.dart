@@ -67,14 +67,20 @@ class GreenRabbitApp extends StatelessWidget {
         ),
         BlocProvider<ChatCubit>(create: (context) => di.sl<ChatCubit>()),
         BlocProvider<AlertCubit>(create: (context) => di.sl<AlertCubit>()),
-        BlocProvider<CalendarCubit>(create: (context) => di.sl<CalendarCubit>()),
-        BlocProvider<NotificationCubit>(create: (context) => di.sl<NotificationCubit>()),
-        BlocProvider<AuthCubit>(create: (context) => di.sl<AuthCubit>()..checkAuth()),
+        BlocProvider<CalendarCubit>(
+          create: (context) => di.sl<CalendarCubit>(),
+        ),
+        BlocProvider<NotificationCubit>(
+          create: (context) => di.sl<NotificationCubit>(),
+        ),
+        BlocProvider<AuthCubit>(
+          create: (context) => di.sl<AuthCubit>()..checkAuth(),
+        ),
       ],
 
-        child: BlocBuilder<SettingsCubit, SettingsState>(
-          builder: (context, settingsState) {
-            return MaterialApp(
+      child: BlocBuilder<SettingsCubit, SettingsState>(
+        builder: (context, settingsState) {
+          return MaterialApp(
             navigatorKey: globalNavigatorKey,
             title: 'Green Rabbit',
             debugShowCheckedModeBanner: false,

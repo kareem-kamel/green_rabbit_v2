@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:green_rabbit/core/theme/app_colors.dart';
@@ -16,55 +17,44 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final ScrollController _scrollController = ScrollController();
+
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
 
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
   final FocusNode _confirmFocus = FocusNode();
-  final _formKey = GlobalKey<FormState>();
-
-  // ScrollController to programmatically scroll to focused field
-  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    // Email → scroll just enough to show all 3 fields + button above keyboard
-    _emailFocus.addListener(_onEmailFocus);
-    // Password / Confirm → scroll to bottom so button stays visible
-    _passwordFocus.addListener(_onPasswordFocus);
-    _confirmFocus.addListener(_onConfirmFocus);
+    _emailFocus.addListener(_onFieldFocus);
+    _passwordFocus.addListener(_onFieldFocus);
+    _confirmFocus.addListener(_onFieldFocus);
   }
 
-  /// All fields scroll to the same offset — hides the header and
-  /// reveals all 3 fields + Sign Up button above the keyboard.
-  void _scrollToShowForm() {
+  /// Responsive programmatic scrolling: Instead of a hardcoded 120px offset, 
+  /// we dynamically calculate how much to scroll based on device screen height.
+  void _onFieldFocus() {
+    final currentFocus = FocusScope.of(context).focusedChild;
+    if (currentFocus == null || !currentFocus.hasFocus) return;
+
     Future.delayed(const Duration(milliseconds: 300), () {
       if (!_scrollController.hasClients) return;
+      
+      final screenHeight = MediaQuery.of(context).size.height;
+      // Scroll more aggressively on smaller screens, gently on larger screens
+      double scrollOffset = screenHeight < 700 ? 140.0 : 90.0;
+
       _scrollController.animateTo(
-        120, // pushes header out, shows email + password + confirm + button
+        scrollOffset,
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeOut,
       );
     });
-  }
-
-  void _onEmailFocus() {
-    if (!_emailFocus.hasFocus) return;
-    _scrollToShowForm();
-  }
-
-  void _onPasswordFocus() {
-    if (!_passwordFocus.hasFocus) return;
-    _scrollToShowForm();
-  }
-
-  void _onConfirmFocus() {
-    if (!_confirmFocus.hasFocus) return;
-    _scrollToShowForm();
   }
 
   @override
@@ -72,9 +62,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _emailFocus.removeListener(_onEmailFocus);
-    _passwordFocus.removeListener(_onPasswordFocus);
-    _confirmFocus.removeListener(_onConfirmFocus);
+    _emailFocus.removeListener(_onFieldFocus);
+    _passwordFocus.removeListener(_onFieldFocus);
+    _confirmFocus.removeListener(_onFieldFocus);
     _emailFocus.dispose();
     _passwordFocus.dispose();
     _confirmFocus.dispose();
@@ -84,9 +74,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-    final topPadding = MediaQuery.of(context).padding.top;
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final mediaQuery = MediaQuery.of(context);
+    final keyboardHeight = mediaQuery.viewInsets.bottom;
+    final screenHeight = mediaQuery.size.height;
+    
+    // Adaptive responsive parameters
+    final isShortScreen = screenHeight < 700;
+    final topPadding = mediaQuery.padding.top;
+    final bottomPadding = mediaQuery.padding.bottom;
 
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -129,164 +124,169 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 top: topPadding,
                 bottom: keyboardHeight > 0 ? keyboardHeight : bottomPadding,
               ),
-              child: SingleChildScrollView(
-                controller: _scrollController,
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 32),
-
-                      // ── 1. Header ──────────────────────────────────────
-                      Text(
-                        'Create your account',
-                        style: Theme.of(context).textTheme.displaySmall
-                            ?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Powerful market insights are just a few steps away.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.white70,
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-
-                      // ── 2. Email Field ─────────────────────────────────
-                      AuthTextField(
-                        label: 'Email',
-                        hintText: 'Content@gmail.com',
-                        controller: _emailController,
-                        focusNode: _emailFocus,
-                        textInputAction: TextInputAction.next,
-                        onFieldSubmitted: (_) =>
-                            FocusScope.of(context).requestFocus(_passwordFocus),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
-                          }
-                          final emailRegex = RegExp(
-                            r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                          );
-                          if (!emailRegex.hasMatch(value)) {
-                            return 'Please enter a valid email address';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 20),
-
-                      // ── 3. Password Field ──────────────────────────────
-                      AuthTextField(
-                        label: 'Password',
-                        hintText: '********',
-                        isPassword: true,
-                        controller: _passwordController,
-                        focusNode: _passwordFocus,
-                        nextFocusNode: _confirmFocus,
-                        textInputAction: TextInputAction.next,
-                        onFieldSubmitted: (_) =>
-                            FocusScope.of(context).requestFocus(_confirmFocus),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter a password';
-                          }
-                          if (value.length < 8) {
-                            return 'Must be at least 8 characters';
-                          }
-                          if (!value.contains(RegExp(r'[A-Z]')) ||
-                              !value.contains(RegExp(r'[a-z]'))) {
-                            return 'Must contain at least one uppercase and lowercase letter';
-                          }
-                          if (!value.contains(RegExp(r'[0-9]'))) {
-                            return 'Must contain at least one number';
-                          }
-                          return null;
-                        },
-                      ),
-
-                      // 👇 Added the real-time UI Validator here
-                      _buildPasswordRules(),
-
-                      const SizedBox(height: 20),
-
-                      // ── 4. Confirm Password Field ──────────────────────
-                      AuthTextField(
-                        label: 'Confirm Password',
-                        hintText: '********',
-                        isPassword: true,
-                        controller: _confirmPasswordController,
-                        focusNode: _confirmFocus,
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: (_) =>
-                            FocusScope.of(context).unfocus(),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please confirm your password';
-                          }
-                          if (value != _passwordController.text) {
-                            return 'Passwords do not match';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 32),
-
-                      // ── 5. Sign Up Button ──────────────────────────────
-                      PrimaryButton(
-                        text: 'Sign Up',
-                        isLoading: state is AuthLoading,
-                        onPressed: () {
-                          // 👇 1. Force the fields to lose focus BEFORE validation!
-                          FocusScope.of(context).unfocus();
-
-                          // 👇 2. Then check validation
-                          if (_formKey.currentState!.validate()) {
-                            context.read<AuthCubit>().register(
-                              email: _emailController.text.trim(),
-                              password: _passwordController.text.trim(),
-                              confirmPassword: _confirmPasswordController.text
-                                  .trim(),
-                            );
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 40),
-
-                      // ── 6. Social Login Section ──────────────────────────
-                      const SocialLoginSection(text: 'Sign up With'),
-                      const SizedBox(height: 40),
-
-                      // ── 8. Have an account? ────────────────────────────
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+              // Center layout horizontally to enforce perfect look on Tablets/Desktops
+              child: Center(
+                child: ConstrainedBox(
+                  // Restricts card scaling width on massive screens
+                  constraints: const BoxConstraints(maxWidth: 460),
+                  child: SingleChildScrollView(
+                    controller: _scrollController,
+                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Have an account? ',
-                            style: TextStyle(color: Colors.white70),
+                          SizedBox(height: isShortScreen ? 16 : 32),
+
+                          // ── 1. Header ──────────────────────────────────────
+                          Text(
+                            'Create your account',
+                            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: isShortScreen ? 28 : 32, // Adaptive typography
+                                ),
                           ),
-                          GestureDetector(
-                            onTap: () => Navigator.pop(context),
-                            child: const Text(
-                              'Login',
-                              style: TextStyle(
-                                color: Colors.blueAccent,
-                                fontWeight: FontWeight.bold,
+                          const SizedBox(height: 8),
+                          Text(
+                            'Powerful market insights are just a few steps away.',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Colors.white70,
+                                  height: 1.5,
+                                ),
+                          ),
+                          
+                          SizedBox(height: isShortScreen ? 20 : 32),
+
+                          // ── 2. Email Field ─────────────────────────────────
+                          AuthTextField(
+                            label: 'Email',
+                            hintText: 'Content@gmail.com',
+                            controller: _emailController,
+                            focusNode: _emailFocus,
+                            textInputAction: TextInputAction.next,
+                            onFieldSubmitted: (_) =>
+                                FocusScope.of(context).requestFocus(_passwordFocus),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your email';
+                              }
+                              final emailRegex = RegExp(
+                                r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                              );
+                              if (!emailRegex.hasMatch(value)) {
+                                return 'Please enter a valid email address';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 16),
+
+                          // ── 3. Password Field ──────────────────────────────
+                          AuthTextField(
+                            label: 'Password',
+                            hintText: '********',
+                            isPassword: true,
+                            controller: _passwordController,
+                            focusNode: _passwordFocus,
+                            nextFocusNode: _confirmFocus,
+                            textInputAction: TextInputAction.next,
+                            onFieldSubmitted: (_) =>
+                                FocusScope.of(context).requestFocus(_confirmFocus),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter a password';
+                              }
+                              if (value.length < 8) {
+                                return 'Must be at least 8 characters';
+                              }
+                              if (!value.contains(RegExp(r'[A-Z]')) ||
+                                  !value.contains(RegExp(r'[a-z]'))) {
+                                return 'Must contain uppercase and lowercase';
+                              }
+                              if (!value.contains(RegExp(r'[0-9]'))) {
+                                return 'Must contain at least one number';
+                              }
+                              return null;
+                            },
+                          ),
+
+                          _buildPasswordRules(),
+                          const SizedBox(height: 16),
+
+                          // ── 4. Confirm Password Field ──────────────────────
+                          AuthTextField(
+                            label: 'Confirm Password',
+                            hintText: '********',
+                            isPassword: true,
+                            controller: _confirmPasswordController,
+                            focusNode: _confirmFocus,
+                            textInputAction: TextInputAction.done,
+                            onFieldSubmitted: (_) => FocusScope.of(context).unfocus(),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please confirm your password';
+                              }
+                              if (value != _passwordController.text) {
+                                return 'Passwords do not match';
+                              }
+                              return null;
+                            },
+                          ),
+                          
+                          SizedBox(height: isShortScreen ? 24 : 32),
+
+                          // ── 5. Sign Up Button ──────────────────────────────
+                          PrimaryButton(
+                            text: 'Sign Up',
+                            isLoading: state is AuthLoading,
+                            onPressed: () {
+                              FocusScope.of(context).unfocus();
+
+                              if (_formKey.currentState!.validate()) {
+                                context.read<AuthCubit>().register(
+                                      email: _emailController.text.trim(),
+                                      password: _passwordController.text.trim(),
+                                      confirmPassword:
+                                          _confirmPasswordController.text.trim(),
+                                    );
+                              }
+                            },
+                          ),
+                          
+                          SizedBox(height: isShortScreen ? 24 : 40),
+
+                          // ── 6. Social Login Section ──────────────────────────
+                          const SocialLoginSection(text: 'Sign up With'),
+                          
+                          SizedBox(height: isShortScreen ? 24 : 40),
+
+                          // ── 8. Have an account? ────────────────────────────
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Text(
+                                'Have an account? ',
+                                style: TextStyle(color: Colors.white70),
                               ),
-                            ),
+                              GestureDetector(
+                                onTap: () => Navigator.pop(context),
+                                child: const Text(
+                                  'Login',
+                                  style: TextStyle(
+                                    color: Colors.blueAccent,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
+                          const SizedBox(height: 24),
                         ],
                       ),
-                      const SizedBox(height: 24),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -297,24 +297,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
-  // ─── NEW HELPER METHODS FOR PASSWORD RULES ───────────────────────────────
+  // ─── HELPER METHODS FOR PASSWORD RULES ───────────────────────────────
 
   Widget _buildPasswordRules() {
-    // ValueListenableBuilder listens to the controller and rebuilds ONLY this part
     return ValueListenableBuilder<TextEditingValue>(
       valueListenable: _passwordController,
       builder: (context, value, child) {
         final password = value.text;
 
-        // Check the 3 rules in real-time
         final hasMinLength = password.length >= 8;
-        final hasUpperAndLower =
-            password.contains(RegExp(r'[A-Z]')) &&
+        final hasUpperAndLower = password.contains(RegExp(r'[A-Z]')) &&
             password.contains(RegExp(r'[a-z]'));
         final hasNumber = password.contains(RegExp(r'[0-9]'));
 
         return Padding(
-          padding: const EdgeInsets.only(top: 12.0),
+          padding: const EdgeInsets.only(top: 10.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -338,18 +335,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
       children: [
         Icon(
           isMet ? Icons.check_circle : Icons.cancel,
-          color: isMet
-              ? Colors.green
-              : Colors.white38, // Green if met, faded grey if not
+          color: isMet ? Colors.green : Colors.white38,
           size: 16,
         ),
         const SizedBox(width: 8),
-        Text(
-          text,
-          style: TextStyle(
-            color: isMet ? Colors.green : Colors.white38,
-            fontSize: 12,
-            fontWeight: isMet ? FontWeight.w600 : FontWeight.normal,
+        Expanded( // Prevents long text from cutting or overflowing horizontally
+          child: Text(
+            text,
+            style: TextStyle(
+              color: isMet ? Colors.green : Colors.white38,
+              fontSize: 12,
+              fontWeight: isMet ? FontWeight.w600 : FontWeight.normal,
+            ),
           ),
         ),
       ],
