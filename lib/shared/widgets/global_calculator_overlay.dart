@@ -21,6 +21,14 @@ double _globalStockAnnualRate = 15.0;
 int _globalStockMonths = 60;
 bool _globalStockIsAnnual = true;
 
+// Persistent state for Forex Profit Calculator
+MarketInstrument? _globalForexInstrument;
+bool _globalForexIsBuy = true;
+double _globalForexOpenPrice = 0.0;
+double _globalForexClosePrice = 0.0;
+double _globalForexLots = 0.1;
+String _globalForexCurrency = "USD";
+
 class GlobalCalculatorOverlay extends StatefulWidget {
   const GlobalCalculatorOverlay({super.key});
 
@@ -279,14 +287,23 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
   late TextEditingController _sharesController;
   late TextEditingController _stockRateController;
 
+  // Forex Calculator Controllers
+  late TextEditingController _forexOpenPriceController;
+  late TextEditingController _forexClosePriceController;
+  late TextEditingController _forexLotsController;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _principalController = TextEditingController(text: _globalPrincipal.toInt().toString());
     _rateController = TextEditingController(text: _globalAnnualRate.toInt().toString());
     _sharesController = TextEditingController(text: _globalStockShares.toInt().toString());
     _stockRateController = TextEditingController(text: _globalStockAnnualRate.toInt().toString());
+
+    _forexOpenPriceController = TextEditingController(text: _globalForexOpenPrice == 0 ? "" : _globalForexOpenPrice.toString());
+    _forexClosePriceController = TextEditingController(text: _globalForexClosePrice == 0 ? "" : _globalForexClosePrice.toString());
+    _forexLotsController = TextEditingController(text: _globalForexLots.toString());
   }
 
   @override
@@ -296,6 +313,9 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
     _rateController.dispose();
     _sharesController.dispose();
     _stockRateController.dispose();
+    _forexOpenPriceController.dispose();
+    _forexClosePriceController.dispose();
+    _forexLotsController.dispose();
     super.dispose();
   }
 
@@ -312,7 +332,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
             const Icon(Icons.calculate, color: AppColors.primaryPurple),
             const SizedBox(width: 8),
             Text(
-              "Investment Calculator",
+              "Forex Profit Calculator",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -354,6 +374,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              /*
               // Tab Bar
               TabBar(
                 controller: _tabController,
@@ -373,9 +394,386 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                 duration: const Duration(milliseconds: 200),
                 child: _tabController.index == 0 ? _buildStockTab(isDark) : _buildStandardTab(isDark),
               ),
+              */
+
+              Text(
+                "Forex Profit Calculator",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white70 : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildForexTab(isDark),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showInstrumentPicker(bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF131517) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white10 : Colors.black12,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      "Select Instrument",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Search Bar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: StatefulBuilder(
+                    builder: (context, setLocalState) => TextField(
+                      style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                      decoration: const InputDecoration(
+                        hintText: "Search instruments...",
+                        hintStyle: TextStyle(color: Colors.grey),
+                        border: InputBorder.none,
+                        icon: Icon(Icons.search, color: Colors.grey),
+                      ),
+                      onChanged: (val) {
+                        setLocalState(() {
+                          // Trigger local rebuild of the list
+                        });
+                        _debouncedSearch(val);
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              
+              // List
+              Expanded(
+                child: _InstrumentSearchList(
+                  scrollController: scrollController,
+                  isDark: isDark,
+                  onSelected: (instrument) {
+                    setState(() {
+                      _globalForexInstrument = instrument;
+                      _globalForexOpenPrice = instrument.price ?? 0.0;
+                      _forexOpenPriceController.text = _globalForexOpenPrice.toString();
+                    });
+                    Navigator.pop(context);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Timer? _searchDebounce;
+  void _debouncedSearch(String query) {
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+      ref.read(_instrumentSearchQueryProvider.notifier).state = query;
+    });
+  }
+
+  Widget _buildForexTab(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Instrument Search (Dropdown-like)
+        Text(
+          "Select Instrument",
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: isDark ? Colors.white54 : Colors.black54,
+          ),
+        ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () => _showInstrumentPicker(isDark),
+          child: Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1C1F26) : Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _globalForexInstrument != null
+                        ? "${_globalForexInstrument!.name} (${_globalForexInstrument!.symbol})"
+                        : "e.g. EUR/USD, GBP/JPY",
+                    style: TextStyle(
+                      color: _globalForexInstrument != null 
+                          ? (isDark ? Colors.white : Colors.black) 
+                          : Colors.grey,
+                    ),
+                  ),
+                ),
+                Icon(Icons.keyboard_arrow_down_rounded, color: isDark ? Colors.white54 : Colors.black54),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Buy/Sell Side
+        Text(
+          "Side",
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: isDark ? Colors.white54 : Colors.black54,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          height: 40,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C1F26) : Colors.grey[200],
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.all(2),
+          child: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _globalForexIsBuy = true),
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: _globalForexIsBuy ? AppColors.profitGreen : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      "Buy",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _globalForexIsBuy ? Colors.white : (isDark ? Colors.white54 : Colors.black54),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _globalForexIsBuy = false),
+                  child: Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: !_globalForexIsBuy ? AppColors.lossRed : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      "Sell",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: !_globalForexIsBuy ? Colors.white : (isDark ? Colors.white54 : Colors.black54),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Prices Row
+        Row(
+          children: [
+            Expanded(
+              child: _buildInputField(
+                label: "Open Price",
+                controller: _forexOpenPriceController,
+                onChanged: (val) => setState(() => _globalForexOpenPrice = double.tryParse(val) ?? 0.0),
+                isDark: isDark,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildInputField(
+                label: "Close Price",
+                controller: _forexClosePriceController,
+                onChanged: (val) => setState(() => _globalForexClosePrice = double.tryParse(val) ?? 0.0),
+                isDark: isDark,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Lots and Currency Row
+        Row(
+          children: [
+            Expanded(
+              child: _buildInputField(
+                label: "Trade Size (Lots)",
+                controller: _forexLotsController,
+                onChanged: (val) => setState(() => _globalForexLots = double.tryParse(val) ?? 0.0),
+                isDark: isDark,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Deposit Currency",
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white54 : Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 48,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1C1F26) : Colors.grey[100],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: isDark ? Colors.white10 : Colors.black12),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _globalForexCurrency,
+                        isExpanded: true,
+                        dropdownColor: isDark ? const Color(0xFF1C1F26) : Colors.white,
+                        style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                        items: ["USD", "EUR", "GBP", "JPY", "CHF", "AUD", "CAD"].map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) setState(() => _globalForexCurrency = val);
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+
+        // Results
+        Builder(
+          builder: (context) {
+            final diff = _globalForexIsBuy 
+                ? (_globalForexClosePrice - _globalForexOpenPrice)
+                : (_globalForexOpenPrice - _globalForexClosePrice);
+            
+            // Standard Lot Size = 100,000
+            // Simplified calculation: Profit = diff * lots * 100,000
+            final profit = diff * _globalForexLots * 100000;
+            
+            return _buildForexResultCard(profit, isDark);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildForexResultCard(double profit, bool isDark) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            profit >= 0 ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+            AppColors.primaryPurple.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: profit >= 0 ? Colors.green.withOpacity(0.3) : Colors.red.withOpacity(0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          Text(
+            "Estimated Profit",
+            style: TextStyle(
+              color: isDark ? Colors.white70 : Colors.black87,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "${profit >= 0 ? '+' : ''}${profit.toStringAsFixed(2)} $_globalForexCurrency",
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: profit >= 0 ? AppColors.profitGreen : AppColors.lossRed,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              "Calculation based on 100,000 units per lot",
+              style: TextStyle(
+                color: isDark ? Colors.white38 : Colors.black38,
+                fontSize: 10,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -38,19 +38,9 @@ class _FeatureGuideOverlayState extends State<FeatureGuideOverlay> {
       case GuideType.calculator:
         return [
           {
-            'title': 'Swipe to Open',
-            'description': 'See that purple tab on the right? Swipe it to the left or tap it to reveal the global calculator!',
-            'icon': 'swipe',
-          },
-          {
-            'title': 'Stock Calculator',
-            'description': 'Search for any stock to calculate potential returns based on share count and expected growth.',
-            'icon': 'search',
-          },
-          {
-            'title': 'Standard Calculator',
-            'description': 'Plan your general investments by adjusting principal, rates, and time periods.',
-            'icon': 'calculate',
+            'title': 'Forex Profit Calculator',
+            'description': 'Calculate potential profits for Forex trades by entering instrument, prices, and lot size.',
+            'icon': 'attach_money',
           },
         ];
       case GuideType.alerts:
@@ -94,7 +84,7 @@ class _FeatureGuideOverlayState extends State<FeatureGuideOverlay> {
         return [
           {
             'title': 'Global Calculator',
-            'description': 'Access the investment calculator from any page. Just swipe from the right edge!',
+            'description': 'Access the forex profit calculator from any page. Just swipe from the right edge!',
             'icon': 'calculate_outlined',
           },
           {

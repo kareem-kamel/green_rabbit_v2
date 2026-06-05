@@ -593,10 +593,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             width: 1,
           ),
         ),
-        child: const SizedBox(
-          width: 40,
-          child: TypingIndicator(),
-        ),
+        child: const TypingIndicator(showText: true),
       ),
     );
   }
@@ -674,7 +671,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               ),
             ),
             child: msg.content.isEmpty && isLastGenerating
-                ? const SizedBox(width: 40, child: TypingIndicator())
+                ? const TypingIndicator(showText: true)
                 : Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
