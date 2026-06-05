@@ -75,6 +75,13 @@ class _ProTradingChartState extends State<ProTradingChart> {
   double _zoomLevel = 1.0;
   double _baseZoomLevel = 1.0;
 
+  bool _isAutoScale = true;
+  double _manualMinPrice = 0.0;
+  double _manualMaxPrice = 0.0;
+  double _baseMinPrice = 0.0;
+  double _baseMaxPrice = 0.0;
+  bool _isScalingY = false;
+
   List<UserDrawing> _drawings = [];
   final List<DrawingPoint> _tempPoints = [];
 
@@ -132,6 +139,7 @@ class _ProTradingChartState extends State<ProTradingChart> {
     // Reset scroll when data changes (period/interval switch)
     if (oldWidget.period != widget.period || oldWidget.interval != widget.interval || (oldWidget.candles.isEmpty && widget.candles.isNotEmpty)) {
       _scrollOffset = -1.0;
+      _isAutoScale = true;
     }
     if (oldWidget.clearDrawingsTrigger != widget.clearDrawingsTrigger && widget.clearDrawingsTrigger > 0) {
       _clearDrawings();
@@ -139,6 +147,7 @@ class _ProTradingChartState extends State<ProTradingChart> {
     if (oldWidget.symbolName != widget.symbolName) {
       _tempPoints.clear();
       _loadDrawings();
+      _isAutoScale = true;
     }
   }
 
@@ -222,17 +231,8 @@ class _ProTradingChartState extends State<ProTradingChart> {
       return;
     }
 
-    double minPrice = double.infinity;
-    double maxPrice = double.negativeInfinity;
-    for (var candle in visibleCandles) {
-      final low = candle.low ?? 0;
-      final high = candle.high ?? 0;
-      if (low < minPrice) minPrice = low;
-      if (high > maxPrice) maxPrice = high;
-    }
-    minPrice *= 0.998;
-    maxPrice *= 1.002;
-
+    final double minPrice = _manualMinPrice;
+    final double maxPrice = _manualMaxPrice;
     final priceRange = maxPrice - minPrice;
 
     if (widget.activeDrawingTool == 'eraser') {
@@ -430,19 +430,129 @@ class _ProTradingChartState extends State<ProTradingChart> {
                 _scrollOffset = maxScroll;
               }
 
+              final double chartWidth = constraints.maxWidth - 80.0;
+              final firstVisibleIdx = (_scrollOffset / totalCandleWidth).floor().clamp(0, widget.candles.length - 1);
+              final lastVisibleIdx = ((_scrollOffset + chartWidth) / totalCandleWidth).floor().clamp(0, widget.candles.length - 1);
+
+              final visibleCandles = widget.candles.sublist(firstVisibleIdx, lastVisibleIdx + 1);
+
+              if (_isAutoScale) {
+                double visibleMin = double.infinity;
+                double visibleMax = double.negativeInfinity;
+                if (visibleCandles.isNotEmpty) {
+                  for (var candle in visibleCandles) {
+                    final low = candle.low ?? 0;
+                    final high = candle.high ?? 0;
+                    if (low < visibleMin) visibleMin = low;
+                    if (high > visibleMax) visibleMax = high;
+                  }
+                  visibleMin *= 0.998;
+                  visibleMax *= 1.002;
+                } else {
+                  visibleMin = 0.0;
+                  visibleMax = 1.0;
+                }
+                _manualMinPrice = visibleMin;
+                _manualMaxPrice = visibleMax;
+              }
+
               return GestureDetector(
                 onScaleStart: (details) {
                   _baseZoomLevel = _zoomLevel;
+                  _baseMinPrice = _manualMinPrice;
+                  _baseMaxPrice = _manualMaxPrice;
+                  _isScalingY = details.localFocalPoint.dx > (constraints.maxWidth - 80);
                 },
                 onScaleUpdate: (details) {
                   setState(() {
-                    if (details.scale != 1.0) {
-                      _zoomLevel = (_baseZoomLevel * details.scale).clamp(0.2, 5.0);
+                    if (_isScalingY) {
+                      if (details.pointerCount > 1) {
+                        final double verticalScale = details.verticalScale;
+                        if (verticalScale != 0.0) {
+                          _isAutoScale = false;
+                          final double center = (_baseMinPrice + _baseMaxPrice) / 2;
+                          final double range = (_baseMaxPrice - _baseMinPrice) / verticalScale;
+                          if (range > 0.001) {
+                            _manualMinPrice = center - range / 2;
+                            _manualMaxPrice = center + range / 2;
+                          }
+                        }
+                      } else {
+                        final double dy = details.focalPointDelta.dy;
+                        if (dy != 0.0) {
+                          _isAutoScale = false;
+                          final double sensitivity = 0.005;
+                          final double factor = 1.0 + dy * sensitivity;
+                          final double center = (_manualMinPrice + _manualMaxPrice) / 2;
+                          final double range = (_manualMaxPrice - _manualMinPrice) * factor;
+                          if (range > 0.001) {
+                            _manualMinPrice = center - range / 2;
+                            _manualMaxPrice = center + range / 2;
+                          }
+                        }
+                      }
+                    } else {
+                      if (details.pointerCount > 1) {
+                        if (details.horizontalScale != 1.0) {
+                          _zoomLevel = (_baseZoomLevel * details.horizontalScale).clamp(0.2, 5.0);
+                        }
+                        if (details.verticalScale != 1.0) {
+                          _isAutoScale = false;
+                          final double center = (_baseMinPrice + _baseMaxPrice) / 2;
+                          final double range = (_baseMaxPrice - _baseMinPrice) / details.verticalScale;
+                          if (range > 0.001) {
+                            _manualMinPrice = center - range / 2;
+                            _manualMaxPrice = center + range / 2;
+                          }
+                        }
+                      } else {
+                        _scrollOffset -= details.focalPointDelta.dx;
+                        final double currentTotalWidth = (8.0 + 4.0) * _zoomLevel;
+                        final double currentMaxScroll = max(0.0, widget.candles.length * currentTotalWidth - (constraints.maxWidth - 80));
+                        _scrollOffset = _scrollOffset.clamp(0.0, currentMaxScroll);
+
+                        if (!_isAutoScale) {
+                          List<String> subCharts = [];
+                          if (widget.activeIndicators.contains('Volume')) subCharts.add('Volume');
+                          if (widget.activeIndicators.contains('RSI')) subCharts.add('RSI');
+                          if (widget.activeIndicators.contains('MACD')) subCharts.add('MACD');
+                          if (widget.activeIndicators.contains('ATR')) subCharts.add('ATR');
+                          if (widget.activeIndicators.contains('Stoch')) subCharts.add('Stoch');
+                          if (widget.activeIndicators.contains('StochRSI')) subCharts.add('StochRSI');
+                          if (widget.activeIndicators.contains('ADX')) subCharts.add('ADX');
+                          if (widget.activeIndicators.contains('CCI')) subCharts.add('CCI');
+                          if (widget.activeIndicators.contains('WilliamsR')) subCharts.add('WilliamsR');
+                          if (widget.activeIndicators.contains('ROC')) subCharts.add('ROC');
+                          if (widget.activeIndicators.contains('OBV')) subCharts.add('OBV');
+                          if (widget.activeIndicators.contains('MFI')) subCharts.add('MFI');
+                          if (widget.activeIndicators.contains('Aroon')) subCharts.add('Aroon');
+                          if (widget.activeIndicators.contains('UO')) subCharts.add('UO');
+                          if (widget.activeIndicators.contains('BullBear')) subCharts.add('BullBear');
+                          if (widget.activeIndicators.contains('ADL')) subCharts.add('ADL');
+                          if (widget.activeIndicators.contains('CMF')) subCharts.add('CMF');
+                          if (widget.activeIndicators.contains('DPO')) subCharts.add('DPO');
+                          if (widget.activeIndicators.contains('STC')) subCharts.add('STC');
+                          if (widget.activeIndicators.contains('SMA_Subchart')) subCharts.add('SMA_Subchart');
+                          if (widget.activeIndicators.contains('EMA_Subchart')) subCharts.add('EMA_Subchart');
+                          if (widget.activeIndicators.contains('BB_Subchart')) subCharts.add('BB_Subchart');
+
+                          final subChartHeight = subCharts.isEmpty ? 0.0 : (constraints.maxHeight * 0.2).clamp(60.0, 100.0);
+                          final totalSubChartsHeight = subChartHeight * subCharts.length;
+                          final mainChartHeight = max(100.0, constraints.maxHeight - 45.0 - totalSubChartsHeight);
+
+                          final double priceRange = _manualMaxPrice - _manualMinPrice;
+                          final double scaleY = mainChartHeight / (priceRange == 0 ? 1 : priceRange);
+                          final double deltaPrice = details.focalPointDelta.dy / scaleY;
+                          _manualMinPrice += deltaPrice;
+                          _manualMaxPrice += deltaPrice;
+                        }
+                      }
                     }
-                    _scrollOffset -= details.focalPointDelta.dx;
-                    final double currentTotalWidth = (8.0 + 4.0) * _zoomLevel;
-                    final double currentMaxScroll = max(0.0, widget.candles.length * currentTotalWidth - (constraints.maxWidth - 80));
-                    _scrollOffset = _scrollOffset.clamp(0.0, currentMaxScroll);
+                  });
+                },
+                onDoubleTap: () {
+                  setState(() {
+                    _isAutoScale = true;
                   });
                 },
                 onTapDown: (details) => _handleTap(details, constraints),
@@ -459,6 +569,8 @@ class _ProTradingChartState extends State<ProTradingChart> {
                     drawings: _drawings,
                     tempPoints: _tempPoints,
                     activeDrawingTool: widget.activeDrawingTool,
+                    minPrice: _manualMinPrice,
+                    maxPrice: _manualMaxPrice,
                   ),
                 ),
               );
@@ -491,7 +603,25 @@ class _ProTradingChartState extends State<ProTradingChart> {
               const SizedBox(width: 12),
               Text('Log', style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
               const SizedBox(width: 12),
-              Text('auto', style: const TextStyle(color: AppColors.unlockBlue, fontSize: 13, fontWeight: FontWeight.bold)),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isAutoScale = true;
+                  });
+                },
+                behavior: HitTestBehavior.opaque,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                  child: Text(
+                    'auto',
+                    style: TextStyle(
+                      color: _isAutoScale ? AppColors.unlockBlue : AppColors.textMuted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -678,6 +808,8 @@ class _ChartPainter extends CustomPainter {
   final List<UserDrawing> drawings;
   final List<DrawingPoint> tempPoints;
   final String? activeDrawingTool;
+  final double minPrice;
+  final double maxPrice;
 
   _ChartPainter({
     required this.candles,
@@ -690,6 +822,8 @@ class _ChartPainter extends CustomPainter {
     required this.drawings,
     required this.tempPoints,
     this.activeDrawingTool,
+    required this.minPrice,
+    required this.maxPrice,
   });
 
   @override
@@ -737,17 +871,8 @@ class _ChartPainter extends CustomPainter {
     final visibleCandles = candles.sublist(firstVisibleIdx, lastVisibleIdx + 1);
     if (visibleCandles.isEmpty) return;
 
-    double minPrice = double.infinity;
-    double maxPrice = double.negativeInfinity;
-    for (var candle in visibleCandles) {
-      final low = candle.low ?? 0;
-      final high = candle.high ?? 0;
-      if (low < minPrice) minPrice = low;
-      if (high > maxPrice) maxPrice = high;
-    }
-
-    minPrice *= 0.998;
-    maxPrice *= 1.002;
+    final double minPrice = this.minPrice;
+    final double maxPrice = this.maxPrice;
 
     final priceRange = maxPrice - minPrice;
     final scaleY = mainChartHeight / (priceRange == 0 ? 1 : priceRange);
@@ -764,12 +889,18 @@ class _ChartPainter extends CustomPainter {
       _drawText(canvas, Offset(chartWidth + 8, y - 8), price.toStringAsFixed(2), Colors.white.withOpacity(0.6));
     }
 
+    // 1. Save and Clip for Main Chart Elements (Candles, Overlays, Drawings, Last Price Line)
+    canvas.save();
+    canvas.clipRect(Rect.fromLTWH(0, 0, chartWidth, mainChartHeight));
+
+    // Draw main chart candles/area
     if (mode == ProChartMode.area) {
       _drawAreaChart(canvas, mainChartHeight, getY, firstVisibleIdx, lastVisibleIdx, totalCandleWidth);
     } else {
       _drawCandles(canvas, getY, firstVisibleIdx, lastVisibleIdx, totalCandleWidth);
     }
 
+    // Draw overlays
     if (activeIndicators.contains('SMA_Overlay') || activeIndicators.contains('SMA')) {
       _drawMALine(canvas, getY, firstVisibleIdx, lastVisibleIdx, totalCandleWidth, IndicatorCalculator.calculateSMA(candles, 20), const Color(0xFF4A90E2));
     }
@@ -807,6 +938,101 @@ class _ChartPainter extends CustomPainter {
       _drawVolumeProfileOverlay(canvas, getY, chartWidth, mainChartHeight, firstVisibleIdx, lastVisibleIdx);
     }
 
+    // Draw last price line (inside clip)
+    final lastPrice = candles.last.close ?? 0;
+    final lastPriceY = getY(lastPrice);
+    if (lastPriceY >= 0 && lastPriceY <= mainChartHeight) {
+      final dashPaint = Paint()
+        ..color = AppColors.unlockBlue.withOpacity(0.6)
+        ..strokeWidth = 1
+        ..style = PaintingStyle.stroke;
+
+      for (double x = 0; x < chartWidth; x += 10) {
+        canvas.drawLine(Offset(x, lastPriceY), Offset(x + 5, lastPriceY), dashPaint);
+      }
+    }
+
+    // --- Render Drawings (inside clip) ---
+    double getCanvasX(int ts) {
+      if (candles.isEmpty) return 0.0;
+      int closestIdx = 0;
+      int minDiff = 9999999999999;
+      for (int i = 0; i < candles.length; i++) {
+        final diff = (candles[i].timestamp - ts).abs();
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestIdx = i;
+        }
+      }
+      return (closestIdx * totalCandleWidth) - scrollOffset + totalCandleWidth / 2;
+    }
+
+    double getCanvasY(double price) {
+      return mainChartHeight - (price - minPrice) * scaleY;
+    }
+
+    final drawingPaint = Paint()
+      ..color = const Color(0xFF2D5CFF) // TradingView blue
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final nodePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    final nodeBorderPaint = Paint()
+      ..color = const Color(0xFF2D5CFF)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+
+    void drawNode(Offset offset, {double radius = 4.0}) {
+      canvas.drawCircle(offset, radius, nodePaint);
+      canvas.drawCircle(offset, radius, nodeBorderPaint);
+    }
+
+    // Draw completed drawings
+    for (final drawing in drawings) {
+      if (drawing.points.isEmpty) continue;
+      final offsets = drawing.points.map((p) => Offset(getCanvasX(p.timestamp), getCanvasY(p.price))).toList();
+      _paintDrawingShape(canvas, drawing.type, offsets, drawingPaint, drawNode, chartWidth, mainChartHeight, drawing.points);
+    }
+
+    // Draw temporary in-progress preview
+    if (activeDrawingTool != null && tempPoints.isNotEmpty) {
+      final tempOffsets = tempPoints.map((p) => Offset(getCanvasX(p.timestamp), getCanvasY(p.price))).toList();
+      for (final offset in tempOffsets) {
+        drawNode(offset);
+      }
+      if (tempOffsets.isNotEmpty) {
+        final tempPaint = Paint()
+          ..color = Colors.white.withOpacity(0.5)
+          ..strokeWidth = 1.5
+          ..style = PaintingStyle.stroke;
+        
+        if (tempOffsets.length == 1) {
+          drawNode(tempOffsets[0], radius: 5.0);
+        } else {
+          final path = Path()..moveTo(tempOffsets[0].dx, tempOffsets[0].dy);
+          for (int i = 1; i < tempOffsets.length; i++) {
+            path.lineTo(tempOffsets[i].dx, tempOffsets[i].dy);
+          }
+          canvas.drawPath(path, tempPaint);
+        }
+      }
+    }
+
+    canvas.restore(); // Restore clip rect
+
+    // --- Draw Last Price Label (outside clip, so Y-axis tag isn't clipped) ---
+    if (lastPriceY >= 0 && lastPriceY <= mainChartHeight) {
+      final rect = RRect.fromRectAndRadius(Rect.fromLTWH(chartWidth, lastPriceY - 14, labelWidth, 28), const Radius.circular(4));
+      canvas.drawRRect(rect, Paint()..color = AppColors.unlockBlue);
+      _drawText(canvas, Offset(chartWidth + 6, lastPriceY - 8), lastPrice.toStringAsFixed(2), Colors.white, isBold: true, fontSize: 12);
+    }
+
+    // --- Draw Subcharts (outside clip) ---
     double currentSubChartTop = mainChartHeight;
     for (String subChart in subCharts) {
       canvas.drawLine(Offset(0, currentSubChartTop), Offset(chartWidth, currentSubChartTop), Paint()..color = Colors.white.withOpacity(0.2)..strokeWidth = 1);
@@ -860,6 +1086,7 @@ class _ChartPainter extends CustomPainter {
       currentSubChartTop += subChartHeight;
     }
 
+    // --- Draw X-axis timeline labels (outside clip) ---
     final visibleCount = lastVisibleIdx - firstVisibleIdx + 1;
     final step = max(1, (visibleCount / 8).ceil());
     final xAxisY = size.height - xAxisHeight;
@@ -887,99 +1114,6 @@ class _ChartPainter extends CustomPainter {
       _drawText(canvas, Offset(x - 30, xAxisY + 6), topText, Colors.white.withOpacity(0.45), fontSize: 11);
       _drawText(canvas, Offset(x - 22, xAxisY + 20), bottomText, Colors.white.withOpacity(0.45), fontSize: 11);
     }
-
-    final lastPrice = candles.last.close ?? 0;
-    final lastPriceY = getY(lastPrice);
-    if (lastPriceY >= 0 && lastPriceY <= mainChartHeight) {
-      final dashPaint = Paint()
-        ..color = AppColors.unlockBlue.withOpacity(0.6)
-        ..strokeWidth = 1
-        ..style = PaintingStyle.stroke;
-
-      for (double x = 0; x < chartWidth; x += 10) {
-        canvas.drawLine(Offset(x, lastPriceY), Offset(x + 5, lastPriceY), dashPaint);
-      }
-      final rect = RRect.fromRectAndRadius(Rect.fromLTWH(chartWidth, lastPriceY - 14, labelWidth, 28), const Radius.circular(4));
-      canvas.drawRRect(rect, Paint()..color = AppColors.unlockBlue);
-      _drawText(canvas, Offset(chartWidth + 6, lastPriceY - 8), lastPrice.toStringAsFixed(2), Colors.white, isBold: true, fontSize: 12);
-    }
-
-    // --- Render Drawings ---
-    double getCanvasX(int ts) {
-      if (candles.isEmpty) return 0.0;
-      int closestIdx = 0;
-      int minDiff = 9999999999999;
-      for (int i = 0; i < candles.length; i++) {
-        final diff = (candles[i].timestamp - ts).abs();
-        if (diff < minDiff) {
-          minDiff = diff;
-          closestIdx = i;
-        }
-      }
-      return (closestIdx * totalCandleWidth) - scrollOffset + totalCandleWidth / 2;
-    }
-
-    double getCanvasY(double price) {
-      return mainChartHeight - (price - minPrice) * scaleY;
-    }
-
-    canvas.save();
-    canvas.clipRect(Rect.fromLTWH(0, 0, chartWidth, mainChartHeight));
-
-    final drawingPaint = Paint()
-      ..color = const Color(0xFF2D5CFF) // TradingView blue
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final nodePaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-
-    final nodeBorderPaint = Paint()
-      ..color = const Color(0xFF2D5CFF)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-
-    void drawNode(Offset offset, {double radius = 4.0}) {
-      canvas.drawCircle(offset, radius, nodePaint);
-      canvas.drawCircle(offset, radius, nodeBorderPaint);
-    }
-
-    // 1. Draw completed drawings
-    for (final drawing in drawings) {
-      if (drawing.points.isEmpty) continue;
-      final offsets = drawing.points.map((p) => Offset(getCanvasX(p.timestamp), getCanvasY(p.price))).toList();
-      _paintDrawingShape(canvas, drawing.type, offsets, drawingPaint, drawNode, chartWidth, mainChartHeight, drawing.points);
-    }
-
-    // 2. Draw temporary in-progress preview
-    if (activeDrawingTool != null && tempPoints.isNotEmpty) {
-      final tempOffsets = tempPoints.map((p) => Offset(getCanvasX(p.timestamp), getCanvasY(p.price))).toList();
-      for (final offset in tempOffsets) {
-        drawNode(offset);
-      }
-      if (tempOffsets.isNotEmpty) {
-        final tempPaint = Paint()
-          ..color = Colors.white.withOpacity(0.5)
-          ..strokeWidth = 1.5
-          ..style = PaintingStyle.stroke;
-        
-        if (tempOffsets.length == 1) {
-          // Just draw a small crosshair or guide at the single point
-          drawNode(tempOffsets[0], radius: 5.0);
-        } else {
-          final path = Path()..moveTo(tempOffsets[0].dx, tempOffsets[0].dy);
-          for (int i = 1; i < tempOffsets.length; i++) {
-            path.lineTo(tempOffsets[i].dx, tempOffsets[i].dy);
-          }
-          canvas.drawPath(path, tempPaint);
-        }
-      }
-    }
-
-    canvas.restore();
   }
 
   void _paintDrawingShape(
