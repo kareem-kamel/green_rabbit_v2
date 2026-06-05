@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -26,8 +27,47 @@ MarketInstrument? _globalForexInstrument;
 bool _globalForexIsBuy = true;
 double _globalForexOpenPrice = 0.0;
 double _globalForexClosePrice = 0.0;
-double _globalForexLots = 0.1;
+double _globalForexLots = 1.0;
 String _globalForexCurrency = "USD";
+
+final _exchangeRatesProvider = FutureProvider<Map<String, double>>((ref) async {
+  final repo = ref.watch(marketRepositoryProvider);
+  final pairs = ['EURUSD', 'GBPUSD', 'USDJPY', 'USDCHF', 'AUDUSD', 'USDCAD'];
+  final Map<String, double> rates = {};
+  
+  // Set some sensible defaults in case of network issues
+  rates['EURUSD'] = 1.08;
+  rates['GBPUSD'] = 1.27;
+  rates['USDJPY'] = 150.0;
+  rates['USDCHF'] = 0.90;
+  rates['AUDUSD'] = 0.66;
+  rates['USDCAD'] = 1.36;
+
+  for (final pair in pairs) {
+    try {
+      final results = await repo.searchInstruments(pair);
+      if (results.isNotEmpty) {
+        // Try to find an exact match first
+        final match = results.firstWhere(
+          (element) => element.symbol.replaceAll('/', '').replaceAll('_', '').toUpperCase() == pair,
+          orElse: () => results.first,
+        );
+        if (match.price != null) {
+          rates[pair] = match.price!;
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching rate for $pair: $e');
+    }
+  }
+  return rates;
+});
+
+class _ContractDetails {
+  final double multiplier;
+  final String label;
+  const _ContractDetails(this.multiplier, this.label);
+}
 
 class GlobalCalculatorOverlay extends StatefulWidget {
   const GlobalCalculatorOverlay({super.key});
@@ -303,7 +343,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
 
     _forexOpenPriceController = TextEditingController(text: _globalForexOpenPrice == 0 ? "" : _globalForexOpenPrice.toString());
     _forexClosePriceController = TextEditingController(text: _globalForexClosePrice == 0 ? "" : _globalForexClosePrice.toString());
-    _forexLotsController = TextEditingController(text: _globalForexLots.toString());
+    _forexLotsController = TextEditingController(text: "1");
   }
 
   @override
@@ -707,24 +747,142 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
         const SizedBox(height: 24),
 
         // Results
-        Builder(
-          builder: (context) {
+        Consumer(
+          builder: (context, ref, child) {
             final diff = _globalForexIsBuy 
                 ? (_globalForexClosePrice - _globalForexOpenPrice)
                 : (_globalForexOpenPrice - _globalForexClosePrice);
             
-            // Standard Lot Size = 100,000
-            // Simplified calculation: Profit = diff * lots * 100,000
-            final profit = diff * _globalForexLots * 100000;
+            final contractData = _getContractDetails(_globalForexInstrument);
+            double profit = diff * _globalForexLots * contractData.multiplier;
             
-            return _buildForexResultCard(profit, isDark);
+            // Perform Currency Conversion
+            final ratesAsync = ref.watch(_exchangeRatesProvider);
+            final quoteCurrency = _getQuoteCurrency(_globalForexInstrument);
+            
+            if (quoteCurrency != _globalForexCurrency) {
+              final rates = ratesAsync.valueOrNull ?? {};
+              profit = _convertCurrency(profit, quoteCurrency, _globalForexCurrency, rates);
+            }
+            
+            return _buildForexResultCard(profit, isDark, contractData.label);
           },
         ),
       ],
     );
   }
 
-  Widget _buildForexResultCard(double profit, bool isDark) {
+  String _getQuoteCurrency(MarketInstrument? instrument) {
+    if (instrument == null) return "USD";
+    if (instrument.currency != null) return instrument.currency!.toUpperCase();
+    
+    final symbol = instrument.symbol.toUpperCase();
+    if (symbol.contains('/')) {
+      return symbol.split('/').last;
+    }
+    
+    // Fallback: common symbols often end with the quote currency
+    if (symbol.endsWith('USD')) return "USD";
+    if (symbol.endsWith('EUR')) return "EUR";
+    if (symbol.endsWith('GBP')) return "GBP";
+    if (symbol.endsWith('JPY')) return "JPY";
+    
+    return "USD"; // Default to USD
+  }
+
+  double _convertCurrency(double amount, String from, String to, Map<String, double> rates) {
+    if (from == to) return amount;
+    
+    // 1. Convert 'from' to USD
+    double amountInUSD = amount;
+    if (from != "USD") {
+      if (from == "EUR") amountInUSD = amount * (rates['EURUSD'] ?? 1.08);
+      else if (from == "GBP") amountInUSD = amount * (rates['GBPUSD'] ?? 1.27);
+      else if (from == "JPY") amountInUSD = amount / (rates['USDJPY'] ?? 150.0);
+      else if (from == "CHF") amountInUSD = amount / (rates['USDCHF'] ?? 0.90);
+      else if (from == "AUD") amountInUSD = amount * (rates['AUDUSD'] ?? 0.66);
+      else if (from == "CAD") amountInUSD = amount / (rates['USDCAD'] ?? 1.36);
+    }
+    
+    // 2. Convert 'USD' to 'to'
+    if (to == "USD") return amountInUSD;
+    if (to == "EUR") return amountInUSD / (rates['EURUSD'] ?? 1.08);
+    if (to == "GBP") return amountInUSD / (rates['GBPUSD'] ?? 1.27);
+    if (to == "JPY") return amountInUSD * (rates['USDJPY'] ?? 150.0);
+    if (to == "CHF") return amountInUSD * (rates['USDCHF'] ?? 0.90);
+    if (to == "AUD") return amountInUSD / (rates['AUDUSD'] ?? 0.66);
+    if (to == "CAD") return amountInUSD * (rates['USDCAD'] ?? 1.36);
+    
+    return amountInUSD;
+  }
+
+  // Robust Contract Size Engine
+  _ContractDetails _getContractDetails(MarketInstrument? instrument) {
+    if (instrument == null) return const _ContractDetails(1.0, "1 unit");
+
+    final type = instrument.type.toLowerCase();
+    final rawSymbol = instrument.symbol.toUpperCase();
+    final symbol = rawSymbol.replaceAll('/', '').replaceAll('.', '').replaceAll('-', '').replaceAll('_', '');
+    final name = instrument.name.toUpperCase();
+
+    // List of standard fiat currencies to identify REAL Forex pairs
+    const fiatCurrencies = ['USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD', 'ZAR', 'CNY', 'HKD', 'SGD', 'TRY', 'MXN'];
+
+    // 1. SPECIFIC CRYPTO MAPPING (Highest Priority)
+    // We check for common crypto symbols first to avoid them being mistaken for Forex
+    if (symbol.contains('BTC')) return const _ContractDetails(1.0, "1 unit");
+    if (symbol.contains('ETH') || name.contains('ETHEREUM')) return const _ContractDetails(5.0, "5 units");
+    if (symbol.contains('BNB')) return const _ContractDetails(30.0, "30 units");
+    if (symbol.contains('SOL') || symbol.contains('AVAX') || symbol.contains('AVALANCHE') || symbol.contains('DOT')) {
+      return const _ContractDetails(10.0, "10 units");
+    }
+    if (symbol.contains('LTC') || symbol.contains('LINK') || symbol.contains('UNI')) {
+      return const _ContractDetails(100.0, "100 units");
+    }
+    if (symbol.contains('XRP') || symbol.contains('ADA') || symbol.contains('MATIC')) {
+      return const _ContractDetails(1000.0, "1,000 units");
+    }
+    if (symbol.contains('DOGE')) return const _ContractDetails(10000.0, "10,000 units");
+    if (symbol.contains('SHIB')) return const _ContractDetails(1000000.0, "1,000,000 units");
+
+    // 2. COMMODITIES
+    if (symbol.contains('XAU') || name.contains('GOLD')) return const _ContractDetails(100.0, "100 oz");
+    if (symbol.contains('XAG') || name.contains('SILVER')) return const _ContractDetails(5000.0, "5,000 oz");
+    if (symbol.contains('XPT') || name.contains('PLATINUM')) return const _ContractDetails(100.0, "100 oz");
+    if (symbol.contains('XPD') || name.contains('PALLADIUM')) return const _ContractDetails(100.0, "100 oz");
+    if (symbol.contains('WTI') || symbol.contains('BRENT') || name.contains('OIL') || symbol.contains('CL')) return const _ContractDetails(1000.0, "1,000 barrels");
+    if (symbol.contains('NG') || name.contains('GAS')) return const _ContractDetails(10000.0, "10,000 MMBtu");
+
+    // 3. STRICT FOREX CHECK (100k Lot)
+    // A pair gets 100,000 ONLY if it's exactly 6 characters and BOTH are fiat currencies.
+    // This prevents "AVAXUSD" (7 chars) from ever hitting this rule.
+    if (symbol.length == 6) {
+      final base = symbol.substring(0, 3);
+      final quote = symbol.substring(3, 6);
+      if (fiatCurrencies.contains(base) && fiatCurrencies.contains(quote)) {
+        return const _ContractDetails(100000.0, "100,000 units");
+      }
+    }
+
+    // 4. GENERAL CATEGORY FALLBACKS
+    if (type == 'crypto' || name.contains('COIN') || name.contains('TOKEN')) {
+      return const _ContractDetails(1.0, "1 unit");
+    }
+    
+    // Indices detection
+    if (type == 'index' || name.contains('INDEX') || symbol.contains('US30') || 
+        symbol.contains('NAS100') || symbol.contains('SPX') || symbol.contains('GER') ||
+        symbol.contains('HK50') || symbol.contains('UK100')) {
+      return const _ContractDetails(1.0, "1 unit");
+    }
+
+    // 5. FINAL SAFETY FALLBACK
+    // If we've reached here, we DON'T trust the backend 'forex' type.
+    // We default to 1.0 to avoid the "millions of dollars" error.
+    return const _ContractDetails(1.0, "1 unit");
+  }
+
+  Widget _buildForexResultCard(double profit, bool isDark, String contractSize) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -766,7 +924,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              "Calculation based on 100,000 units per lot",
+              "Contract size: $contractSize per lot",
               style: TextStyle(
                 color: isDark ? Colors.white38 : Colors.black38,
                 fontSize: 10,
@@ -1253,6 +1411,107 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Searchable List for the Picker
+final _instrumentSearchQueryProvider = StateProvider.autoDispose<String>((ref) => "");
+
+final _instrumentSearchResultsProvider = FutureProvider.autoDispose<List<MarketInstrument>>((ref) async {
+  final query = ref.watch(_instrumentSearchQueryProvider);
+  final repo = ref.watch(marketRepositoryProvider);
+  
+  if (query.isEmpty) {
+    return repo.getTrendingInstruments();
+  } else {
+    return repo.searchInstruments(query);
+  }
+});
+
+class _InstrumentSearchList extends ConsumerWidget {
+  final ScrollController scrollController;
+  final bool isDark;
+  final Function(MarketInstrument) onSelected;
+
+  const _InstrumentSearchList({
+    required this.scrollController,
+    required this.isDark,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final resultsAsync = ref.watch(_instrumentSearchResultsProvider);
+
+    return resultsAsync.when(
+      data: (instruments) {
+        if (instruments.isEmpty) {
+          return Center(
+            child: Text(
+              "No instruments found",
+              style: TextStyle(color: isDark ? Colors.white38 : Colors.black38),
+            ),
+          );
+        }
+        return ListView.builder(
+          controller: scrollController,
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          itemCount: instruments.length,
+          itemBuilder: (context, index) {
+            final instrument = instruments[index];
+            return ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: instrument.logoUrl != null
+                      ? Image.network(
+                          instrument.logoUrl!,
+                          width: 24,
+                          height: 24,
+                          errorBuilder: (_, __, ___) => Icon(Icons.show_chart, color: isDark ? Colors.white24 : Colors.black26),
+                        )
+                      : Icon(Icons.show_chart, color: isDark ? Colors.white24 : Colors.black26),
+                ),
+              ),
+              title: Text(
+                instrument.symbol,
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              subtitle: Text(
+                instrument.name,
+                style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 12),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: Text(
+                "\$${instrument.price?.toStringAsFixed(instrument.type.toLowerCase() == 'forex' ? 5 : 2)}",
+                style: const TextStyle(
+                  color: AppColors.primaryPurple,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              onTap: () => onSelected(instrument),
+            );
+          },
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(
+        child: Text(
+          "Error loading instruments",
+          style: TextStyle(color: isDark ? Colors.redAccent : Colors.red),
+        ),
       ),
     );
   }
