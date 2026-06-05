@@ -13,6 +13,7 @@ import '../../data/models/market_instrument.dart';
 import '../../data/models/market_instrument_detail.dart';
 import '../widgets/pro_trading_chart.dart';
 import '../widgets/sparkline_chart.dart';
+import '../widgets/drawings_bottom_sheet.dart';
 import 'package:intl/intl.dart';
 import 'package:interactive_chart/interactive_chart.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -49,6 +50,8 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   String _selectedTechnicalInterval = '15m';
   DateTimeRange? _selectedDateRange;
   final Set<String> _activeIndicators = {};
+  String? _activeDrawingTool;
+  int _clearDrawingsTrigger = 0;
 
   List<CommentModel> _comments = [];
   bool _isLoadingComments = false;
@@ -2587,63 +2590,174 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   void _showIndicatorsBottomSheet(BuildContext context) {
+    final searchController = TextEditingController();
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.surface,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            final indicatorsList = [
+            final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+            final query = searchController.text.toLowerCase();
+            final allIndicators = [
               {'id': 'SMA_Overlay', 'name': 'SMA (Overlay)', 'type': 'overlay'},
               {'id': 'SMA_Subchart', 'name': 'SMA (Sub-chart)', 'type': 'subchart'},
               {'id': 'EMA_Overlay', 'name': 'EMA (Overlay)', 'type': 'overlay'},
               {'id': 'EMA_Subchart', 'name': 'EMA (Sub-chart)', 'type': 'subchart'},
               {'id': 'BB_Overlay', 'name': 'Bollinger Bands (Overlay)', 'type': 'overlay'},
               {'id': 'BB_Subchart', 'name': 'Bollinger Bands (Sub-chart)', 'type': 'subchart'},
+              {'id': 'VWAP', 'name': 'Volume Weighted Average Price (VWAP)', 'type': 'overlay'},
+              {'id': 'Ichimoku', 'name': 'Ichimoku Cloud', 'type': 'overlay'},
+              {'id': 'SuperTrend', 'name': 'SuperTrend', 'type': 'overlay'},
+              {'id': 'SAR', 'name': 'Parabolic SAR', 'type': 'overlay'},
+              {'id': 'Donchian', 'name': 'Donchian Channels', 'type': 'overlay'},
+              {'id': 'Keltner', 'name': 'Keltner Channels', 'type': 'overlay'},
+              {'id': 'Fibonacci', 'name': 'Fibonacci Retracement', 'type': 'overlay'},
+              {'id': 'Pivot', 'name': 'Pivot Points', 'type': 'overlay'},
+              {'id': 'VolumeProfile', 'name': 'Volume Profile', 'type': 'overlay'},
               {'id': 'Volume', 'name': 'Volume', 'type': 'subchart'},
               {'id': 'RSI', 'name': 'Relative Strength Index (RSI)', 'type': 'subchart'},
               {'id': 'MACD', 'name': 'MACD', 'type': 'subchart'},
               {'id': 'ATR', 'name': 'Average True Range (ATR)', 'type': 'subchart'},
               {'id': 'Stoch', 'name': 'Stochastic Oscillator', 'type': 'subchart'},
+              {'id': 'StochRSI', 'name': 'Stochastic RSI', 'type': 'subchart'},
+              {'id': 'ADX', 'name': 'Average Directional Index (ADX)', 'type': 'subchart'},
+              {'id': 'CCI', 'name': 'Commodity Channel Index (CCI)', 'type': 'subchart'},
+              {'id': 'WilliamsR', 'name': 'Williams %R', 'type': 'subchart'},
+              {'id': 'ROC', 'name': 'Rate of Change (ROC)', 'type': 'subchart'},
+              {'id': 'OBV', 'name': 'On Balance Volume (OBV)', 'type': 'subchart'},
+              {'id': 'MFI', 'name': 'Money Flow Index (MFI)', 'type': 'subchart'},
+              {'id': 'Aroon', 'name': 'Aroon Indicator', 'type': 'subchart'},
+              {'id': 'UO', 'name': 'Ultimate Oscillator', 'type': 'subchart'},
+              {'id': 'BullBear', 'name': 'Bull/Bear Power', 'type': 'subchart'},
+              {'id': 'ADL', 'name': 'Accumulation/Distribution Line (ADL)', 'type': 'subchart'},
+              {'id': 'CMF', 'name': 'Chaikin Money Flow (CMF)', 'type': 'subchart'},
+              {'id': 'DPO', 'name': 'Detrended Price Oscillator (DPO)', 'type': 'subchart'},
+              {'id': 'STC', 'name': 'Schaff Trend Cycle (STC)', 'type': 'subchart'},
             ];
 
-            return Padding(
-              padding: const EdgeInsets.all(16.0),
+            final filteredIndicators = allIndicators.where((ind) {
+              return ind['name']!.toLowerCase().contains(query);
+            }).toList();
+
+            final textFieldWidget = TextField(
+              controller: searchController,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Search indicators...',
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14),
+                prefixIcon: const Icon(Icons.search, color: Colors.white54, size: 20),
+                suffixIcon: searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, color: Colors.white54, size: 18),
+                        onPressed: () {
+                          setSheetState(() {
+                            searchController.clear();
+                          });
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.white.withOpacity(0.05),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+              ),
+              onChanged: (value) {
+                setSheetState(() {});
+              },
+            );
+
+            return Container(
+              height: MediaQuery.of(context).size.height * (isLandscape ? 0.95 : 0.75),
+              padding: EdgeInsets.only(
+                top: 12.0,
+                left: 16.0,
+                right: 16.0,
+                bottom: 12.0 + (isLandscape ? 0.0 : MediaQuery.of(context).viewInsets.bottom),
+              ),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Technical Indicators', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: indicatorsList.length,
-                      itemBuilder: (context, index) {
-                        final ind = indicatorsList[index];
-                        final id = ind['id']!;
-                        final isSelected = _activeIndicators.contains(id);
-                        return CheckboxListTile(
-                          title: Text(ind['name']!, style: const TextStyle(color: Colors.white)),
-                          subtitle: Text(ind['type'] == 'overlay' ? 'Chart Overlay' : 'Sub-chart Pane', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                          value: isSelected,
-                          activeColor: AppColors.unlockBlue,
-                          checkColor: Colors.white,
-                          onChanged: (bool? value) {
-                            setSheetState(() {
-                              if (value == true) {
-                                _activeIndicators.add(id);
-                              } else {
-                                _activeIndicators.remove(id);
-                              }
-                            });
-                            setState(() {}); // Update the chart behind the sheet
-                          },
-                        );
-                      },
+                  Align(
+                    alignment: Alignment.center,
+                    child: Container(
+                      width: 36,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
+                  ),
+                  if (isLandscape)
+                    Row(
+                      children: [
+                        const Text('Indicators', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 24),
+                        Expanded(child: textFieldWidget),
+                      ],
+                    )
+                  else
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Technical Indicators', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 12),
+                        textFieldWidget,
+                      ],
+                    ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: filteredIndicators.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No indicators found',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
+                          )
+                        : GridView.builder(
+                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: isLandscape ? 2 : 1,
+                              childAspectRatio: isLandscape ? 6.5 : 6.0,
+                              crossAxisSpacing: 16,
+                              mainAxisSpacing: 4,
+                            ),
+                            itemCount: filteredIndicators.length,
+                            itemBuilder: (context, index) {
+                              final ind = filteredIndicators[index];
+                              final id = ind['id']!;
+                              final isSelected = _activeIndicators.contains(id);
+                              return CheckboxListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Text(ind['name']!, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                                subtitle: Text(
+                                  ind['type'] == 'overlay' ? 'Chart Overlay' : 'Sub-chart Pane',
+                                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                                ),
+                                value: isSelected,
+                                activeColor: AppColors.unlockBlue,
+                                checkColor: Colors.white,
+                                onChanged: (bool? value) {
+                                  setSheetState(() {
+                                    if (value == true) {
+                                      _activeIndicators.add(id);
+                                    } else {
+                                      _activeIndicators.remove(id);
+                                    }
+                                  });
+                                  setState(() {}); // Update the chart behind the sheet
+                                },
+                              );
+                            },
+                          ),
                   ),
                 ],
               ),
@@ -2704,6 +2818,13 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
             errorMessage: errorMsg,
             onRetry: () => ref.invalidate(instrumentChartProvider(providerKey)),
             activeIndicators: _activeIndicators,
+            activeDrawingTool: _activeDrawingTool,
+            onDrawingToolChanged: (tool) {
+              setState(() {
+                _activeDrawingTool = tool;
+              });
+            },
+            clearDrawingsTrigger: _clearDrawingsTrigger,
           ),
         ),
       ],
@@ -2789,6 +2910,68 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                   const SizedBox(width: 8),
                   _landscapeButton('', isIcon: true, icon: Icons.undo),
                   _landscapeButton('', isIcon: true, icon: Icons.redo),
+                  const SizedBox(width: 8),
+                  _landscapeButton(
+                    '',
+                    isIcon: true,
+                    icon: Icons.brush,
+                    isActive: _activeDrawingTool != null && _activeDrawingTool != 'eraser',
+                    onTap: () async {
+                      final selected = await showModalBottomSheet<String>(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => const DrawingsBottomSheet(),
+                      );
+                      if (selected != null) {
+                        setState(() {
+                          _activeDrawingTool = selected;
+                        });
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(selected == 'eraser'
+                                  ? 'Eraser Active: Tap any drawing node or line on the chart to erase it'
+                                  : 'Drawing Mode Active: Tap on chart to place points for $selected'),
+                              backgroundColor: AppColors.primary,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                  _landscapeButton(
+                    '',
+                    isIcon: true,
+                    icon: Icons.cleaning_services,
+                    isActive: _activeDrawingTool == 'eraser',
+                    onTap: () {
+                      setState(() {
+                        if (_activeDrawingTool == 'eraser') {
+                          _activeDrawingTool = null;
+                        } else {
+                          _activeDrawingTool = 'eraser';
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Eraser Active: Tap any drawing node or line on the chart to erase it'),
+                              backgroundColor: AppColors.primary,
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      });
+                    },
+                  ),
+                  _landscapeButton(
+                    '',
+                    isIcon: true,
+                    icon: Icons.delete_outline,
+                    onTap: () {
+                      setState(() {
+                        _clearDrawingsTrigger++;
+                      });
+                    },
+                  ),
                 ],
               ),
             ),
