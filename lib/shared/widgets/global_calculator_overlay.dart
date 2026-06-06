@@ -530,13 +530,27 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                 child: _InstrumentSearchList(
                   scrollController: scrollController,
                   isDark: isDark,
-                  onSelected: (instrument) {
+                  onSelected: (instrument) async {
                     setState(() {
                       _globalForexInstrument = instrument;
                       _globalForexOpenPrice = instrument.price ?? 0.0;
                       _forexOpenPriceController.text = _globalForexOpenPrice.toString();
                     });
-                    Navigator.pop(context);
+                    
+                    // Fetch full details to ensure we have the most accurate price
+                    try {
+                      final detail = await ref.read(marketRepositoryProvider).getInstrumentDetails(instrument.id);
+                      if (detail.price.current != null) {
+                        setState(() {
+                          _globalForexOpenPrice = detail.price.current!;
+                          _forexOpenPriceController.text = _globalForexOpenPrice.toString();
+                        });
+                      }
+                    } catch (e) {
+                      debugPrint('Error fetching accurate price: $e');
+                    }
+                    
+                    if (mounted) Navigator.pop(context);
                   },
                 ),
               ),
@@ -1423,11 +1437,36 @@ final _instrumentSearchResultsProvider = FutureProvider.autoDispose<List<MarketI
   final query = ref.watch(_instrumentSearchQueryProvider);
   final repo = ref.watch(marketRepositoryProvider);
   
+  List<MarketInstrument> instruments;
   if (query.isEmpty) {
-    return repo.getTrendingInstruments();
+    instruments = await repo.getTrendingInstruments();
   } else {
-    return repo.searchInstruments(query);
+    instruments = await repo.searchInstruments(query);
   }
+
+  // Proactively fetch full details for any instrument missing a price (like CLSK in search)
+  // to ensure the list shows ACTUAL values from the start.
+  final results = await Future.wait(instruments.map((inst) async {
+    // If we already have a valid non-zero price, keep it
+    if (inst.price != null && inst.price! > 0.0) return inst;
+    
+    try {
+      // Use a shorter timeout or be more selective if needed, but here we want accuracy.
+      // We use the repository to get full details which includes the real-time price.
+      final detail = await repo.getInstrumentDetails(inst.id);
+      
+      // Map the detail price back to the instrument object for the UI list
+      if (detail.price.current != null && detail.price.current! > 0.0) {
+        return inst.copyWith(price: detail.price.current);
+      }
+      return inst;
+    } catch (e) {
+      debugPrint('Error fetching price for ${inst.symbol} during search: $e');
+      return inst;
+    }
+  }));
+
+  return results;
 });
 
 class _InstrumentSearchList extends ConsumerWidget {
@@ -1495,7 +1534,9 @@ class _InstrumentSearchList extends ConsumerWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               trailing: Text(
-                "\$${instrument.price?.toStringAsFixed(instrument.type.toLowerCase() == 'forex' ? 5 : 2)}",
+                instrument.price != null
+                    ? "\$${instrument.price!.toStringAsFixed(instrument.type.toLowerCase() == 'forex' ? 5 : 2)}"
+                    : "---",
                 style: const TextStyle(
                   color: AppColors.primaryPurple,
                   fontWeight: FontWeight.w600,
