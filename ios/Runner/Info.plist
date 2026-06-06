@@ -51,5 +51,9 @@
 		<string>We need access to your microphone so you can ask the AI questions using your voice.</string>
 		<key>NSSpeechRecognitionUsageDescription</key>
 		<string>We need speech recognition to transcribe your voice questions to the AI.</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>We need access to your photo library to save chart snapshots.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>We need access to your photo library to save chart snapshots.</string>
 	</dict>
 </plist>

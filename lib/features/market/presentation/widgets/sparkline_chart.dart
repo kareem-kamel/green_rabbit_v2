@@ -19,6 +19,7 @@ class SparklineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
         Expanded(
@@ -30,6 +31,7 @@ class SparklineChart extends StatelessWidget {
               currentPrice: currentPrice,
               labelsX: labelsX,
               labelsY: labelsY,
+              isDark: isDark,
             ),
           ),
         ),
@@ -49,7 +51,7 @@ class SparklineChart extends StatelessWidget {
                         : (index == labelsX!.length - 1 ? TextAlign.right : TextAlign.center),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 10),
+                    style: TextStyle(color: isDark ? AppColors.textSecondary : Colors.black54, fontSize: 10),
                   ),
                 );
               }).toList(),
@@ -66,6 +68,7 @@ class _SparklinePainter extends CustomPainter {
   final List<String>? labelsY;
   final Color color;
   final double? currentPrice;
+  final bool isDark;
 
   _SparklinePainter({
     required this.data,
@@ -73,6 +76,7 @@ class _SparklinePainter extends CustomPainter {
     this.labelsX,
     this.labelsY,
     this.currentPrice,
+    required this.isDark,
   });
 
   @override
@@ -94,13 +98,13 @@ class _SparklinePainter extends CustomPainter {
     double getX(int index) => leftPadding + (index * chartWidth / (data.length - 1));
 
     // Draw Y Axis Labels and Grid lines
-    final gridPaint = Paint()..color = Colors.white.withOpacity(0.05)..strokeWidth = 1.0;
+    final gridPaint = Paint()..color = isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)..strokeWidth = 1.0;
     if (labelsY != null) {
       for (int i = 0; i < labelsY!.length; i++) {
         final y = size.height - paddingY - (i * usableHeight / (labelsY!.length - 1));
         canvas.drawLine(Offset(leftPadding, y), Offset(size.width - rightPadding, y), gridPaint);
         
-        _drawText(canvas, Offset(5, y - 6), labelsY![i], AppColors.textSecondary);
+        _drawText(canvas, Offset(5, y - 6), labelsY![i], isDark ? AppColors.textSecondary : Colors.black54);
       }
     }
 
@@ -108,7 +112,7 @@ class _SparklinePainter extends CustomPainter {
     if (currentPrice != null) {
       final cpY = getY(currentPrice!);
       final dashPaint = Paint()
-        ..color = Colors.white.withOpacity(0.5)
+        ..color = isDark ? Colors.white.withOpacity(0.5) : Colors.black.withOpacity(0.4)
         ..strokeWidth = 1.0
         ..style = PaintingStyle.stroke;
 
@@ -182,7 +186,7 @@ class _SparklinePainter extends CustomPainter {
     final textPainter = TextPainter(
       text: TextSpan(
         text: text,
-        style: const TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.bold),
+        style: TextStyle(color: isDark ? Colors.black : Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
       ),
       textDirection: TextDirection.ltr,
     );
@@ -196,7 +200,7 @@ class _SparklinePainter extends CustomPainter {
       height: bubbleHeight,
     );
 
-    final bubblePaint = Paint()..color = Colors.white..style = PaintingStyle.fill;
+    final bubblePaint = Paint()..color = isDark ? Colors.white : Colors.black87..style = PaintingStyle.fill;
     canvas.drawRRect(RRect.fromRectAndRadius(bubbleRect, const Radius.circular(4)), bubblePaint);
 
     textPainter.paint(
