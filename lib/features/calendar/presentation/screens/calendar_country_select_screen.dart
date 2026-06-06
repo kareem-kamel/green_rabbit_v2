@@ -26,27 +26,29 @@ class _CalendarCountrySelectScreenState extends State<CalendarCountrySelectScree
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? Colors.white : Colors.black87;
     final filteredCountries = _allCountries
         .where((c) => c.toLowerCase().contains(_searchQuery.toLowerCase()))
         .toList();
 
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: TextField(
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(color: textPrimary),
           decoration: InputDecoration(
             hintText: "Search here...",
             hintStyle: const TextStyle(color: Colors.grey),
             prefixIcon: const Icon(Icons.search, color: Colors.grey),
             filled: true,
-            fillColor: const Color(0xFF161922),
+            fillColor: isDark ? const Color(0xFF161922) : Colors.black.withOpacity(0.05),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
             contentPadding: const EdgeInsets.symmetric(vertical: 0),
           ),
@@ -59,13 +61,19 @@ class _CalendarCountrySelectScreenState extends State<CalendarCountrySelectScree
             child: ListView.separated(
               padding: const EdgeInsets.all(20),
               itemCount: filteredCountries.length,
-              separatorBuilder: (context, index) => Divider(color: Colors.grey[800], height: 1),
+              separatorBuilder: (context, index) => Divider(color: Theme.of(context).dividerColor, height: 1),
               itemBuilder: (context, index) {
                 final country = filteredCountries[index];
                 final isSelected = _selectedCountries.contains(country);
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: Text(country, style: const TextStyle(color: Colors.white, fontSize: 16)),
+                  title: Text(
+                    country, 
+                    style: TextStyle(
+                      color: textPrimary, 
+                      fontSize: 16,
+                    ),
+                  ),
                   onTap: () {
                     setState(() {
                       if (isSelected) {
@@ -77,7 +85,9 @@ class _CalendarCountrySelectScreenState extends State<CalendarCountrySelectScree
                   },
                   trailing: Icon(
                     isSelected ? Icons.check_box_rounded : Icons.check_box_outline_blank_rounded,
-                    color: Colors.white,
+                    color: isSelected 
+                        ? (isDark ? Colors.white : AppColors.primary)
+                        : Colors.grey,
                     size: 28,
                   ),
                 );

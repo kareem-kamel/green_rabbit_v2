@@ -232,12 +232,16 @@ class LivePriceUpdate {
   final double price;
   final double change;
   final double changePercent;
+  final double? dayHigh;
+  final double? dayLow;
   final String? timestamp;
 
   LivePriceUpdate({
     required this.price,
     required this.change,
     required this.changePercent,
+    this.dayHigh,
+    this.dayLow,
     this.timestamp,
   });
 }
@@ -272,6 +276,8 @@ final visibleMarketLivePricesProvider = StreamProvider.autoDispose<Map<String, d
       final price = (data['price'] as num?)?.toDouble();
       final change = (data['change'] as num?)?.toDouble();
       final changePercent = (data['changePercent'] as num?)?.toDouble();
+      final dayHigh = (data['dayHigh'] as num?)?.toDouble();
+      final dayLow = (data['dayLow'] as num?)?.toDouble();
       if (instrumentId != null && price != null && change != null && changePercent != null) {
         final cleanId = instrumentId.contains(':') ? instrumentId.split(':')[1] : instrumentId;
         ref.read(globalLivePricesProvider.notifier).update((state) => {
@@ -280,6 +286,8 @@ final visibleMarketLivePricesProvider = StreamProvider.autoDispose<Map<String, d
             price: price,
             change: change,
             changePercent: changePercent,
+            dayHigh: dayHigh,
+            dayLow: dayLow,
             timestamp: data['timestamp']?.toString(),
           ),
         });
@@ -307,6 +315,8 @@ final instrumentLivePriceProvider = StreamProvider.autoDispose.family<Map<String
       final price = (data['price'] as num?)?.toDouble();
       final change = (data['change'] as num?)?.toDouble();
       final changePercent = (data['changePercent'] as num?)?.toDouble();
+      final dayHigh = (data['dayHigh'] as num?)?.toDouble();
+      final dayLow = (data['dayLow'] as num?)?.toDouble();
       if (instrumentId != null && price != null && change != null && changePercent != null) {
         final cleanId = instrumentId.contains(':') ? instrumentId.split(':')[1] : instrumentId;
         ref.read(globalLivePricesProvider.notifier).update((state) => {
@@ -315,6 +325,8 @@ final instrumentLivePriceProvider = StreamProvider.autoDispose.family<Map<String
             price: price,
             change: change,
             changePercent: changePercent,
+            dayHigh: dayHigh,
+            dayLow: dayLow,
             timestamp: data['timestamp']?.toString(),
           ),
         });
@@ -359,8 +371,8 @@ class LiveInstrumentDetailNotifier extends StateNotifier<AsyncValue<MarketInstru
                 current: cached.price,
                 change: cached.change,
                 changePercent: cached.changePercent,
-                dayHigh: detail.price.dayHigh,
-                dayLow: detail.price.dayLow,
+                dayHigh: cached.dayHigh ?? detail.price.dayHigh,
+                dayLow: cached.dayLow ?? detail.price.dayLow,
                 lastUpdatedAt: cached.timestamp ?? detail.price.lastUpdatedAt,
                 previousClose: detail.price.previousClose,
                 open: detail.price.open,
@@ -442,14 +454,16 @@ class LiveInstrumentDetailNotifier extends StateNotifier<AsyncValue<MarketInstru
         if (update != null && currentDetail != null) {
           if (update.price != currentDetail.price.current ||
               update.change != currentDetail.price.change ||
-              update.changePercent != currentDetail.price.changePercent) {
+              update.changePercent != currentDetail.price.changePercent ||
+              update.dayHigh != currentDetail.price.dayHigh ||
+              update.dayLow != currentDetail.price.dayLow) {
             
             final priceUpdate = PriceInfo(
               current: update.price,
               change: update.change,
               changePercent: update.changePercent,
-              dayHigh: currentDetail.price.dayHigh,
-              dayLow: currentDetail.price.dayLow,
+              dayHigh: update.dayHigh ?? currentDetail.price.dayHigh,
+              dayLow: update.dayLow ?? currentDetail.price.dayLow,
               lastUpdatedAt: update.timestamp ?? currentDetail.price.lastUpdatedAt,
               previousClose: currentDetail.price.previousClose,
               open: currentDetail.price.open,

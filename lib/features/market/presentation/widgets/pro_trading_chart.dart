@@ -403,7 +403,9 @@ class _ProTradingChartState extends State<ProTradingChart> {
                             ? '${widget.symbolName} , ${widget.interval} , (${widget.currency})'
                             : widget.interval,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.85),
+                          color: Theme.of(context).brightness == Brightness.dark 
+                              ? Colors.white.withOpacity(0.85) 
+                              : Colors.black87,
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                         ),
@@ -571,6 +573,7 @@ class _ProTradingChartState extends State<ProTradingChart> {
                     activeDrawingTool: widget.activeDrawingTool,
                     minPrice: _manualMinPrice,
                     maxPrice: _manualMaxPrice,
+                    isDark: Theme.of(context).brightness == Brightness.dark,
                   ),
                 ),
               );
@@ -651,7 +654,11 @@ class _ProTradingChartState extends State<ProTradingChart> {
             isTierError
                 ? 'Subscription Required for ${widget.period} / ${widget.interval}'
                 : 'Chart Unavailable',
-            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, 
+              fontSize: 16, 
+              fontWeight: FontWeight.bold
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
@@ -765,19 +772,27 @@ class _ProTradingChartState extends State<ProTradingChart> {
           ),
         ),
         const SizedBox(width: 6),
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+        Text(
+          label, 
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.dark ? AppColors.textSecondary : Colors.black87, 
+            fontSize: 13, 
+            fontWeight: FontWeight.w500
+          ),
+        ),
       ],
     );
   }
 
   Widget _buildLegendValue(String label, String value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(left: 8),
       child: RichText(
         text: TextSpan(
           children: [
-            TextSpan(text: '$label ', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13, fontWeight: FontWeight.w500)),
-            TextSpan(text: value, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+            TextSpan(text: '$label ', style: TextStyle(color: isDark ? Colors.white.withOpacity(0.6) : Colors.black54, fontSize: 13, fontWeight: FontWeight.w500)),
+            TextSpan(text: value, style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 13, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -810,6 +825,7 @@ class _ChartPainter extends CustomPainter {
   final String? activeDrawingTool;
   final double minPrice;
   final double maxPrice;
+  final bool isDark;
 
   _ChartPainter({
     required this.candles,
@@ -824,6 +840,7 @@ class _ChartPainter extends CustomPainter {
     this.activeDrawingTool,
     required this.minPrice,
     required this.maxPrice,
+    required this.isDark,
   });
 
   @override
@@ -880,7 +897,7 @@ class _ChartPainter extends CustomPainter {
     double getY(double price) => mainChartHeight - (price - minPrice) * scaleY;
 
     final gridPaint = Paint()
-      ..color = Colors.white.withOpacity(0.07)
+      ..color = isDark ? Colors.white.withOpacity(0.07) : Colors.black.withOpacity(0.08)
       ..strokeWidth = 0.8;
     for (int i = 0; i <= 5; i++) {
       final y = mainChartHeight * (i / 5);
@@ -1035,7 +1052,13 @@ class _ChartPainter extends CustomPainter {
     // --- Draw Subcharts (outside clip) ---
     double currentSubChartTop = mainChartHeight;
     for (String subChart in subCharts) {
-      canvas.drawLine(Offset(0, currentSubChartTop), Offset(chartWidth, currentSubChartTop), Paint()..color = Colors.white.withOpacity(0.2)..strokeWidth = 1);
+      canvas.drawLine(
+        Offset(0, currentSubChartTop), 
+        Offset(chartWidth, currentSubChartTop), 
+        Paint()
+          ..color = isDark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.15)
+          ..strokeWidth = 1
+      );
       
       if (subChart == 'Volume') {
         _drawVolumeChart(canvas, currentSubChartTop, subChartHeight, chartWidth, firstVisibleIdx, lastVisibleIdx, totalCandleWidth);
@@ -2831,9 +2854,22 @@ class _ChartPainter extends CustomPainter {
     bool isBold = false,
     double fontSize = 13,
   }) {
+    Color finalColor = color;
+    if (!isDark) {
+      if (color == Colors.white || color == Colors.white54) {
+        finalColor = Colors.black87;
+      } else if (color == Colors.white.withOpacity(0.85)) {
+        finalColor = Colors.black87;
+      } else if (color == Colors.white.withOpacity(0.6) || color == Colors.white.withOpacity(0.45)) {
+        finalColor = Colors.black.withOpacity(0.6);
+      } else if (color == Colors.white24 || color == Colors.white.withOpacity(0.2)) {
+        finalColor = Colors.black26;
+      }
+    }
+
     final span = TextSpan(
       style: TextStyle(
-        color: color,
+        color: finalColor,
         fontSize: fontSize,
         fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
       ),

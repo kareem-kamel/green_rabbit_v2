@@ -1,6 +1,9 @@
 
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:gal/gal.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:green_rabbit/core/theme/app_theme.dart';
@@ -39,9 +42,22 @@ class InstrumentDetailPage extends ConsumerStatefulWidget {
 }
 
 class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> with SingleTickerProviderStateMixin {
+  final GlobalKey _chartKey = GlobalKey();
   late TabController _tabController;
   final TextEditingController _commentController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
+  Color get _textPrimary => Theme.of(context).brightness == Brightness.dark
+      ? AppColors.textPrimary
+      : Colors.black;
+
+  Color get _textSecondary => Theme.of(context).brightness == Brightness.dark
+      ? AppColors.textSecondary
+      : Colors.black87;
+
+  Color get _textMuted => Theme.of(context).brightness == Brightness.dark
+      ? AppColors.textMuted
+      : Colors.black54;
   /// Active period for the chart (matches API `period` param).
   /// Defaults to '1M' which is the confirmed-working tier for free/classic accounts.
   String _selectedPeriod = '1M';
@@ -410,7 +426,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                         Text(
                           '${detail.name} (${detail.symbol})',
                           style: TextStyle(
-                            color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : Colors.black, 
+                            color: _textPrimary, 
                             fontSize: 18, 
                             fontWeight: FontWeight.bold,
                           ),
@@ -420,8 +436,8 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                         const SizedBox(height: 4),
                         Text(
                           _getExchangeAndSectorText(detail),
-                          style: const TextStyle(
-                            color: AppColors.textSecondary, 
+                          style: TextStyle(
+                            color: _textSecondary, 
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),
@@ -434,7 +450,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                   const SizedBox(width: 8),
                   InkWell(
                     onTap: () => _showSharePopup(context, 'https://greenrabbit.app/${detail.symbol}'),
-                    child: const Icon(Icons.share_outlined, color: AppColors.textSecondary, size: 20),
+                    child: Icon(Icons.share_outlined, color: _textSecondary, size: 20),
                   ),
                 ],
               ),
@@ -487,17 +503,17 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                           detail.price.lastUpdatedAt != null 
                             ? DateFormat('HH : mm : ss').format(DateTime.parse(detail.price.lastUpdatedAt!))
                             : DateFormat('HH : mm : ss').format(DateTime.now()), 
-                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                          style: TextStyle(color: _textSecondary, fontSize: 13),
                         ),
                         const SizedBox(width: 8),
-                        const Text('.', style: TextStyle(color: AppColors.textMuted, fontSize: 14, fontWeight: FontWeight.bold)),
+                        Text('.', style: TextStyle(color: _textMuted, fontSize: 14, fontWeight: FontWeight.bold)),
                         const SizedBox(width: 8),
                         Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFF34D399), shape: BoxShape.circle)),
                         const SizedBox(width: 8),
-                        const Expanded(
+                        Expanded(
                           child: Text(
                             'Real time derived Currency in USD', 
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                            style: TextStyle(color: _textSecondary, fontSize: 11),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
@@ -566,6 +582,8 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       children: [
         _buildToolbar(detail),
         _buildSparklineSection(detail),
+        _buildRatesOfReturnSection(detail),
+        _buildDailyPriceRangeSection(detail),
         _buildKeyStatsSection(detail, isWide: isWide),
         _buildTechnicalSection(detail),
         _buildNewsDashboardTab(detail),
@@ -573,6 +591,287 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         _buildCommentsSection(detail),
         _buildRelatedSection(detail),
       ],
+    );
+  }
+
+  Widget _buildRatesOfReturnSection(MarketInstrumentDetail detail) {
+    final statsAsync = ref.watch(instrumentStatsProvider('${widget.instrumentId}|15m'));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM, vertical: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Rates of return',
+                style: TextStyle(
+                  color: _textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Container(
+                width: 110,
+                height: 1,
+                color: isDark ? Colors.white30 : Colors.black26,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 80,
+          child: statsAsync.when(
+            data: (stats) {
+              final perf = stats.performance;
+              final returns = [
+                {'label': '1D', 'value': perf.return1d},
+                {'label': '1W', 'value': perf.return1w},
+                {'label': '1M', 'value': perf.return1m},
+                {'label': '3M', 'value': perf.return3m},
+              ];
+
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM),
+                itemCount: returns.length,
+                itemBuilder: (context, index) {
+                  final item = returns[index];
+                  final label = item['label'] as String;
+                  final value = item['value'] as double?;
+
+                  return _buildPerformanceCard(label, value);
+                },
+              );
+            },
+            loading: () => _buildShimmerPerformanceList(),
+            error: (err, _) => Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM),
+              child: Text('Performance data unavailable', style: TextStyle(color: _textMuted)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildPerformanceCard(String label, double? value) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
+    Color txtColor;
+    Color bgColor;
+    String formattedValue;
+
+    if (value == null) {
+      formattedValue = 'N/A';
+      txtColor = isDark ? Colors.white60 : Colors.black54;
+      bgColor = isDark ? const Color(0xFF1E222D) : const Color(0xFFF3F4F6);
+    } else {
+      final sign = value > 0 ? '+' : '';
+      formattedValue = '$sign${value.toStringAsFixed(2)}%';
+      if (value > 0) {
+        txtColor = AppColors.success;
+        bgColor = AppColors.success.withOpacity(0.08);
+      } else if (value < 0) {
+        txtColor = AppColors.error;
+        bgColor = AppColors.error.withOpacity(0.08);
+      } else {
+        txtColor = isDark ? Colors.white : Colors.black;
+        bgColor = isDark ? const Color(0xFF1E222D) : const Color(0xFFF3F4F6);
+      }
+    }
+
+    return Container(
+      width: 90,
+      margin: const EdgeInsets.only(right: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: value != null 
+              ? (value > 0 ? AppColors.success.withOpacity(0.15) : (value < 0 ? AppColors.error.withOpacity(0.15) : Colors.transparent))
+              : Colors.transparent,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: isDark ? Colors.white60 : Colors.black54,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              formattedValue,
+              style: TextStyle(
+                color: txtColor,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerPerformanceList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Shimmer.fromColors(
+      baseColor: isDark ? Colors.white10 : Colors.grey[300]!,
+      highlightColor: isDark ? Colors.white24 : Colors.grey[100]!,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM),
+        itemCount: 4,
+        itemBuilder: (context, index) => Container(
+          width: 90,
+          margin: const EdgeInsets.only(right: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDailyPriceRangeSection(MarketInstrumentDetail detail) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final priceInfo = detail.price;
+    final currentPrice = priceInfo.current;
+    final dayLow = priceInfo.dayLow;
+    final dayHigh = priceInfo.dayHigh;
+
+    if (currentPrice == null || dayLow == null || dayHigh == null) {
+      return const SizedBox.shrink(); 
+    }
+
+    double percentage = 0.5; 
+    if (dayHigh > dayLow) {
+      percentage = ((currentPrice - dayLow) / (dayHigh - dayLow)).clamp(0.0, 1.0);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: AppTheme.paddingM, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Daily price range',
+            style: TextStyle(
+              color: _textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    dayLow.toStringAsFixed(2),
+                    style: TextStyle(
+                      color: _textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Lowest',
+                    style: TextStyle(
+                      color: _textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Column(
+                    children: [
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final trackWidth = constraints.maxWidth;
+                          final leftOffset = (percentage * trackWidth) - 6;
+                          final double finalOffset = leftOffset.clamp(0.0, trackWidth - 12);
+                          
+                          return Stack(
+                            children: [
+                              SizedBox(height: 12, width: trackWidth),
+                              Positioned(
+                                left: finalOffset,
+                                child: CustomPaint(
+                                  size: const Size(12, 8),
+                                  painter: _TrianglePainter(color: isDark ? Colors.white : Colors.black87),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 2),
+                      Container(
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6B5AE0), 
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    dayHigh.toStringAsFixed(2),
+                    style: TextStyle(
+                      color: _textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Highest',
+                    style: TextStyle(
+                      color: _textMuted,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 
@@ -655,7 +954,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         child: Text(
           label,
           style: TextStyle(
-            color: isActive ? Colors.white : AppColors.textSecondary,
+            color: isActive ? Colors.white : _textSecondary,
             fontSize: 12,
             fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
           ),
@@ -729,8 +1028,55 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         border: Border.all(color: AppColors.border),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Icon(icon, color: AppColors.textPrimary, size: 24),
+      child: Icon(icon, color: _textPrimary, size: 24),
     );
+  }
+
+  Future<void> _captureAndSaveChart() async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Saving Chart to Gallery...'),
+          duration: Duration(seconds: 1),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+
+      // Wait a frame to ensure UI is ready
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      final boundary = _chartKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+      if (boundary == null) {
+        throw Exception("Chart element not found");
+      }
+
+      final image = await boundary.toImage(pixelRatio: 3.0);
+      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) {
+        throw Exception("Failed to process chart image");
+      }
+      final bytes = byteData.buffer.asUint8List();
+
+      await Gal.putImageBytes(bytes);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Chart saved to Gallery successfully'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save chart: ${e.toString().replaceAll("Exception: ", "")}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
 
@@ -741,10 +1087,10 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     return newsAsync.when(
       data: (articles) {
         if (articles.isEmpty) {
-          return const Center(
+          return Center(
             child: Text(
               'No recent news available.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+              style: TextStyle(color: _textSecondary, fontSize: 16),
             ),
           );
         }
@@ -758,7 +1104,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.textPrimary))),
+      error: (err, stack) => Center(child: Text('Error: $err', style: TextStyle(color: _textPrimary))),
     );
   }
 
@@ -767,10 +1113,10 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     return newsAsync.when(
       data: (articles) {
         if (articles.isEmpty) {
-          return const Center(
+          return Center(
             child: Text(
               'No analysis available.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+              style: TextStyle(color: _textSecondary, fontSize: 16),
             ),
           );
         }
@@ -784,7 +1130,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.textPrimary))),
+      error: (err, stack) => Center(child: Text('Error: $err', style: TextStyle(color: _textPrimary))),
     );
   }
 
@@ -807,7 +1153,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
             backgroundColor: AppColors.surface,
             backgroundImage: article.imageUrl != null ? NetworkImage(ImageUtils.getSafeImageUrl(article.imageUrl!)) : null,
             child: article.imageUrl == null 
-                ? const Icon(Icons.person, color: AppColors.textMuted, size: 30)
+                ? Icon(Icons.person, color: _textMuted, size: 30)
                 : null,
           ),
           const SizedBox(width: 16),
@@ -836,15 +1182,16 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   Widget _buildNewsItem(MarketNewsArticle article, int index) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final sentiment = article.sentiment?.toLowerCase() ?? 'neutral';
     final isBullish = sentiment == 'bullish';
     final isBearish = sentiment == 'bearish';
-    final sentimentColor = isBullish ? AppColors.success : (isBearish ? AppColors.error : AppColors.textSecondary);
+    final sentimentColor = isBullish ? AppColors.success : (isBearish ? AppColors.error : _textSecondary);
     
     return AppCard(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),
-      backgroundColor: AppColors.cardBackground,
+      backgroundColor: Theme.of(context).cardColor,
       onTap: () async {
         final url = article.url;
         if (url != null && await canLaunchUrl(Uri.parse(url))) {
@@ -862,9 +1209,9 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
               image: article.imageUrl != null 
                 ? DecorationImage(image: NetworkImage(ImageUtils.getSafeImageUrl(article.imageUrl!)), fit: BoxFit.cover)
                 : null,
-              color: AppColors.surface,
+              color: isDark ? AppColors.surface : Colors.grey[200],
             ),
-            child: article.imageUrl == null ? const Icon(Icons.newspaper, color: AppColors.textMuted) : null,
+            child: article.imageUrl == null ? Icon(Icons.newspaper, color: _textMuted) : null,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -896,12 +1243,12 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                   article.title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                  style: TextStyle(color: _textPrimary, fontSize: 14, fontWeight: FontWeight.w500),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   article.publishedAt ?? 'Today',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 11),
+                  style: TextStyle(color: _textSecondary, fontSize: 11),
                 ),
               ],
             ),
@@ -934,17 +1281,17 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                       _selectedDateRange == null 
                         ? 'Market History (Daily)' 
                         : 'History ${DateFormat('MM/dd/yyyy').format(_selectedDateRange!.start)} - ${DateFormat('MM/dd/yyyy').format(_selectedDateRange!.end)}', 
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      style: TextStyle(color: _textPrimary, fontSize: 13),
                     ),
                     const Spacer(),
-                    const Icon(Icons.calendar_today_outlined, color: Colors.white, size: 20),
+                    Icon(Icons.calendar_today_outlined, color: _textPrimary, size: 20),
                   ],
                 ),
               ),
               const SizedBox(width: 16),
               InkWell(
                 onTap: () => _showSharePopup(context, 'https://greenrabbit.app/${detail.symbol}'),
-                child: const Icon(Icons.share_outlined, color: AppColors.textSecondary, size: 20),
+                child: Icon(Icons.share_outlined, color: _textSecondary, size: 20),
               ),
             ],
           ),
@@ -984,13 +1331,13 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                     width: 600,
                     padding: const EdgeInsets.only(bottom: 12, left: 8, right: 8),
                     child: Row(
-                      children: const [
-                        Expanded(flex: 2, child: Text('Date', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                        Expanded(flex: 2, child: Text('Close', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                        Expanded(flex: 2, child: Text('Open', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                        Expanded(flex: 2, child: Text('High', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                        Expanded(flex: 2, child: Text('Low', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                        Expanded(flex: 2, child: Text('Vol.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
+                      children: [
+                        Expanded(flex: 2, child: Text('Date', style: TextStyle(color: _textSecondary, fontSize: 13))),
+                        Expanded(flex: 2, child: Text('Close', style: TextStyle(color: _textSecondary, fontSize: 13))),
+                        Expanded(flex: 2, child: Text('Open', style: TextStyle(color: _textSecondary, fontSize: 13))),
+                        Expanded(flex: 2, child: Text('High', style: TextStyle(color: _textSecondary, fontSize: 13))),
+                        Expanded(flex: 2, child: Text('Low', style: TextStyle(color: _textSecondary, fontSize: 13))),
+                        Expanded(flex: 2, child: Text('Vol.', style: TextStyle(color: _textSecondary, fontSize: 13))),
                       ],
                     ),
                   ),
@@ -1035,7 +1382,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
             padding: EdgeInsets.all(40.0),
             child: CircularProgressIndicator(),
           )),
-          error: (err, _) => Center(child: Text('Error loading history: $err', style: const TextStyle(color: AppColors.textMuted))),
+          error: (err, _) => Center(child: Text('Error loading history: $err', style: TextStyle(color: _textMuted))),
         ),
       ],
     );
@@ -1045,9 +1392,9 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+        Text(label, style: TextStyle(color: _textSecondary, fontSize: 12)),
         const SizedBox(height: 4),
-        Text(value, style: TextStyle(color: valueColor ?? Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(value, style: TextStyle(color: valueColor ?? _textPrimary, fontSize: 16, fontWeight: FontWeight.bold)),
       ],
     );
   }
@@ -1120,7 +1467,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         final isUp = item.changePercent! >= 0;
         return AppCard(
           padding: const EdgeInsets.all(12),
-          backgroundColor: AppColors.searchBarBackground,
+          backgroundColor: Theme.of(context).cardColor,
           onTap: () => Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (_) => InstrumentDetailPage(instrumentId: item.id)),
@@ -1131,17 +1478,17 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.textPrimary.withOpacity(0.05),
+                  color: _textPrimary.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.diamond_outlined, color: AppColors.textPrimary, size: 20),
+                child: Icon(Icons.diamond_outlined, color: _textPrimary, size: 20),
               ),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.symbol, style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold)),
-                  Text(item.name, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                  Text(item.symbol, style: TextStyle(color: _textPrimary, fontWeight: FontWeight.bold)),
+                  Text(item.name, style: TextStyle(color: _textMuted, fontSize: 12)),
                 ],
               ),
               const Spacer(),
@@ -1267,7 +1614,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                                   Text(
                                     t,
                                     style: TextStyle(
-                                      color: t == _selectedPeriod ? AppColors.textPrimary : AppColors.textSecondary,
+                                      color: t == _selectedPeriod ? _textPrimary : _textSecondary,
                                       fontSize: 13,
                                       fontWeight: t == _selectedPeriod ? FontWeight.bold : FontWeight.normal,
                                     ),
@@ -1278,7 +1625,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                                     Icon(
                                       Icons.lock_outline,
                                       size: 8,
-                                      color: t == _selectedPeriod ? AppColors.premiumGold : AppColors.textMuted,
+                                      color: t == _selectedPeriod ? AppColors.premiumGold : _textMuted,
                                     ),
                               ],
                             ),
@@ -1307,12 +1654,12 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                         value: ProChartMode.area,
                         child: Row(
                           children: [
-                            Icon(Icons.show_chart, color: _chartMode == ProChartMode.area ? AppColors.primary : AppColors.textSecondary),
+                            Icon(Icons.show_chart, color: _chartMode == ProChartMode.area ? AppColors.primary : _textSecondary),
                             const SizedBox(width: 12),
                             Text(
                               'Area Chart',
                               style: TextStyle(
-                                color: _chartMode == ProChartMode.area ? Colors.white : AppColors.textSecondary,
+                                color: _chartMode == ProChartMode.area ? _textPrimary : _textSecondary,
                                 fontWeight: _chartMode == ProChartMode.area ? FontWeight.bold : FontWeight.normal,
                               ),
                             ),
@@ -1323,12 +1670,12 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                         value: ProChartMode.candle,
                         child: Row(
                           children: [
-                            Icon(Icons.candlestick_chart, color: _chartMode == ProChartMode.candle ? AppColors.success : AppColors.textSecondary),
+                            Icon(Icons.candlestick_chart, color: _chartMode == ProChartMode.candle ? AppColors.success : _textSecondary),
                             const SizedBox(width: 12),
                             Text(
                               'Candle Chart',
                               style: TextStyle(
-                                color: _chartMode == ProChartMode.candle ? Colors.white : AppColors.textSecondary,
+                                color: _chartMode == ProChartMode.candle ? _textPrimary : _textSecondary,
                                 fontWeight: _chartMode == ProChartMode.candle ? FontWeight.bold : FontWeight.normal,
                               ),
                             ),
@@ -1453,9 +1800,9 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.all(AppTheme.paddingM),
-          child: Text('Key Statistics', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+        Padding(
+          padding: const EdgeInsets.all(AppTheme.paddingM),
+          child: Text('Key Statistics', style: TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
         ),
         if (isWide)
           Padding(
@@ -1510,7 +1857,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Technical', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Technical', style: TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
               InkWell(
                 onTap: () => _tabController.animateTo(1),
                 child: const Text('View More', style: TextStyle(color: AppColors.primary, fontSize: 14)),
@@ -1524,7 +1871,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
             child: _buildTimeframeGrid(stats),
           ),
           loading: () => const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator())),
-          error: (err, _) => const Center(child: Text('Technical data unavailable', style: TextStyle(color: AppColors.textMuted))),
+          error: (err, _) => Center(child: Text('Technical data unavailable', style: TextStyle(color: _textMuted))),
         ),
         const SizedBox(height: 24),
       ],
@@ -1535,9 +1882,9 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     final isLocked = false;
     final isBullish = tech.signal.contains('Bullish');
     final isBearish = tech.signal.contains('Bearish');
-    final signalColor = isBullish ? AppColors.success : (isBearish ? AppColors.error : AppColors.textSecondary);
+    final signalColor = isBullish ? AppColors.success : (isBearish ? AppColors.error : _textSecondary);
     
-    Color bgColor = const Color(0xFF1E222D); // Base back color
+    Color bgColor = Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E222D) : const Color(0xFFF3F4F6); // Base back color
     if (isBullish) {
       bgColor = AppColors.success.withOpacity(0.08);
     } else if (isBearish) {
@@ -1557,7 +1904,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           : null,
       child: Column(
         children: [
-          Text(tech.name, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w400)),
+          Text(tech.name, style: TextStyle(color: _textSecondary, fontSize: 13, fontWeight: FontWeight.w400)),
           const SizedBox(height: 12),
           Expanded(
             child: Stack(
@@ -1644,7 +1991,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         child: Text(
           label,
           textAlign: TextAlign.center,
-          style: TextStyle(color: isActive ? color : AppColors.textSecondary, fontSize: 10, fontWeight: FontWeight.bold),
+          style: TextStyle(color: isActive ? color : _textSecondary, fontSize: 10, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -1661,7 +2008,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('News & Analysis', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('News & Analysis', style: TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
               InkWell(
                 onTap: () => _tabController.animateTo(2), // Navigate to News tab
                 child: Text('View More', style: TextStyle(color: AppColors.primary, fontSize: 14)),
@@ -1672,12 +2019,12 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         newsAsync.when(
           data: (articles) {
             if (articles.isEmpty) {
-              return const Padding(
+              return Padding(
                 padding: EdgeInsets.symmetric(vertical: 32.0, horizontal: AppTheme.paddingM),
                 child: Center(
                   child: Text(
                     'No recent news available.',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                    style: TextStyle(color: _textSecondary, fontSize: 14),
                   ),
                 ),
               );
@@ -1707,7 +2054,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Contracts', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Contracts', style: TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
               InkWell(
                 onTap: () => _tabController.animateTo(5), // Contracts tab (index 5)
                 child: Text('View More', style: TextStyle(color: AppColors.primary, fontSize: 14)),
@@ -1725,13 +2072,13 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                 width: 600, // Fixed width for horizontal scroll
                 padding: const EdgeInsets.only(bottom: 12, left: 8, right: 8),
                 child: Row(
-                  children: const [
-                    Expanded(flex: 2, child: Text('Month', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                    Expanded(flex: 2, child: Text('Last', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                    Expanded(flex: 2, child: Text('Change', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                    Expanded(flex: 2, child: Text('Vol.', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                    Expanded(flex: 2, child: Text('Open', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
-                    Expanded(flex: 2, child: Text('High', style: TextStyle(color: AppColors.textSecondary, fontSize: 13))),
+                  children: [
+                    Expanded(flex: 2, child: Text('Month', style: TextStyle(color: _textSecondary, fontSize: 13))),
+                    Expanded(flex: 2, child: Text('Last', style: TextStyle(color: _textSecondary, fontSize: 13))),
+                    Expanded(flex: 2, child: Text('Change', style: TextStyle(color: _textSecondary, fontSize: 13))),
+                    Expanded(flex: 2, child: Text('Vol.', style: TextStyle(color: _textSecondary, fontSize: 13))),
+                    Expanded(flex: 2, child: Text('Open', style: TextStyle(color: _textSecondary, fontSize: 13))),
+                    Expanded(flex: 2, child: Text('High', style: TextStyle(color: _textSecondary, fontSize: 13))),
                   ],
                 ),
               ),
@@ -1775,7 +2122,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Comments', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Comments', style: TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
               if (!isTab)
                 InkWell(
                   onTap: () => _tabController.animateTo(6), // Comments tab (index 6)
@@ -2015,9 +2362,9 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: AppTheme.paddingM, vertical: 16),
-          child: Text('People Also Watch', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+          child: Text('People Also Watch', style: TextStyle(color: _textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
         ),
         SizedBox(
           height: 44,
@@ -2053,7 +2400,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                         style: TextStyle(color: isUp ? AppColors.success : AppColors.error, fontSize: 13, fontWeight: FontWeight.w500),
                       ),
                       const SizedBox(width: 8),
-                      Icon(Icons.star_border, color: AppColors.textSecondary, size: 18),
+                      Icon(Icons.star_border, color: _textSecondary, size: 18),
                     ],
                   ),
                 ),
@@ -2111,7 +2458,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       error: (err, _) => Center(child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('Error loading technicals: $err', style: const TextStyle(color: Colors.white)),
+          Text('Error loading technicals: $err', style: TextStyle(color: _textPrimary)),
           const SizedBox(height: 16),
           ElevatedButton(
             onPressed: () => ref.refresh(instrumentStatsProvider('${widget.instrumentId}|$_selectedTechnicalInterval')),
@@ -2155,7 +2502,8 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     // For now, mirroring the reference image design
     final bool isLocked = false; 
 
-    Color signalColor = Colors.white60;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    Color signalColor = isDark ? Colors.white60 : Colors.black54;
     IconData? signalIcon;
     
     if (signal != null) {
@@ -2166,7 +2514,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
         signalColor = AppColors.error;
         signalIcon = Icons.trending_down;
       } else {
-        signalColor = Colors.white70;
+        signalColor = isDark ? Colors.white70 : Colors.black87;
         signalIcon = Icons.trending_flat;
       }
     }
@@ -2187,7 +2535,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           margin: const EdgeInsets.symmetric(horizontal: 4),
           child: Column(
             children: [
-              Text(label, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w400)),
+              Text(label, style: TextStyle(color: _textPrimary, fontSize: 13, fontWeight: FontWeight.w400)),
               const SizedBox(height: 8),
               Stack(
                 clipBehavior: Clip.none,
@@ -2197,7 +2545,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                     decoration: BoxDecoration(
                       color: signal != null 
                           ? signalColor.withOpacity(0.08) 
-                          : const Color(0xFF161922),
+                          : (isDark ? const Color(0xFF161922) : const Color(0xFFF3F4F6)),
                       borderRadius: BorderRadius.circular(8),
                       border: isSelected 
                           ? Border.all(color: AppColors.primary, width: 1.5)
@@ -2230,12 +2578,12 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                               ],
                             )
                           : (isLoading 
-                              ? const SizedBox(
+                              ? SizedBox(
                                   height: 12, 
                                   width: 12, 
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24)
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: isDark ? Colors.white24 : Colors.black26)
                                 ) 
-                              : const Text('Neutral', style: TextStyle(color: Colors.white24, fontSize: 11)))),
+                              : Text('Neutral', style: TextStyle(color: isDark ? Colors.white24 : Colors.black26, fontSize: 11)))),
                   ),
                   if (isPremium)
                     Positioned(
@@ -2260,7 +2608,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   Widget _buildPivotPointsTable(Map<String, dynamic>? pivotPoints, {bool isWide = false}) {
-    if (pivotPoints == null || pivotPoints['classic'] == null) return const Center(child: Text('No pivot data', style: TextStyle(color: Colors.white54)));
+    if (pivotPoints == null || pivotPoints['classic'] == null) return Center(child: Text('No pivot data', style: TextStyle(color: _textMuted)));
     final classic = pivotPoints['classic'] as Map<String, dynamic>;
     
     final rows = [
@@ -2298,15 +2646,15 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: isMain ? AppColors.primary : Colors.white70, fontWeight: isMain ? FontWeight.bold : FontWeight.normal)),
-          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          Text(label, style: TextStyle(color: isMain ? AppColors.primary : _textSecondary, fontWeight: isMain ? FontWeight.bold : FontWeight.normal)),
+          Text(value, style: TextStyle(color: _textPrimary, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
 
   Widget _buildMovingAveragesTable(List<dynamic>? maData, {bool isWide = false}) {
-    if (maData == null || maData.isEmpty) return const Center(child: Text('No MA data', style: TextStyle(color: Colors.white54)));
+    if (maData == null || maData.isEmpty) return Center(child: Text('No MA data', style: TextStyle(color: _textMuted)));
     
     if (isWide) {
       return GridView.builder(
@@ -2331,14 +2679,14 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     final period = ma['period']?.toString() ?? '-';
     final simple = ma['simple'] as Map<String, dynamic>?;
     final signal = simple?['signal']?.toString() ?? '-';
-    final color = signal.contains('buy') ? AppColors.success : (signal.contains('sell') ? AppColors.error : Colors.white70);
+    final color = signal.contains('buy') ? AppColors.success : (signal.contains('sell') ? AppColors.error : _textSecondary);
     
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          Expanded(flex: 2, child: Text(period, style: const TextStyle(color: Colors.white70))),
-          Expanded(flex: 3, child: Text(simple?['value']?.toString() ?? '-', style: const TextStyle(color: Colors.white))),
+          Expanded(flex: 2, child: Text(period, style: TextStyle(color: _textSecondary))),
+          Expanded(flex: 3, child: Text(simple?['value']?.toString() ?? '-', style: TextStyle(color: _textPrimary))),
           Expanded(flex: 2, child: Text(signal.toUpperCase(), style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12))),
         ],
       ),
@@ -2346,7 +2694,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   Widget _buildTechnicalIndicatorsTable(List<dynamic>? indicators, {bool isWide = false}) {
-    if (indicators == null || indicators.isEmpty) return const Center(child: Text('No indicators data', style: TextStyle(color: Colors.white54)));
+    if (indicators == null || indicators.isEmpty) return Center(child: Text('No indicators data', style: TextStyle(color: _textMuted)));
     
     if (isWide) {
       return GridView.builder(
@@ -2371,14 +2719,14 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     final name = ind['name']?.toString() ?? '-';
     final value = ind['value']?.toString() ?? '-';
     final signal = ind['signal']?.toString() ?? '-';
-    final color = signal.contains('Bullish') || signal.contains('Buy') ? AppColors.success : (signal.contains('Bearish') || signal.contains('Sell') ? AppColors.error : Colors.white70);
+    final color = signal.contains('Bullish') || signal.contains('Buy') ? AppColors.success : (signal.contains('Bearish') || signal.contains('Sell') ? AppColors.error : _textSecondary);
     
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          Expanded(flex: 3, child: Text(name, style: const TextStyle(color: Colors.white70))),
-          Expanded(flex: 2, child: Text(value, style: const TextStyle(color: Colors.white))),
+          Expanded(flex: 3, child: Text(name, style: TextStyle(color: _textSecondary))),
+          Expanded(flex: 2, child: Text(value, style: TextStyle(color: _textPrimary))),
           Expanded(flex: 2, child: Text(signal, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500))),
         ],
       ),
@@ -2388,10 +2736,10 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   Widget _buildBiasRow(String label, String mainSignal, String sub1, String sub2) {
     return Row(
       children: [
-        Expanded(flex: 3, child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 15))),
-        Expanded(flex: 2, child: Text(mainSignal, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12))),
-        Expanded(flex: 2, child: Text(sub1, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12))),
-        Expanded(flex: 2, child: Text(sub2, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12))),
+        Expanded(flex: 3, child: Text(label, style: TextStyle(color: _textPrimary, fontSize: 15))),
+        Expanded(flex: 2, child: Text(mainSignal, style: TextStyle(color: _textSecondary, fontSize: 12))),
+        Expanded(flex: 2, child: Text(sub1, style: TextStyle(color: _textSecondary, fontSize: 12))),
+        Expanded(flex: 2, child: Text(sub2, style: TextStyle(color: _textSecondary, fontSize: 12))),
       ],
     );
   }
@@ -2402,8 +2750,8 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.normal)),
-          const Text('Jan 29, 2026 ,12:32', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          Text(title, style: TextStyle(color: _textPrimary, fontSize: 20, fontWeight: FontWeight.normal)),
+          Text('Jan 29, 2026 ,12:32', style: TextStyle(color: _textSecondary, fontSize: 12)),
         ],
       ),
     );
@@ -2570,16 +2918,16 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: Theme.of(context).cardColor,
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.screen_rotation, size: 60, color: AppColors.textPrimary),
+            child: Icon(Icons.screen_rotation, size: 60, color: _textPrimary),
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'Rotate to View Full Chart',
             style: TextStyle(
-              color: Colors.white,
+              color: _textPrimary,
               fontSize: 18,
               fontWeight: FontWeight.normal,
             ),
@@ -2806,25 +3154,28 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       children: [
         _buildLandscapeHeader(detail, interval: interval),
         Expanded(
-          child: ProTradingChart(
-            candles: realCandles,
-            showMovingAverages: _showMovingAverages,
-            mode: _chartMode,
-            period: _selectedPeriod,
-            interval: interval,
-            symbolName: '${detail.name} (${detail.symbol})',
-            currency: detail.currency ?? 'USD',
-            isLoading: isLoading,
-            errorMessage: errorMsg,
-            onRetry: () => ref.invalidate(instrumentChartProvider(providerKey)),
-            activeIndicators: _activeIndicators,
-            activeDrawingTool: _activeDrawingTool,
-            onDrawingToolChanged: (tool) {
-              setState(() {
-                _activeDrawingTool = tool;
-              });
-            },
-            clearDrawingsTrigger: _clearDrawingsTrigger,
+          child: RepaintBoundary(
+            key: _chartKey,
+            child: ProTradingChart(
+              candles: realCandles,
+              showMovingAverages: _showMovingAverages,
+              mode: _chartMode,
+              period: _selectedPeriod,
+              interval: interval,
+              symbolName: '${detail.name} (${detail.symbol})',
+              currency: detail.currency ?? 'USD',
+              isLoading: isLoading,
+              errorMessage: errorMsg,
+              onRetry: () => ref.invalidate(instrumentChartProvider(providerKey)),
+              activeIndicators: _activeIndicators,
+              activeDrawingTool: _activeDrawingTool,
+              onDrawingToolChanged: (tool) {
+                setState(() {
+                  _activeDrawingTool = tool;
+                });
+              },
+              clearDrawingsTrigger: _clearDrawingsTrigger,
+            ),
           ),
         ),
       ],
@@ -2979,25 +3330,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
           const SizedBox(width: 16),
           // Actions
           InkWell(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Downloading Chart Snapshot...'),
-                  duration: Duration(seconds: 1),
-                  backgroundColor: AppColors.primary,
-                ),
-              );
-              Future.delayed(const Duration(seconds: 1), () {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Chart saved to Gallery successfully'),
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
-                }
-              });
-            },
+            onTap: _captureAndSaveChart,
             child: const Icon(Icons.file_download_outlined, color: AppColors.textSecondary, size: 24),
           ),
           const SizedBox(width: 20),
@@ -3244,6 +3577,29 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
       ),
     );
   }
+}
+
+class _TrianglePainter extends CustomPainter {
+  final Color color;
+  _TrianglePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TrianglePainter oldDelegate) => oldDelegate.color != color;
 }
 
 

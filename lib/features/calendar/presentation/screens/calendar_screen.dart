@@ -82,9 +82,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _fetchData() {
     String? countryParam;
     if (_filterSettings.countrySelection == 'custom' && _filterSettings.selectedCountries.isNotEmpty) {
-      countryParam = _filterSettings.selectedCountries
-          .map((c) => _countryIsoMap[c] ?? c)
-          .join(',');
+      if (_selectedCategory == 'economic' || _filterSettings.selectedCountries.length > 1) {
+        // Fetch all events from backend since the backend country filter is buggy for economic category,
+        // and doesn't support multiple comma-separated values for other categories. We filter locally.
+        countryParam = 'all';
+      } else {
+        // Only one country selected, and not economic category -> use backend filtering
+        countryParam = _countryIsoMap[_filterSettings.selectedCountries.first] ?? _filterSettings.selectedCountries.first;
+      }
     } else if (_filterSettings.countrySelection == 'all') {
       countryParam = 'all';
     }
@@ -101,16 +106,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  bool _matchesCountryFilter(CalendarEvent e) {
+    if (_filterSettings.countrySelection != 'custom' || _filterSettings.selectedCountries.isEmpty) {
+      return true;
+    }
+
+    final eventCountryLower = e.country?.trim().toLowerCase() ?? '';
+    final eventIsoLower = e.isoCountryCode?.trim().toLowerCase() ?? '';
+
+    return _filterSettings.selectedCountries.any((selected) {
+      final selectedLower = selected.trim().toLowerCase();
+      final selectedIsoLower = _countryIsoMap[selected]?.trim().toLowerCase() ?? selectedLower;
+
+      return eventCountryLower == selectedLower ||
+             eventIsoLower == selectedIsoLower ||
+             eventCountryLower == selectedIsoLower;
+    });
+  }
+
+  Widget _buildEmptyState(bool isDark) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.calendar_today_outlined, size: 64, color: Colors.grey[600]),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             "No Events To Show",
-            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           const Text(
@@ -126,8 +149,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? Colors.white : Colors.black87;
+    final textSecondary = isDark ? Colors.grey : Colors.black54;
+
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -135,21 +162,21 @@ class _CalendarScreenState extends State<CalendarScreen> {
             ? Container(
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF161922),
+                  color: isDark ? const Color(0xFF161922) : Colors.black.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.5), width: 1),
+                  border: Border.all(color: isDark ? AppColors.primary.withOpacity(0.5) : Colors.black26, width: 1),
                 ),
                 child: TextField(
                   controller: _searchController,
                   autofocus: true,
-                  style: const TextStyle(color: Colors.white, fontSize: 15),
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: textPrimary, fontSize: 15),
+                  decoration: InputDecoration(
                     hintText: 'Search event or symbol...',
-                    hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
-                    prefixIcon: Icon(Icons.search, color: Colors.grey, size: 20),
+                    hintStyle: TextStyle(color: textSecondary, fontSize: 14),
+                    prefixIcon: Icon(Icons.search, color: textSecondary, size: 20),
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                   onChanged: (val) {
                     final trimmed = val.trim();
@@ -171,20 +198,20 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   children: [
                     Text(
                       _categoryDisplayNames[_selectedCategory] ?? "Calendar",
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: textPrimary,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const Icon(Icons.arrow_drop_down, color: Colors.white, size: 24),
+                    Icon(Icons.arrow_drop_down, color: textPrimary, size: 24),
                   ],
                 ),
               ),
         actions: [
           if (_isSearching)
             _buildCircularIconButton(
-              icon: const Icon(Icons.close, color: Colors.white, size: 20),
+              icon: Icon(Icons.close, color: textPrimary, size: 20),
               onPressed: () {
                 setState(() {
                   _isSearching = false;
@@ -193,12 +220,13 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 });
                 _fetchData();
               },
+              isDark: isDark,
             )
           else ...[
             _buildCircularIconButton(
               icon: Icon(
                 Icons.filter_alt_outlined,
-                color: _isFilterActive ? const Color(0xFFFFD700) : Colors.white,
+                color: _isFilterActive ? const Color(0xFFFFD700) : textPrimary,
                 size: 20,
               ),
               onPressed: () async {
@@ -219,24 +247,27 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   _fetchData();
                 }
               },
+              isDark: isDark,
             ),
             _buildCircularIconButton(
-              icon: const Icon(Icons.search, color: Colors.white, size: 20),
+              icon: Icon(Icons.search, color: textPrimary, size: 20),
               onPressed: () {
                 setState(() {
                   _isSearching = true;
                 });
               },
+              isDark: isDark,
             ),
           ],
           _buildCircularIconButton(
-            icon: const Icon(Icons.menu, color: Colors.white, size: 20),
+            icon: Icon(Icons.menu, color: textPrimary, size: 20),
             onPressed: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => const ProfileScreen()),
               );
             },
+            isDark: isDark,
           ),
           const SizedBox(width: 8),
         ],
@@ -268,17 +299,23 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                             decoration: BoxDecoration(
-                              color: isActive ? Colors.transparent : const Color(0xFF161922),
+                              color: isActive 
+                                  ? Colors.transparent 
+                                  : (isDark ? const Color(0xFF161922) : Colors.black.withOpacity(0.05)),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
-                                color: isActive ? const Color(0xFF2D5CFF) : Colors.transparent,
+                                color: isActive 
+                                    ? const Color(0xFF2D5CFF) 
+                                    : (isDark ? Colors.transparent : Colors.black12),
                                 width: 1.5,
                               ),
                             ),
                             child: Text(
                               tab.isEmpty ? '' : tab[0].toUpperCase() + tab.substring(1).replaceAll('_', ' '),
                               style: TextStyle(
-                                color: isActive ? Colors.white : Colors.grey,
+                                color: isActive 
+                                    ? textPrimary 
+                                    : textSecondary,
                                 fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
                               ),
                             ),
@@ -307,10 +344,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           final dateStr = entry.key;
                           final dateEvents = entry.value;
                           final filteredEvents = dateEvents.where((e) {
-                            return _filterSettings.selectedImportance.contains(e.importance ?? e.impact ?? 1);
+                            return _filterSettings.selectedImportance.contains(e.importance ?? e.impact ?? 1) &&
+                                   _matchesCountryFilter(e);
                           }).toList();
                           return CalendarDay(
-                            date: dateStr,
+                             date: dateStr,
                             dayName: _getDayName(dateStr),
                             eventCount: filteredEvents.length,
                             events: filteredEvents,
@@ -326,9 +364,10 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             events: state.events ?? [],
                           )
                         ]).map((day) {
-                          // Filter events by importance locally using safe importance check
+                          // Filter events locally by importance and country
                           final filteredEvents = day.events.where((e) {
-                            return _filterSettings.selectedImportance.contains(e.importance ?? e.impact ?? 1);
+                            return _filterSettings.selectedImportance.contains(e.importance ?? e.impact ?? 1) &&
+                                   _matchesCountryFilter(e);
                           }).toList();
                           return CalendarDay(
                             date: day.date,
@@ -340,9 +379,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       }
                       
                       if (displayDays.every((d) => d.events.isEmpty)) {
-                        return _buildEmptyState();
+                        return _buildEmptyState(isDark);
                       }
-
+ 
                       // Auto-expand first day with events on initial load of this dataset
                       final stateKey = "${state.category}|${state.tab}|${_searchController.text}";
                       if (_lastLoadedStateKey != stateKey) {
@@ -352,7 +391,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                           _expandedDates.add(displayDays.firstWhere((d) => d.events.isNotEmpty).date);
                         }
                       }
-
+ 
                       // Flatten the structure for ListView.builder to allow lazy loading and prevent slowness/lag
                       final List<_CalendarListItem> listItems = [];
                       
@@ -402,7 +441,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               padding: const EdgeInsets.only(bottom: 24),
                               child: Text(
                                 item.title,
-                                style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                                style: TextStyle(color: textPrimary, fontSize: 24, fontWeight: FontWeight.bold),
                               ),
                             );
                           } else if (item is _CalendarListHeaderItem) {
@@ -423,15 +462,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   children: [
                                     Text(
                                       item.formattedDate,
-                                      style: const TextStyle(
-                                        color: Colors.white,
+                                      style: TextStyle(
+                                        color: textPrimary,
                                         fontSize: 18,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                     Icon(
                                       item.isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                                      color: Colors.white70,
+                                      color: textSecondary,
                                     ),
                                   ],
                                 ),
@@ -452,7 +491,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       );
                     } else if (state is CalendarError) {
                       // Hide error from user and show "No Events" instead
-                      return _buildEmptyState();
+                      return _buildEmptyState(isDark);
                     }
                     return const SizedBox.shrink();
                   },
@@ -464,33 +503,34 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
-
+ 
   bool get _isFilterActive {
     return _filterSettings.countrySelection != 'all' || _filterSettings.selectedImportance.length != 3;
   }
-
+ 
   void _showCategoryDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF161922),
+        backgroundColor: isDark ? const Color(0xFF161922) : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Select Calendar", style: TextStyle(color: Colors.white, fontSize: 18)),
+        title: Text("Select Calendar", style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 18)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildCategoryItem("Economic Calendar", 'economic', Icons.analytics_outlined),
-            _buildCategoryItem("Earnings Calendar", 'earnings', Icons.monetization_on_outlined),
-            _buildCategoryItem("Dividend Calendar", 'dividends', Icons.money_outlined),
-            _buildCategoryItem("Splits Calendar", 'splits', Icons.call_split_outlined),
-            _buildCategoryItem("IPO Calendar", 'ipo', Icons.calendar_today_outlined),
+            _buildCategoryItem("Economic Calendar", 'economic', Icons.analytics_outlined, isDark),
+            _buildCategoryItem("Earnings Calendar", 'earnings', Icons.monetization_on_outlined, isDark),
+            _buildCategoryItem("Dividend Calendar", 'dividends', Icons.money_outlined, isDark),
+            _buildCategoryItem("Splits Calendar", 'splits', Icons.call_split_outlined, isDark),
+            _buildCategoryItem("IPO Calendar", 'ipo', Icons.calendar_today_outlined, isDark),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildCategoryItem(String title, String category, IconData icon) {
+ 
+  Widget _buildCategoryItem(String title, String category, IconData icon, bool isDark) {
     final isSelected = _selectedCategory == category;
     return InkWell(
       onTap: () {
@@ -509,14 +549,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(
           children: [
-            Icon(icon, color: Colors.white70, size: 24),
+            Icon(icon, color: isDark ? Colors.white70 : Colors.black54, size: 24),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(title, style: const TextStyle(color: Colors.white, fontSize: 16)),
+              child: Text(title, style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 16)),
             ),
             Icon(
               isSelected ? Icons.check_circle : Icons.circle_outlined,
-              color: isSelected ? Colors.white : Colors.grey,
+              color: isSelected ? (isDark ? Colors.white : AppColors.primary) : Colors.grey,
               size: 24,
             ),
           ],
@@ -524,7 +564,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
-
+ 
   String _getDayName(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) return '';
     try {
@@ -534,8 +574,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       return '';
     }
   }
-
-  Widget _buildCircularIconButton({required Widget icon, required VoidCallback onPressed}) {
+ 
+  Widget _buildCircularIconButton({required Widget icon, required VoidCallback onPressed, required bool isDark}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: InkWell(
@@ -544,8 +584,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         child: Container(
           width: 36,
           height: 36,
-          decoration: const BoxDecoration(
-            color: Color(0xFF1C2128),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C2128) : Colors.black.withOpacity(0.05),
             shape: BoxShape.circle,
           ),
           child: Center(child: icon),
@@ -553,8 +593,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
       ),
     );
   }
-
-  Widget _buildDaySection(CalendarDay day) {
+ 
+  Widget _buildDaySection(CalendarDay day, bool isDark, Color textPrimary, Color textSecondary) {
     final isExpanded = _expandedDates.contains(day.date);
     String formattedDate = '';
     try {
@@ -563,7 +603,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
     } catch (e) {
       formattedDate = day.dayName;
     }
-
+ 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -584,15 +624,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
               children: [
                 Text(
                   formattedDate,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: textPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
                 Icon(
                   isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                  color: Colors.white70,
+                  color: textSecondary,
                 ),
               ],
             ),

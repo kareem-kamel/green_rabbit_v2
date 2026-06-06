@@ -49,26 +49,28 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textPrimary = isDark ? Colors.white : Colors.black87;
     return Scaffold(
-      backgroundColor: AppColors.scaffoldBg,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: Colors.white),
+          icon: Icon(Icons.close, color: textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
+        title: Text(
           "Calendar Filter",
           style: TextStyle(
-            color: Colors.white,
+            color: textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white70),
+            icon: Icon(Icons.refresh, color: isDark ? Colors.white70 : Colors.black87),
             onPressed: () {
               setState(() {
                 _settings = CalendarFilterSettings();
@@ -82,10 +84,10 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               "Select Counties",
               style: TextStyle(
-                color: Colors.white,
+                color: textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.w400,
               ),
@@ -126,10 +128,10 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
             ),
             if (widget.category != 'ipo') ...[
               const SizedBox(height: 32),
-              const Text(
+              Text(
                 "Set Importance",
                 style: TextStyle(
-                  color: Colors.white,
+                  color: textPrimary,
                   fontSize: 16,
                   fontWeight: FontWeight.w400,
                 ),
@@ -175,6 +177,7 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
     VoidCallback onTap, {
     String? subtitle,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
@@ -182,8 +185,12 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF161922),
+          color: isDark ? const Color(0xFF161922) : Colors.white,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? Colors.transparent : Colors.black.withOpacity(0.08),
+            width: 0.8,
+          ),
         ),
         child: Row(
           children: [
@@ -193,7 +200,10 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(color: Colors.white, fontSize: 15),
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontSize: 15,
+                    ),
                   ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 4),
@@ -209,7 +219,9 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
             ),
             Icon(
               isSelected ? Icons.check_circle_outline : Icons.circle_outlined,
-              color: isSelected ? Colors.white : Colors.grey,
+              color: isSelected 
+                  ? (isDark ? Colors.white : AppColors.primary) 
+                  : Colors.grey,
             ),
           ],
         ),
@@ -219,6 +231,7 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
 
   Widget _buildImportanceCard(String title, int importance) {
     final isSelected = _settings.selectedImportance.contains(importance);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -234,8 +247,12 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF161922),
+          color: isDark ? const Color(0xFF161922) : Colors.white,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? Colors.transparent : Colors.black.withOpacity(0.08),
+            width: 0.8,
+          ),
         ),
         child: Row(
           children: [
@@ -258,14 +275,19 @@ class _CalendarFilterScreenState extends State<CalendarFilterScreen> {
             Expanded(
               child: Text(
                 title,
-                style: const TextStyle(color: Colors.white, fontSize: 15),
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontSize: 15,
+                ),
               ),
             ),
             Icon(
               isSelected
                   ? Icons.check_box_rounded
                   : Icons.check_box_outline_blank_rounded,
-              color: Colors.white,
+              color: isSelected 
+                  ? (isDark ? Colors.white : AppColors.primary) 
+                  : Colors.grey,
             ),
           ],
         ),
