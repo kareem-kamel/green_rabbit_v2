@@ -82,6 +82,7 @@ class GreenRabbitApp extends StatelessWidget {
         builder: (context, settingsState) {
           return MaterialApp(
             navigatorKey: globalNavigatorKey,
+            navigatorObservers: [calculatorRouteObserver],
             title: 'Green Rabbit',
             debugShowCheckedModeBanner: false,
             themeMode: settingsState.lightModeEnabled
