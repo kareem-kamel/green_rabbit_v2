@@ -8,6 +8,7 @@ import '../../features/market/presentation/providers/market_providers.dart';
 import '../../features/market/data/models/market_instrument.dart';
 
 import 'package:green_rabbit/shared/widgets/feature_guide_overlay.dart';
+import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
 
 // Persistent state for Standard Calculator
 double _globalPrincipal = 1000.0;
@@ -29,6 +30,7 @@ double _globalForexOpenPrice = 0.0;
 double _globalForexClosePrice = 0.0;
 double _globalForexLots = 1.0;
 String _globalForexCurrency = "USD";
+double _globalForexBalance = 10000.0;
 
 final _exchangeRatesProvider = FutureProvider<Map<String, double>>((ref) async {
   final repo = ref.watch(marketRepositoryProvider);
@@ -69,14 +71,44 @@ class _ContractDetails {
   const _ContractDetails(this.multiplier, this.label);
 }
 
-class GlobalCalculatorOverlay extends StatefulWidget {
+class CalculatorRouteObserver extends NavigatorObserver {
+  final List<VoidCallback> _listeners = [];
+  
+  void addListener(VoidCallback listener) {
+    _listeners.add(listener);
+  }
+  
+  void removeListener(VoidCallback listener) {
+    _listeners.remove(listener);
+  }
+
+  void _notify() {
+    for (final listener in _listeners) {
+      listener();
+    }
+  }
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _notify();
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _notify();
+  }
+}
+
+final calculatorRouteObserver = CalculatorRouteObserver();
+
+class GlobalCalculatorOverlay extends ConsumerStatefulWidget {
   const GlobalCalculatorOverlay({super.key});
 
   @override
-  State<GlobalCalculatorOverlay> createState() => _GlobalCalculatorOverlayState();
+  ConsumerState<GlobalCalculatorOverlay> createState() => _GlobalCalculatorOverlayState();
 }
 
-class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
+class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverlay> {
   double _xOffset = 42.0;
   bool _isHidden = true;
   bool _isPageOpen = false;
@@ -88,11 +120,23 @@ class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
     // Ensure it starts hidden
     _xOffset = 42.0;
     _isHidden = true;
+    calculatorRouteObserver.addListener(_onRouteChanged);
   }
 
   @override
   void dispose() {
+    calculatorRouteObserver.removeListener(_onRouteChanged);
     super.dispose();
+  }
+
+  void _onRouteChanged() {
+    if (mounted && !_isHidden && !_isPageOpen) {
+      // If the button is pulled out (revealed) and we navigate, tuck it back in.
+      setState(() {
+        _isHidden = true;
+        _xOffset = 42.0;
+      });
+    }
   }
 
   void _openCalculator() async {
@@ -132,6 +176,15 @@ class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<int>(navigationIndexProvider, (previous, next) {
+      if (previous != next && _isPageOpen) {
+        final ctx = globalNavigatorKey.currentContext;
+        if (ctx != null && Navigator.canPop(ctx)) {
+          Navigator.pop(ctx);
+        }
+      }
+    });
+
     if (_isPageOpen) return const SizedBox.shrink();
 
     return AnimatedPositioned(
@@ -152,7 +205,8 @@ class _GlobalCalculatorOverlayState extends State<GlobalCalculatorOverlay> {
                   // If hidden, only allow horizontal pulling to reveal
                   if (details.delta.dx.abs() > details.delta.dy.abs()) {
                     setState(() {
-                      _xOffset -= details.delta.dx;
+                      // Fix: dx is negative when swiping left, so we add it to decrease _xOffset
+                      _xOffset += details.delta.dx;
                       if (_xOffset < 0) _xOffset = 0;
                       if (_xOffset > 42) _xOffset = 42;
                     });
@@ -331,6 +385,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
   late TextEditingController _forexOpenPriceController;
   late TextEditingController _forexClosePriceController;
   late TextEditingController _forexLotsController;
+  late TextEditingController _forexBalanceController;
 
   @override
   void initState() {
@@ -344,6 +399,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
     _forexOpenPriceController = TextEditingController(text: _globalForexOpenPrice == 0 ? "" : _globalForexOpenPrice.toString());
     _forexClosePriceController = TextEditingController(text: _globalForexClosePrice == 0 ? "" : _globalForexClosePrice.toString());
     _forexLotsController = TextEditingController(text: "1");
+    _forexBalanceController = TextEditingController(text: _globalForexBalance.toInt().toString());
   }
 
   @override
@@ -356,6 +412,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
     _forexOpenPriceController.dispose();
     _forexClosePriceController.dispose();
     _forexLotsController.dispose();
+    _forexBalanceController.dispose();
     super.dispose();
   }
 
@@ -525,6 +582,40 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
               ),
               const SizedBox(height: 12),
               
+              // Categories
+              Container(
+                height: 40,
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  children: ["All", "Forex", "Crypto", "Stock", "ETF", "Commodities"].map((cat) {
+                    return Consumer(builder: (context, ref, _) {
+                      final selectedCategory = ref.watch(_instrumentSearchCategoryProvider);
+                      final isSelected = selectedCategory == cat;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8.0),
+                        child: ChoiceChip(
+                          label: Text(cat),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            if (selected) {
+                              ref.read(_instrumentSearchCategoryProvider.notifier).state = cat;
+                            }
+                          },
+                          selectedColor: AppColors.primaryPurple,
+                          labelStyle: TextStyle(
+                            color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                          ),
+                          backgroundColor: isDark ? Colors.white10 : Colors.grey[200],
+                          showCheckmark: false,
+                        ),
+                      );
+                    });
+                  }).toList(),
+                ),
+              ),
+              
               // List
               Expanded(
                 child: _InstrumentSearchList(
@@ -535,6 +626,10 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                       _globalForexInstrument = instrument;
                       _globalForexOpenPrice = instrument.price ?? 0.0;
                       _forexOpenPriceController.text = _globalForexOpenPrice.toString();
+                      
+                      // Reset close price when instrument changes
+                      _globalForexClosePrice = 0.0;
+                      _forexClosePriceController.text = '';
                     });
                     
                     // Fetch full details to ensure we have the most accurate price
@@ -611,6 +706,15 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
               ],
             ),
           ),
+        ),
+        const SizedBox(height: 16),
+
+        // Balance
+        _buildInputField(
+          label: "Balance",
+          controller: _forexBalanceController,
+          onChanged: (val) => setState(() => _globalForexBalance = double.tryParse(val) ?? 0.0),
+          isDark: isDark,
         ),
         const SizedBox(height: 16),
 
@@ -763,6 +867,11 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
         // Results
         Consumer(
           builder: (context, ref, child) {
+            // If Close Price is empty, show 0 profit
+            if (_forexClosePriceController.text.trim().isEmpty || _globalForexClosePrice <= 0.0) {
+              return _buildForexResultCard(0.0, isDark, _getContractDetails(_globalForexInstrument).label);
+            }
+
             final diff = _globalForexIsBuy 
                 ? (_globalForexClosePrice - _globalForexOpenPrice)
                 : (_globalForexOpenPrice - _globalForexClosePrice);
@@ -897,6 +1006,35 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
   }
 
   Widget _buildForexResultCard(double profit, bool isDark, String contractSize) {
+    final newBalance = _globalForexBalance + profit;
+    
+    // Calculate risk percentage (using absolute value of profit)
+    double riskPercentage = 0.0;
+    if (_globalForexBalance > 0) {
+      riskPercentage = (profit.abs() / _globalForexBalance) * 100;
+    }
+    
+    // Determine risk stage (5 stages, each ~20%)
+    Color riskColor;
+    String riskMessage;
+    
+    if (riskPercentage < 20) {
+      riskColor = const Color(0xFF2E7D32); // Dark green (Material)
+      riskMessage = "Very Low Risk";
+    } else if (riskPercentage < 40) {
+      riskColor = const Color(0xFF66BB6A); // Light green (Material)
+      riskMessage = "Low Risk";
+    } else if (riskPercentage < 60) {
+      riskColor = const Color(0xFFFFEB3B); // Yellow (Material)
+      riskMessage = "Medium Risk";
+    } else if (riskPercentage < 80) {
+      riskColor = const Color(0xFFFF9800); // Orange (Material)
+      riskMessage = "High Risk";
+    } else {
+      riskColor = const Color(0xFFF44336); // Red (Material)
+      riskMessage = "Very High Risk";
+    }
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -929,6 +1067,71 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
               fontWeight: FontWeight.bold,
               color: profit >= 0 ? AppColors.profitGreen : AppColors.lossRed,
             ),
+          ),
+          const SizedBox(height: 16),
+          Divider(color: Colors.white.withOpacity(0.1)),
+          const SizedBox(height: 16),
+          Text(
+            "New Balance",
+            style: TextStyle(
+              color: isDark ? Colors.white70 : Colors.black87,
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "${newBalance.toStringAsFixed(2)} $_globalForexCurrency",
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: riskColor.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: riskColor.withOpacity(0.5),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    riskMessage,
+                    style: TextStyle(
+                      color: riskColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      // Debug: Show percentage
+                      Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: riskColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        "${riskPercentage.toStringAsFixed(1)}% of Balance",
+                        style: TextStyle(
+                          color: riskColor,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
           ),
           const SizedBox(height: 12),
           Container(
@@ -1432,16 +1635,54 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
 
 // Searchable List for the Picker
 final _instrumentSearchQueryProvider = StateProvider.autoDispose<String>((ref) => "");
+final _instrumentSearchCategoryProvider = StateProvider.autoDispose<String>((ref) => "All");
 
 final _instrumentSearchResultsProvider = FutureProvider.autoDispose<List<MarketInstrument>>((ref) async {
   final query = ref.watch(_instrumentSearchQueryProvider);
+  final category = ref.watch(_instrumentSearchCategoryProvider);
   final repo = ref.watch(marketRepositoryProvider);
   
   List<MarketInstrument> instruments;
+  
+  // Use correct API type mapping for the backend
+  String? apiType;
+  if (category != "All") {
+    apiType = category.toLowerCase();
+    if (apiType == 'stock') apiType = 'stocks';
+  }
+
   if (query.isEmpty) {
-    instruments = await repo.getTrendingInstruments();
+    if (apiType != null) {
+      try {
+        instruments = await repo.getTrendingInstruments(type: apiType);
+      } catch (e) {
+        debugPrint('Fallback to market overview for $apiType due to: $e');
+        try {
+          final overview = await repo.getMarketOverview(apiType);
+          instruments = overview.instruments;
+        } catch (e2) {
+          instruments = [];
+        }
+      }
+    } else {
+      instruments = await repo.getTrendingInstruments();
+    }
   } else {
+    // Search endpoint does not support asset class filtering directly, so we filter locally
     instruments = await repo.searchInstruments(query);
+    
+    if (category != "All") {
+      instruments = instruments.where((inst) {
+        final type = inst.type.toLowerCase();
+        final c = category.toLowerCase();
+        if (c == 'stock' && (type == 'stock' || type == 'stocks' || type == 'equity')) return true;
+        if (c == 'crypto' && (type == 'crypto' || type == 'cryptocurrency')) return true;
+        if (c == 'forex' && (type == 'forex' || type == 'currency' || type == 'fx')) return true;
+        if (c == 'etf' && (type == 'etf' || type == 'etfs')) return true;
+        if (c == 'commodities' && (type == 'commodity' || type == 'commodities')) return true;
+        return type == c;
+      }).toList();
+    }
   }
 
   // Proactively fetch full details for any instrument missing a price (like CLSK in search)
