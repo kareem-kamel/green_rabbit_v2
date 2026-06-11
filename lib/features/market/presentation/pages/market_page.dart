@@ -15,6 +15,7 @@ import '../../../../shared/widgets/app_section_header.dart';
 import '../../../../shared/widgets/sparkline_painter.dart';
 import 'instrument_detail_page.dart';
 import '../providers/market_providers.dart';
+import '../../../watchlist/presentation/providers/watchlist_providers.dart';
 import '../../data/models/market_instrument.dart';
 import '../../../notifications/presentation/pages/notifications_page.dart';
 import '../../../notifications/presentation/cubit/notification_cubit.dart';
@@ -186,6 +187,9 @@ class _MarketPageState extends ConsumerState<MarketPage> {
         ? ref.watch(marketRateLimitHitProvider(_selectedType))
         : false;
 
+    final watchlistState = ref.watch(watchlistProvider);
+    final watchlistIds = watchlistState.selectedWatchlist?.instruments.map((i) => i.id).toSet() ?? <String>{};
+
     return SafeArea(
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -219,10 +223,23 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                       const SizedBox(height: 8),
                       instrumentsAsync.when(
                         data: (instruments) {
+                          final sortedInstruments = List<MarketInstrument>.from(instruments);
+                          sortedInstruments.sort((a, b) {
+                            final aInWatchlist = watchlistIds.contains(a.id);
+                            final bInWatchlist = watchlistIds.contains(b.id);
+                            if (aInWatchlist && !bInWatchlist) {
+                              return -1;
+                            } else if (!aInWatchlist && bInWatchlist) {
+                              return 1;
+                            } else {
+                              return a.symbol.compareTo(b.symbol);
+                            }
+                          });
+
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildInstrumentList(context, ref, instruments, constraints.maxWidth),
+                              _buildInstrumentList(context, ref, sortedInstruments, constraints.maxWidth),
                               if (isLoadingMore)
                                 const Padding(
                                   padding: EdgeInsets.symmetric(vertical: 24.0),
@@ -689,18 +706,6 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  if (instrument.sparkline7d != null && instrument.sparkline7d!.isNotEmpty)
-                    SizedBox(
-                      width: 40,
-                      height: 18,
-                      child: CustomPaint(
-                        painter: SparklinePainter(
-                          instrument.sparkline7d!,
-                          isUp ? AppColors.success : AppColors.error,
-                          strokeWidth: 1.5,
-                        ),
-                      ),
-                    ),
                 ],
               ),
               if (instrument.type.toLowerCase() == 'crypto' && (instrument.cryptoMetrics?.marketCap != null || instrument.marketCap != null))
@@ -800,20 +805,6 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Sparkline Section
-                  if (instrument.sparkline7d != null && instrument.sparkline7d!.isNotEmpty)
-                    SizedBox(
-                      width: 60,
-                      height: 22,
-                      child: CustomPaint(
-                        painter: SparklinePainter(
-                          instrument.sparkline7d!,
-                          isUp ? AppColors.success : AppColors.error,
-                          strokeWidth: 1.5,
-                        ),
-                      ),
-                    ),
-                  const SizedBox(width: 12),
                   _buildPriceColumn(context, instrument, isUp),
                 ],
               ),
@@ -907,8 +898,8 @@ class _AIServiceCarouselState extends State<AIServiceCarousel> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final double cardHeight = constraints.maxWidth > 600 ? 180 : 160;
-        final double iconSize = constraints.maxWidth > 600 ? 90 : 72;
+        final double cardHeight = constraints.maxWidth > 600 ? 115 : 100;
+        final double iconSize = constraints.maxWidth > 600 ? 55 : 46;
         
         return Stack(
           children: [
@@ -929,7 +920,7 @@ class _AIServiceCarouselState extends State<AIServiceCarousel> {
                     },
                     child: Container(
                       margin: const EdgeInsets.symmetric(horizontal: 4),
-                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 18),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: Theme.of(context).brightness == Brightness.dark 
@@ -938,7 +929,7 @@ class _AIServiceCarouselState extends State<AIServiceCarousel> {
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
                         children: [
@@ -947,15 +938,15 @@ class _AIServiceCarouselState extends State<AIServiceCarousel> {
                             height: iconSize,
                             decoration: BoxDecoration(
                               color: const Color(0xFFE2E8F0),
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(6),
                             child: Image.asset(
                               item['image'],
                               fit: BoxFit.contain,
                             ),
                           ),
-                          const SizedBox(width: 20),
+                          const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
@@ -963,15 +954,15 @@ class _AIServiceCarouselState extends State<AIServiceCarousel> {
                               children: [
                                 Text(
                                   item['title'],
-                                  style: TextStyle(color: Colors.white, fontSize: constraints.maxWidth > 600 ? 22 : 18, fontWeight: FontWeight.bold),
+                                  style: TextStyle(color: Colors.white, fontSize: constraints.maxWidth > 600 ? 16 : 14, fontWeight: FontWeight.bold),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 4),
                                 Text(
                                   item['desc'],
-                                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: constraints.maxWidth > 600 ? 15 : 13, height: 1.4),
-                                  maxLines: 3,
+                                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: constraints.maxWidth > 600 ? 12 : 11, height: 1.2),
+                                  maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ],
@@ -985,7 +976,7 @@ class _AIServiceCarouselState extends State<AIServiceCarousel> {
               ),
             ),
         Positioned(
-          bottom: 12,
+          bottom: 6,
           left: 0,
           right: 0,
           child: Row(
