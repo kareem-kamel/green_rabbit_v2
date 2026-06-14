@@ -21,6 +21,7 @@ class MarketInstrument {
   final List<double>? sparkline7d;
   final int? displayOrder;
   final String? addedAt;
+  final String? lastUpdatedAt;
   final CryptoMetricsInfo? cryptoMetrics;
 
   const MarketInstrument({
@@ -43,6 +44,7 @@ class MarketInstrument {
     this.sparkline7d,
     this.displayOrder,
     this.addedAt,
+    this.lastUpdatedAt,
     this.cryptoMetrics,
   });
 
@@ -117,6 +119,7 @@ class MarketInstrument {
       sparkline7d: _parseSparkline(findValue(['sparkline7d', 'sparkline', 'chartData', 'history', 'sparkline_7d'])),
       displayOrder: json['displayOrder'] as int?,
       addedAt: json['addedAt'] as String?,
+      lastUpdatedAt: json['lastUpdatedAt']?.toString() ?? json['timestamp']?.toString(),
       cryptoMetrics: json['cryptoMetrics'] is Map 
           ? CryptoMetricsInfo.fromJson(Map<String, dynamic>.from(json['cryptoMetrics'] as Map))
           : (json['crypto_metrics'] is Map ? CryptoMetricsInfo.fromJson(Map<String, dynamic>.from(json['crypto_metrics'] as Map)) : null),
@@ -154,6 +157,7 @@ class MarketInstrument {
       'sparkline7d': sparkline7d,
       'displayOrder': displayOrder,
       'addedAt': addedAt,
+      'lastUpdatedAt': lastUpdatedAt,
       'cryptoMetrics': cryptoMetrics,
     };
   }
@@ -178,6 +182,7 @@ class MarketInstrument {
     List<double>? sparkline7d,
     int? displayOrder,
     String? addedAt,
+    String? lastUpdatedAt,
     CryptoMetricsInfo? cryptoMetrics,
   }) {
     return MarketInstrument(
@@ -200,6 +205,7 @@ class MarketInstrument {
       sparkline7d: sparkline7d ?? this.sparkline7d,
       displayOrder: displayOrder ?? this.displayOrder,
       addedAt: addedAt ?? this.addedAt,
+      lastUpdatedAt: lastUpdatedAt ?? this.lastUpdatedAt,
       cryptoMetrics: cryptoMetrics ?? this.cryptoMetrics,
     );
   }
@@ -208,10 +214,14 @@ class MarketInstrument {
 class MarketOverviewResponse {
   final List<MarketInstrument> instruments;
   final MarketOverviewMeta meta;
+  final String? lastUpdatedAt;
+  final String? marketStatus;
 
   MarketOverviewResponse({
     required this.instruments,
     required this.meta,
+    this.lastUpdatedAt,
+    this.marketStatus,
   });
 
   factory MarketOverviewResponse.fromJson(Map<String, dynamic> json) {
@@ -232,9 +242,14 @@ class MarketOverviewResponse {
     final metaJson = json['meta'] as Map<String, dynamic>? ?? {};
     final meta = MarketOverviewMeta.fromJson(metaJson);
 
+    final String? lastUpdatedAt = innerData is Map ? innerData['lastUpdatedAt']?.toString() : null;
+    final String? marketStatus = innerData is Map ? innerData['marketStatus']?.toString() : null;
+
     return MarketOverviewResponse(
       instruments: instrumentsList,
       meta: meta,
+      lastUpdatedAt: lastUpdatedAt,
+      marketStatus: marketStatus,
     );
   }
 }

@@ -147,6 +147,46 @@ class _CalendarScreenState extends State<CalendarScreen> {
     );
   }
 
+  Widget _buildErrorState(String message, bool isDark) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
+            const SizedBox(height: 16),
+            Text(
+              'Load Failed',
+              style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message.contains('Connection') || message.contains('SocketException')
+                  ? 'Please check your internet connection and try again.'
+                  : message,
+              style: const TextStyle(color: Colors.grey, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _fetchData,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Try Again'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2D5CFF),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+            const SizedBox(height: 100),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -196,14 +236,18 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      _categoryDisplayNames[_selectedCategory] ?? "Calendar",
-                      style: TextStyle(
-                        color: textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    Expanded(
+                      child: Text(
+                        _categoryDisplayNames[_selectedCategory] ?? "Calendar",
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: textPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: 4),
                     Icon(Icons.arrow_drop_down, color: textPrimary, size: 24),
                   ],
                 ),
@@ -460,12 +504,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      item.formattedDate,
-                                      style: TextStyle(
-                                        color: textPrimary,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w500,
+                                    Expanded(
+                                      child: Text(
+                                        item.formattedDate,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: textPrimary,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                       ),
                                     ),
                                     Icon(
@@ -490,8 +537,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         },
                       );
                     } else if (state is CalendarError) {
-                      // Hide error from user and show "No Events" instead
-                      return _buildEmptyState(isDark);
+                      return _buildErrorState(state.message, isDark);
                     }
                     return const SizedBox.shrink();
                   },
