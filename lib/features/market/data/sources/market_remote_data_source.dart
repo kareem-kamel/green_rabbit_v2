@@ -148,8 +148,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
       }
 
       if (chartContainer == null || chartContainer is! Map) {
-        debugPrint('⚠️ Warning: Chart container is null or not a map');
-        return _generateMockCandles(id, period, requestInterval);
+        throw Exception('Chart data container is null or invalid');
       }
 
       final Map<String, dynamic> data = Map<String, dynamic>.from(chartContainer);
@@ -159,8 +158,7 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
         debugPrint('✅ Found ${originalCandles.length} candles in response');
 
         if (originalCandles.isEmpty) {
-          debugPrint('⚠️ Warning: Candles list is empty, generating mock candles');
-          return _generateMockCandles(id, period, requestInterval);
+          throw Exception('No candles data available from server');
         }
 
         final List<Map<String, dynamic>> normalizedCandles = originalCandles.map((c) {
@@ -180,94 +178,12 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
         return {...data, 'candles': normalizedCandles};
       }
 
-      debugPrint('⚠️ Warning: No "candles" key in result map');
-      return _generateMockCandles(id, period, requestInterval);
+      throw Exception('Chart data format does not contain candles');
     } catch (e) {
-      debugPrint('❌ Error fetching chart for $id: $e. Generating deterministic mock candles.');
-      return _generateMockCandles(id, period, requestInterval);
+      debugPrint('❌ Error fetching chart for $id: $e');
+      rethrow;
     }
   }
-
-  Map<String, dynamic> _generateMockCandles(String id, String? period, String? interval) {
-    // Generate deterministic candles
-    int hash = 0;
-    for (int i = 0; i < id.length; i++) {
-      hash = id.codeUnitAt(i) + ((hash << 5) - hash);
-    }
-    hash = hash.abs();
-
-    double nextDouble(int step) {
-      final int seed = (hash + step * 1234567) % 2147483647;
-      return (seed % 1000000) / 1000000.0;
-    }
-
-    int candleCount = 100;
-    Duration stepDuration = const Duration(days: 1);
-    
-    final normalizedPeriod = (period ?? '1M').toUpperCase();
-    if (normalizedPeriod == '1D') {
-      candleCount = 96;
-      stepDuration = const Duration(minutes: 15);
-    } else if (normalizedPeriod == '1W') {
-      candleCount = 168;
-      stepDuration = const Duration(hours: 1);
-    } else if (normalizedPeriod == '1M') {
-      candleCount = 30;
-      stepDuration = const Duration(days: 1);
-    } else if (normalizedPeriod == '3M') {
-      candleCount = 90;
-      stepDuration = const Duration(days: 1);
-    } else if (normalizedPeriod == '1Y') {
-      candleCount = 200;
-      stepDuration = const Duration(days: 1);
-    } else if (normalizedPeriod == '5Y') {
-      candleCount = 200;
-      stepDuration = const Duration(days: 7);
-    } else if (normalizedPeriod == '10Y') {
-      candleCount = 200;
-      stepDuration = const Duration(days: 15);
-    } else if (normalizedPeriod == '15Y') {
-      candleCount = 200;
-      stepDuration = const Duration(days: 30);
-    }
-
-    final List<Map<String, dynamic>> candles = [];
-    double currentPrice = 100.0 + (hash % 900); // base price between 100 and 1000
-    DateTime now = DateTime.now();
-    DateTime startTime = now.subtract(stepDuration * candleCount);
-
-    for (int i = 0; i < candleCount; i++) {
-      final rand1 = nextDouble(i * 5 + 1);
-      final rand2 = nextDouble(i * 5 + 2);
-      final rand3 = nextDouble(i * 5 + 3);
-      final rand4 = nextDouble(i * 5 + 4);
-
-      double changePercent = (rand1 - 0.495) * 0.02; // slight upward drift
-      double open = currentPrice;
-      double close = open * (1 + changePercent);
-      
-      double high = open > close ? open * (1 + rand2 * 0.015) : close * (1 + rand2 * 0.015);
-      double low = open < close ? open * (1 - rand3 * 0.015) : close * (1 - rand3 * 0.015);
-      double volume = 1000 + rand4 * 100000;
-
-      final time = startTime.add(stepDuration * i);
-      candles.add({
-        'timestamp': time.millisecondsSinceEpoch,
-        'open': open,
-        'high': high,
-        'low': low,
-        'close': close,
-        'volume': volume,
-      });
-
-      currentPrice = close;
-    }
-
-    return {
-      'candles': candles,
-    };
-  }
-
   @override
   Future<MarketInstrumentStats> getInstrumentStats(String id, {String? interval}) async {
     final url = AppConstants.instrumentStats(id);
@@ -295,79 +211,10 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
       
       return MarketInstrumentStats.fromJson(Map<String, dynamic>.from(data));
     } catch (e) {
-      debugPrint('❌ Error fetching stats for $id ($interval), generating mock stats. Error: $e');
-      final mockJson = _generateMockStatsJson(id, interval);
-      return MarketInstrumentStats.fromJson(mockJson);
+      debugPrint('❌ Error fetching stats for $id ($interval): $e');
+      rethrow;
     }
   }
-
-  Map<String, dynamic> _generateMockStatsJson(String id, String? interval) {
-    int hash = 0;
-    for (int i = 0; i < id.length; i++) {
-      hash = id.codeUnitAt(i) + ((hash << 5) - hash);
-    }
-    hash = hash.abs();
-
-    final overallSignal = (hash % 3 == 0) ? 'Strong Bullish' : ((hash % 3 == 1) ? 'Strong Bearish' : 'Neutral');
-    final maSignal = (hash % 3 == 0) ? 'Bullish' : ((hash % 3 == 1) ? 'Bearish' : 'Neutral');
-
-    return {
-      'performance': {
-        'return1d': (hash % 10 - 5) * 0.8,
-        'return1w': (hash % 12 - 6) * 1.2,
-        'return1m': (hash % 15 - 7) * 2.5,
-        'return3m': (hash % 20 - 10) * 4.0,
-        'return6m': (hash % 30 - 15) * 6.5,
-        'return1y': (hash % 50 - 25) * 10.0,
-        'returnYtd': (hash % 25 - 12) * 5.0,
-        'returnMax': (hash % 100) * 12.0,
-      },
-      'volatility': {
-        'beta': 1.0 + (hash % 50) / 100.0,
-        'standardDeviation30d': 1.5 + (hash % 20) / 10.0,
-        'averageTrueRange14d': 0.5 + (hash % 10) / 10.0,
-        'maxDrawdown1y': -15.0 - (hash % 20),
-      },
-      'technicals': {
-        'marketBias': {
-          'overallSignal': overallSignal,
-        },
-        'interval': interval ?? '1h',
-        'movingAverages': {
-          'summarySignal': maSignal,
-          'data': [
-            {'name': 'EMA(10)', 'value': '100.5', 'signal': maSignal, 'color': maSignal.toLowerCase(), 'isLocked': false},
-            {'name': 'SMA(10)', 'value': '101.2', 'signal': maSignal, 'color': maSignal.toLowerCase(), 'isLocked': false},
-            {'name': 'EMA(20)', 'value': '99.8', 'signal': maSignal, 'color': maSignal.toLowerCase(), 'isLocked': false},
-            {'name': 'SMA(20)', 'value': '99.5', 'signal': maSignal, 'color': maSignal.toLowerCase(), 'isLocked': false},
-            {'name': 'EMA(50)', 'value': '95.2', 'signal': maSignal, 'color': maSignal.toLowerCase(), 'isLocked': false},
-            {'name': 'SMA(50)', 'value': '94.8', 'signal': maSignal, 'color': maSignal.toLowerCase(), 'isLocked': false},
-          ],
-        },
-        'indicators': [
-          {'name': 'RSI(14)', 'value': '55.4', 'signal': 'Neutral', 'color': 'neutral', 'isLocked': false},
-          {'name': 'MACD(12, 26)', 'value': '1.2', 'signal': maSignal, 'color': maSignal.toLowerCase(), 'isLocked': false},
-          {'name': 'CCI(14)', 'value': '85.0', 'signal': 'Neutral', 'color': 'neutral', 'isLocked': false},
-          {'name': 'Stochastic(9, 6)', 'value': '70.2', 'signal': maSignal, 'color': maSignal.toLowerCase(), 'isLocked': false},
-          {'name': 'ADX(14)', 'value': '24.5', 'signal': 'Neutral', 'color': 'neutral', 'isLocked': false},
-        ],
-        'pivotPoints': {
-          'classic': {
-            'pivot': 100.0,
-            's1': 99.0, 's2': 98.0, 's3': 97.0,
-            'r1': 101.0, 'r2': 102.0, 'r3': 103.0,
-          },
-        },
-      },
-      'cryptoMetrics': {
-        'market_cap': 1000000000.0 + (hash % 1000) * 1000000,
-        'circulating_supply': 1000000.0 + (hash % 500) * 1000,
-        'total_supply': 21000000.0,
-        'dominance': (hash % 500) / 100.0, // 0-5%
-      }
-    };
-  }
-
   @override
   Future<List<MarketNewsArticle>> getInstrumentNews(String id, {String? type}) async {
     // 1. Determine the category: stock, crypto, or forex
@@ -1173,16 +1020,8 @@ class MarketRemoteDataSourceImpl implements MarketRemoteDataSource {
         return MarketInstrument.fromJson(Map<String, dynamic>.from(item));
       }).toList();
     } catch (e) {
-      debugPrint('Error searching instruments from API: $e. Falling back to local/mock search.');
-
-      final lowerQuery = query.toLowerCase();
-      final filteredMock = _allMockInstruments.where((item) {
-        final symbol = (item['symbol'] as String).toLowerCase();
-        final name = (item['name'] as String).toLowerCase();
-        return symbol.contains(lowerQuery) || name.contains(lowerQuery);
-      }).map((item) => MarketInstrument.fromJson(item)).toList();
-
-      return filteredMock;
+      debugPrint('Error searching instruments from API: $e');
+      rethrow;
     }
   }
 

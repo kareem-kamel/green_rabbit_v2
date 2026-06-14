@@ -502,7 +502,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                         const SizedBox(width: 6),
                         Text(
                           detail.price.lastUpdatedAt != null 
-                            ? DateFormat('HH : mm : ss').format(DateTime.parse(detail.price.lastUpdatedAt!))
+                            ? DateFormat('HH : mm : ss').format(DateTime.parse(detail.price.lastUpdatedAt!).toLocal())
                             : DateFormat('HH : mm : ss').format(DateTime.now()), 
                           style: TextStyle(color: _textSecondary, fontSize: 13),
                         ),

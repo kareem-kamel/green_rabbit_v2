@@ -215,7 +215,59 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                       const SizedBox(height: 24),
                       const AIServiceCarousel(),
                       const SizedBox(height: 24),
-                      const AppSectionHeader(title: 'Market'),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const AppSectionHeader(title: 'Market'),
+                          Consumer(
+                            builder: (context, ref, child) {
+                              final status = ref.watch(marketOverviewStatusProvider(_selectedType));
+                              final lastUpdated = ref.watch(marketOverviewLastUpdatedProvider(_selectedType));
+                              
+                              if (lastUpdated == null && status == null) return const SizedBox.shrink();
+                              
+                              String timeText = '';
+                              if (lastUpdated != null) {
+                                try {
+                                  final dateTime = DateTime.parse(lastUpdated).toLocal();
+                                  timeText = DateFormat('HH:mm:ss').format(dateTime);
+                                } catch (_) {
+                                  timeText = lastUpdated;
+                                }
+                              }
+                              
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (status != null) ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: (status.toLowerCase() == 'open' ? Colors.green : Colors.red).withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        status.toUpperCase(),
+                                        style: TextStyle(
+                                          color: status.toLowerCase() == 'open' ? Colors.green : Colors.red,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  if (timeText.isNotEmpty)
+                                    Text(
+                                      'Updated: $timeText',
+                                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                                    ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: 16),
                       _buildTabs(context, constraints.maxWidth),
                       const SizedBox(height: 12),
@@ -701,7 +753,14 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      instrument.symbol,
+                      '${instrument.symbol}${instrument.lastUpdatedAt != null ? ' | ${(() {
+                        try {
+                          final dt = DateTime.parse(instrument.lastUpdatedAt!).toLocal();
+                          return DateFormat('HH:mm').format(dt);
+                        } catch (_) {
+                          return instrument.lastUpdatedAt;
+                        }
+                      })()}' : ''}',
                       style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600], fontSize: 11),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -777,7 +836,14 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                             const SizedBox(width: 4),
                             Expanded(
                               child: Text(
-                                '${instrument.symbol} | ${instrument.exchange ?? 'Global'}',
+                                '${instrument.symbol} | ${instrument.exchange ?? 'Global'}${instrument.lastUpdatedAt != null ? ' | ${(() {
+                                  try {
+                                    final dt = DateTime.parse(instrument.lastUpdatedAt!).toLocal();
+                                    return DateFormat('HH:mm').format(dt);
+                                  } catch (_) {
+                                    return instrument.lastUpdatedAt;
+                                  }
+                                })()}' : ''}',
                                 style: TextStyle(
                                   color: isDark ? Colors.grey[400] : Colors.grey[600],
                                   fontSize: 12,

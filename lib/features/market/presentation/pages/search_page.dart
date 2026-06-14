@@ -309,6 +309,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       fontSize: 16,
                       fontWeight: FontWeight.w400,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -317,6 +319,8 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                       color: isDark ? Colors.grey[500] : Colors.grey[600],
                       fontSize: 12,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
