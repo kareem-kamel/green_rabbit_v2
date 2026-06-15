@@ -12,7 +12,6 @@ import 'package:green_rabbit/features/profile/presentation/screens/profile_scree
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/price_flash_widget.dart';
 import '../../../../shared/widgets/app_section_header.dart';
-import '../../../../shared/widgets/sparkline_painter.dart';
 import 'instrument_detail_page.dart';
 import '../providers/market_providers.dart';
 import '../../../watchlist/presentation/providers/watchlist_providers.dart';
@@ -79,7 +78,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
 
       if (isMobile) {
         const double headerHeight = 350.0; 
-        const double itemHeight = 92.0; 
+        const double itemHeight = 74.0; 
         
         for (int i = 0; i < instruments.length; i++) {
           final double itemTop = headerHeight + (i * itemHeight);
@@ -94,7 +93,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
         final int crossAxisCount = width > 900 ? 3 : 2;
         const double headerHeight = 300.0;
         final double colWidth = (width.clamp(0.0, 1000.0) - 40.0) / crossAxisCount;
-        final double itemHeight = colWidth / (width > 900 ? 2.5 : 2.2) + 16.0; 
+        final double itemHeight = colWidth / (width > 900 ? 2.8 : 2.5) + 16.0; 
         
         for (int i = 0; i < instruments.length; i++) {
           final int rowIndex = i ~/ crossAxisCount;
@@ -628,7 +627,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
           crossAxisCount: width > 900 ? 3 : 2,
           crossAxisSpacing: 16,
           mainAxisSpacing: 16,
-          childAspectRatio: width > 900 ? 2.5 : 2.2,
+          childAspectRatio: width > 900 ? 2.8 : 2.5,
         ),
         itemCount: instruments.length,
         itemBuilder: (context, index) {
@@ -648,7 +647,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: instruments.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final instrument = instruments[index];
         return _instrumentCard(
@@ -672,7 +671,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
     final isDark = theme.brightness == Brightness.dark;
 
     return AppCard(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       onTap: () {
         Navigator.push(
           context,
@@ -821,7 +820,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 3),
               // Other Components Row (without logo)
               Row(
                 children: [
@@ -857,7 +856,7 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                         ),
                         if (instrument.type.toLowerCase() == 'crypto' && (instrument.cryptoMetrics?.marketCap != null || instrument.marketCap != null))
                           Padding(
-                            padding: const EdgeInsets.only(top: 4),
+                            padding: const EdgeInsets.only(top: 1),
                             child: Text(
                               'MCap: ${_formatLargeNumber(instrument.cryptoMetrics?.marketCap ?? instrument.marketCap, isCurrency: true)}',
                               style: TextStyle(
