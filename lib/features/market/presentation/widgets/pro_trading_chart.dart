@@ -585,47 +585,54 @@ class _ProTradingChartState extends State<ProTradingChart> {
         Container(
           height: 30,
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              Text(
-                '${widget.candles.length} candles',
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                _formatTimestamp(first.timestamp),
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-              ),
-              const Text(' → ', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
-              Text(
-                _formatTimestamp(last.timestamp),
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-              ),
-              const Spacer(),
-              Text('%', style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
-              const SizedBox(width: 12),
-              Text('Log', style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
-              const SizedBox(width: 12),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _isAutoScale = true;
-                  });
-                },
-                behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                  child: Text(
-                    'auto',
-                    style: TextStyle(
-                      color: _isAutoScale ? AppColors.unlockBlue : AppColors.textMuted,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final showDates = constraints.maxWidth > 350;
+              return Row(
+                children: [
+                  Text(
+                    '${widget.candles.length} candles',
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  ),
+                  if (showDates) ...[
+                    const SizedBox(width: 12),
+                    Text(
+                      _formatTimestamp(first.timestamp),
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                    ),
+                    const Text(' → ', style: TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                    Text(
+                      _formatTimestamp(last.timestamp),
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+                    ),
+                  ],
+                  const Spacer(),
+                  Text('%', style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+                  const SizedBox(width: 12),
+                  Text('Log', style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+                  const SizedBox(width: 12),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isAutoScale = true;
+                      });
+                    },
+                    behavior: HitTestBehavior.opaque,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                      child: Text(
+                        'auto',
+                        style: TextStyle(
+                          color: _isAutoScale ? AppColors.unlockBlue : AppColors.textMuted,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-            ],
+                ],
+              );
+            }
           ),
         ),
       ],
