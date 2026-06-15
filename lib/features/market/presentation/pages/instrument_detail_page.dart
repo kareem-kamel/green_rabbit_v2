@@ -935,7 +935,14 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                 ],
               ),
             ),
-          ),
+          ),child: Container(
+  padding: const EdgeInsets.all(6),
+  decoration: BoxDecoration(
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(4),
+  ),
+  child: Image.asset('assets/trade_logo.png', width: 20, height: 20, errorBuilder: (_, __, ___) => const Icon(Icons.psychology, color: Colors.purple, size: 20)),
+),
         ],
       ),
     );
@@ -3588,6 +3595,22 @@ class _TrianglePainter extends CustomPainter {
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
+
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TrianglePainter oldDelegate) => oldDelegate.color != color;
+}
+
+
+fill;
 
     final path = Path()
       ..moveTo(0, 0)
