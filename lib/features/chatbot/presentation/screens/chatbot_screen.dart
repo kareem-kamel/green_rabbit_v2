@@ -45,6 +45,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_scrollListener);
+    if (widget.initialPrompt != null) {
+      _textController.text = widget.initialPrompt!;
+    }
   }
 
   @override
@@ -174,13 +177,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           });
         }
 
-        if (widget.initialPrompt != null && !_initialPromptSent) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            _initialPromptSent = true;
-            cubit.sendMessage(widget.initialPrompt!);
-          });
-        }
+        // Don't auto-send initial prompt; leave it in text field for user to edit
 
         if (widget.summaryId != null && widget.summaryType != null && !_initialPromptSent) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -967,8 +964,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               children: [
                 Expanded(
                   child: Container(
-                    height: 50,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    constraints: const BoxConstraints(
+                      minHeight: 50,
+                      maxHeight: 150,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.06),
                       borderRadius: BorderRadius.circular(28),
@@ -1006,6 +1006,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                             ],
                           )
                         : Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Expanded(
                                 child: TextField(
@@ -1016,15 +1017,18 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                                     hintStyle: TextStyle(color: Colors.grey),
                                     border: InputBorder.none,
                                     isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(vertical: 14),
+                                    contentPadding: EdgeInsets.symmetric(vertical: 8),
                                   ),
-                                  onSubmitted: (v) => _handleSend(cubit),
+                                  minLines: 1,
+                                  maxLines: null,
+                                  keyboardType: TextInputType.multiline,
+                                  textInputAction: TextInputAction.newline,
                                 ),
                               ),
                               GestureDetector(
                                 onTap: state.isGenerating ? null : () => cubit.startListening(),
                                 child: Padding(
-                                  padding: const EdgeInsets.only(left: 4),
+                                  padding: const EdgeInsets.only(left: 4, bottom: 2),
                                   child: Icon(
                                     Icons.mic_none, 
                                     color: state.isGenerating ? Colors.grey : const Color(0xFF8B5CF6), 

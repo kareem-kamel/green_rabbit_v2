@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'edit_profile_screen.dart';
+import 'package:green_rabbit/core/models/country_model.dart';
 
 class CountrySelectionScreen extends StatefulWidget {
   final List<CountryModel> countries;

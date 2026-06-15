@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/models/country_model.dart';
 import 'news_detail_screen.dart';
 import '../../../chatbot/presentation/screens/chatbot_screen.dart';
 import '../../../alerts/presentation/widgets/create_alert_sheet.dart';
@@ -26,11 +27,70 @@ class NewsScreen extends StatefulWidget {
 
 class _NewsScreenState extends State<NewsScreen> {
   String selectedCategory = "Featured";
+  String? selectedCountry;
   bool _isExpanded = false;
   
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
+
+  final List<CountryModel> _countries = [
+    CountryModel(code: 'AR', name: 'Argentina', flag: '🇦🇷'),
+    CountryModel(code: 'AU', name: 'Australia', flag: '🇦🇺'),
+    CountryModel(code: 'AT', name: 'Austria', flag: '🇦🇹'),
+    CountryModel(code: 'BH', name: 'Bahrain', flag: '🇧🇭'),
+    CountryModel(code: 'BE', name: 'Belgium', flag: '🇧🇪'),
+    CountryModel(code: 'BR', name: 'Brazil', flag: '🇧🇷'),
+    CountryModel(code: 'CA', name: 'Canada', flag: '🇨🇦'),
+    CountryModel(code: 'CL', name: 'Chile', flag: '🇨🇱'),
+    CountryModel(code: 'CN', name: 'China', flag: '🇨🇳'),
+    CountryModel(code: 'CO', name: 'Colombia', flag: '🇨🇴'),
+    CountryModel(code: 'DK', name: 'Denmark', flag: '🇩🇰'),
+    CountryModel(code: 'EG', name: 'Egypt', flag: '🇪🇬'),
+    CountryModel(code: 'FI', name: 'Finland', flag: '🇫🇮'),
+    CountryModel(code: 'FR', name: 'France', flag: '🇫🇷'),
+    CountryModel(code: 'DE', name: 'Germany', flag: '🇩🇪'),
+    CountryModel(code: 'GR', name: 'Greece', flag: '🇬🇷'),
+    CountryModel(code: 'HK', name: 'Hong Kong', flag: '🇭🇰'),
+    CountryModel(code: 'ID', name: 'Indonesia', flag: '🇮🇩'),
+    CountryModel(code: 'IN', name: 'India', flag: '🇮🇳'),
+    CountryModel(code: 'IE', name: 'Ireland', flag: '🇮🇪'),
+    CountryModel(code: 'IL', name: 'Israel', flag: '🇮🇱'),
+    CountryModel(code: 'IT', name: 'Italy', flag: '🇮🇹'),
+    CountryModel(code: 'JP', name: 'Japan', flag: '🇯🇵'),
+    CountryModel(code: 'JO', name: 'Jordan', flag: '🇯🇴'),
+    CountryModel(code: 'KE', name: 'Kenya', flag: '🇰🇪'),
+    CountryModel(code: 'KR', name: 'South Korea', flag: '🇰🇷'),
+    CountryModel(code: 'KW', name: 'Kuwait', flag: '🇰🇼'),
+    CountryModel(code: 'LB', name: 'Lebanon', flag: '🇱🇧'),
+    CountryModel(code: 'MY', name: 'Malaysia', flag: '🇲🇾'),
+    CountryModel(code: 'MX', name: 'Mexico', flag: '🇲🇽'),
+    CountryModel(code: 'MA', name: 'Morocco', flag: '🇲🇦'),
+    CountryModel(code: 'NL', name: 'Netherlands', flag: '🇳🇱'),
+    CountryModel(code: 'NZ', name: 'New Zealand', flag: '🇳🇿'),
+    CountryModel(code: 'NG', name: 'Nigeria', flag: '🇳🇬'),
+    CountryModel(code: 'NO', name: 'Norway', flag: '🇳🇴'),
+    CountryModel(code: 'OM', name: 'Oman', flag: '🇴🇲'),
+    CountryModel(code: 'PE', name: 'Peru', flag: '🇵🇪'),
+    CountryModel(code: 'PH', name: 'Philippines', flag: '🇵🇭'),
+    CountryModel(code: 'PL', name: 'Poland', flag: '🇵🇱'),
+    CountryModel(code: 'PT', name: 'Portugal', flag: '🇵🇹'),
+    CountryModel(code: 'QA', name: 'Qatar', flag: '🇶🇦'),
+    CountryModel(code: 'RU', name: 'Russia', flag: '🇷🇺'),
+    CountryModel(code: 'SA', name: 'Saudi Arabia', flag: '🇸🇦'),
+    CountryModel(code: 'SG', name: 'Singapore', flag: '🇸🇬'),
+    CountryModel(code: 'ZA', name: 'South Africa', flag: '🇿🇦'),
+    CountryModel(code: 'ES', name: 'Spain', flag: '🇪🇸'),
+    CountryModel(code: 'SE', name: 'Sweden', flag: '🇸🇪'),
+    CountryModel(code: 'CH', name: 'Switzerland', flag: '🇨🇭'),
+    CountryModel(code: 'TH', name: 'Thailand', flag: '🇹🇭'),
+    CountryModel(code: 'TN', name: 'Tunisia', flag: '🇹🇳'),
+    CountryModel(code: 'TR', name: 'Turkey', flag: '🇹🇷'),
+    CountryModel(code: 'AE', name: 'UAE', flag: '🇦🇪'),
+    CountryModel(code: 'GB', name: 'United Kingdom', flag: '🇬🇧'),
+    CountryModel(code: 'US', name: 'United States', flag: '🇺🇸'),
+    CountryModel(code: 'VN', name: 'Vietnam', flag: '🇻🇳'),
+  ];
 
   @override
   void dispose() {
@@ -53,6 +113,7 @@ class _NewsScreenState extends State<NewsScreen> {
     context.read<NewsCubit>().loadMoreNews(
       limit: 10,
       category: categoryParam,
+      country: selectedCountry,
     );
   }
 
@@ -62,7 +123,7 @@ class _NewsScreenState extends State<NewsScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => const CreateAlertSheet(
+      builder: (context) => CreateAlertSheet(
         assetName: "Silver", 
         lastPrice: 113.225,
         instrumentType: "commodities",
@@ -130,14 +191,14 @@ class _NewsScreenState extends State<NewsScreen> {
           ),
           const SizedBox(width: 12),
           _buildAppBarIcon(
-            icon: Icons.menu,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const ProfileScreen()),
-              );
-            },
-          ),
+                    icon: Icons.menu,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => ProfileScreen()),
+                      );
+                    },
+                  ),
           const SizedBox(width: 16),
         ],
       ),
@@ -153,7 +214,29 @@ class _NewsScreenState extends State<NewsScreen> {
               ),
             );
           } else if (state is NewsLoaded) {
-            final articles = state.articles;
+            // Apply country filter locally
+            final filteredArticles = selectedCountry == null
+                ? state.articles
+                : state.articles.where((article) {
+                    // Match article's country or region
+                    if (article.country != null && article.country!.toLowerCase() == selectedCountry!.toLowerCase()) {
+                      return true;
+                    }
+                    if (article.region != null && article.region!.toLowerCase() == selectedCountry!.toLowerCase()) {
+                      return true;
+                    }
+                    // Also, match if the country name contains the selected country name
+                    final selectedCountryName = _countries.firstWhere((c) => c.code == selectedCountry, orElse: () => _countries.first).name.toLowerCase();
+                    if (article.title.toLowerCase().contains(selectedCountryName)) {
+                      return true;
+                    }
+                    if (article.snippet.toLowerCase().contains(selectedCountryName)) {
+                      return true;
+                    }
+                    return false;
+                  }).toList();
+                  
+            final articles = filteredArticles;
             final hasMore = state.hasMore;
             final isLoadingMore = state.isLoadingMore;
             
@@ -198,7 +281,7 @@ class _NewsScreenState extends State<NewsScreen> {
                     onItemTap: (index) {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const ChatBotScreen()),
+                        MaterialPageRoute(builder: (_) => ChatBotScreen()),
                       );
                     },
                   ),
@@ -503,11 +586,76 @@ class _NewsScreenState extends State<NewsScreen> {
         ),
         if (hasFilter) ...[
           const SizedBox(width: 8),
-          Image.asset(
-            'assets/icons/filter.png',
-            width: 24,
-            height: 24,
-            color: isDark ? null : Colors.black87,
+          if (selectedCountry != null) ...[
+            Text(
+              _countries.firstWhere((c) => c.code == selectedCountry, orElse: () => _countries.first).flag,
+              style: const TextStyle(fontSize: 18),
+            ),
+            const SizedBox(width: 4),
+          ],
+          PopupMenuButton<String>(
+            icon: Image.asset(
+              'assets/icons/filter.png',
+              width: 24,
+              height: 24,
+              color: isDark ? null : Colors.black87,
+            ),
+            onSelected: (String? countryCode) {
+              print('DEBUG: Country selected: $countryCode');
+              print('DEBUG: Before setState selectedCountry: $selectedCountry');
+              setState(() {
+                selectedCountry = countryCode;
+              });
+              print('DEBUG: After setState selectedCountry: $selectedCountry');
+              if (selectedCategory == "Favorites") {
+                print('DEBUG: Fetching favorite news');
+                context.read<NewsCubit>().fetchFavoriteNews(limit: 20);
+              } else {
+                String? categoryParam;
+                if (selectedCategory == "Stocks") {
+                  categoryParam = "stocks";
+                } else if (selectedCategory == "Cryptocurrency") {
+                  categoryParam = "crypto";
+                } else if (selectedCategory == "Forex") {
+                  categoryParam = "forex";
+                } else if (selectedCategory == "Popular") {
+                  categoryParam = "most_popular";
+                }
+                print('DEBUG: Fetching news feed with category: $categoryParam, country: $countryCode');
+                context.read<NewsCubit>().fetchNewsFeed(
+                  limit: 5,
+                  category: categoryParam,
+                  country: countryCode,
+                );
+              }
+            },
+            itemBuilder: (BuildContext context) {
+              final sortedCountries = [..._countries]..sort((a, b) => a.name.compareTo(b.name));
+              return [
+                const PopupMenuItem<String>(
+                  value: null,
+                  child: Row(
+                    children: [
+                      Icon(Icons.public, size: 18),
+                      SizedBox(width: 8),
+                      Text("All Countries"),
+                    ],
+                  ),
+                ),
+                ...sortedCountries.map((country) {
+                  return PopupMenuItem<String>(
+                    value: country.code,
+                    child: Row(
+                      children: [
+                        Text(country.flag, style: const TextStyle(fontSize: 18)),
+                        const SizedBox(width: 8),
+                        Text(country.name),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ];
+            },
           ),
         ],
         if (hasViewAll) ...[

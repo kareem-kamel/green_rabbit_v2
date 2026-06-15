@@ -945,24 +945,25 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
               );
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFF6B5AE0),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Image.asset('assets/trade_logo.png', width: 16, height: 16, errorBuilder: (_, __, ___) => const Icon(Icons.psychology, color: Colors.purple, size: 16)),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text('Financial Advisor Analysis', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-                ],
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Image.asset(
+                  'assets/trade_logo3.png', 
+                  width: 24, 
+                  height: 24, 
+                  cacheWidth: 84, 
+                  cacheHeight: 84,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.psychology, color: Colors.purple, size: 28),
+                ),
               ),
             ),
           ),
@@ -3663,5 +3664,4 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
     return oldDelegate.child != child;
   }
 }
-
 
