@@ -124,7 +124,7 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
   
   static const double _snapThreshold = 30.0;
   static const double _minimizedOffset = 20.0; // How much to tuck in when minimized
-  static const double _gestureSafeMargin = 20.0; // Avoid system gesture areas
+  static const double _gestureSafeMargin = 0.0; // Avoid system gesture areas
   static const String _prefsKeyX = 'calculator_button_x';
   static const String _prefsKeyY = 'calculator_button_y';
   static const String _prefsKeyMinimized = 'calculator_button_minimized';
