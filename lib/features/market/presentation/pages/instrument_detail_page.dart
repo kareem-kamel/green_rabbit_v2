@@ -15,6 +15,7 @@ import '../providers/market_providers.dart';
 import '../../data/models/market_instrument.dart';
 import '../../data/models/market_instrument_detail.dart';
 import '../widgets/pro_trading_chart.dart';
+import '../widgets/trading_view_chart_webview.dart';
 import '../widgets/sparkline_chart.dart';
 import '../widgets/drawings_bottom_sheet.dart';
 import 'package:intl/intl.dart';
@@ -62,7 +63,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   /// Defaults to '1M' which is the confirmed-working tier for free/classic accounts.
   String _selectedPeriod = '1M';
   final bool _showMovingAverages = false;
-  ProChartMode _chartMode = ProChartMode.area;
+  ProChartMode _chartMode = ProChartMode.candle;
   String _selectedTechnicalInterval = '15m';
   DateTimeRange? _selectedDateRange;
   final Set<String> _activeIndicators = {};
@@ -501,7 +502,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                         const SizedBox(width: 6),
                         Text(
                           detail.price.lastUpdatedAt != null 
-                            ? DateFormat('HH : mm : ss').format(DateTime.parse(detail.price.lastUpdatedAt!))
+                            ? DateFormat('HH : mm : ss').format(DateTime.parse(detail.price.lastUpdatedAt!).toLocal())
                             : DateFormat('HH : mm : ss').format(DateTime.now()), 
                           style: TextStyle(color: _textSecondary, fontSize: 13),
                         ),
@@ -2917,31 +2918,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   Widget _buildChartTab(MarketInstrumentDetail detail) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.screen_rotation, size: 60, color: _textPrimary),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Rotate to View Full Chart',
-            style: TextStyle(
-              color: _textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    );
+    return TradingViewChartWebView(symbol: detail.symbol);
   }
 
   void _showIndicatorsBottomSheet(BuildContext context) {
@@ -3124,64 +3101,95 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   Widget _buildLandscapeChart(MarketInstrumentDetail detail) {
-    final interval = _getIntervalForPeriod(_selectedPeriod);
-    final providerKey = '${widget.instrumentId}|$_selectedPeriod|$interval';
-    final chartAsync = ref.watch(instrumentChartProvider(providerKey));
-
-    // Build candle list only when data is available
-    List<CandleData> realCandles = [];
-    String? errorMsg;
-    bool isLoading = chartAsync.isLoading;
-
-    chartAsync.when(
-      data: (chartData) {
-        final List<dynamic> candlesJson = chartData['candles'] ?? [];
-        realCandles = candlesJson.map((json) {
-          final ts = json['t'] ?? json['timestamp'];
-          final timestamp = ts is int
-              ? ts * 1000
-              : (DateTime.tryParse(ts?.toString() ?? '')?.millisecondsSinceEpoch ?? 0);
-          return CandleData(
-            timestamp: timestamp,
-            open: ((json['o'] ?? json['open'] ?? 0.0) as num).toDouble(),
-            close: ((json['c'] ?? json['close'] ?? 0.0) as num).toDouble(),
-            high: ((json['h'] ?? json['high'] ?? 0.0) as num).toDouble(),
-            low: ((json['l'] ?? json['low'] ?? 0.0) as num).toDouble(),
-            volume: ((json['v'] ?? json['volume'] ?? 0.0) as num).toDouble(),
-          );
-        }).toList();
-      },
-      loading: () {},
-      error: (err, _) {
-        errorMsg = err.toString();
-      },
-    );
-
-    return Column(
+    return Stack(
       children: [
-        _buildLandscapeHeader(detail, interval: interval),
-        Expanded(
-          child: RepaintBoundary(
-            key: _chartKey,
-            child: ProTradingChart(
-              candles: realCandles,
-              showMovingAverages: _showMovingAverages,
-              mode: _chartMode,
-              period: _selectedPeriod,
-              interval: interval,
-              symbolName: '${detail.name} (${detail.symbol})',
-              currency: detail.currency ?? 'USD',
-              isLoading: isLoading,
-              errorMessage: errorMsg,
-              onRetry: () => ref.invalidate(instrumentChartProvider(providerKey)),
-              activeIndicators: _activeIndicators,
-              activeDrawingTool: _activeDrawingTool,
-              onDrawingToolChanged: (tool) {
-                setState(() {
-                  _activeDrawingTool = tool;
+        RepaintBoundary(
+          key: _chartKey,
+          child: TradingViewChartWebView(symbol: detail.symbol),
+        ),
+        // Close Button
+        Positioned(
+          top: 8,
+          right: 50,
+          child: Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor.withOpacity(0.85),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.25),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () async {
+                // Force portrait orientation and show feedback
+                await SystemChrome.setPreferredOrientations([
+                  DeviceOrientation.portraitUp,
+                  DeviceOrientation.portraitDown,
+                ]);
+                
+                Future.delayed(const Duration(seconds: 1), () {
+                  SystemChrome.setPreferredOrientations([
+                    DeviceOrientation.portraitUp,
+                    DeviceOrientation.portraitDown,
+                    DeviceOrientation.landscapeLeft,
+                    DeviceOrientation.landscapeRight,
+                  ]);
                 });
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Returning to Portrait Overview...'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
               },
-              clearDrawingsTrigger: _clearDrawingsTrigger,
+              child: Icon(
+                Icons.close, 
+                color: Theme.of(context).brightness == Brightness.dark 
+                    ? AppColors.textPrimary 
+                    : Colors.black, 
+                size: 14,
+              ),
+            ),
+          ),
+        ),
+        // Native Download/Screenshot Button
+        Positioned(
+          top: 8,
+          right: 90,
+          child: Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor.withOpacity(0.85),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.25),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: _captureAndSaveChart,
+              child: Icon(
+                Icons.file_download_outlined, 
+                color: Theme.of(context).brightness == Brightness.dark 
+                    ? AppColors.textPrimary 
+                    : Colors.black, 
+                size: 14,
+              ),
             ),
           ),
         ),

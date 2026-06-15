@@ -1,30 +1,37 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/di/injection_container.dart';
 import '../../../market/data/models/market_instrument.dart';
+import '../../../market/data/models/market_instrument_detail.dart';
 import '../../data/models/watchlist_model.dart';
 import '../../data/repositories/watchlist_repository_impl.dart';
 import '../../../market/presentation/providers/market_providers.dart';
+import '../../../news/data/models/news_model.dart';
+import '../../../news/data/repositories/news_repository.dart';
 
 class WatchlistState {
   final List<WatchlistModel> watchlists;
   final WatchlistModel? selectedWatchlist;
   final bool isLoading;
+  final String? error;
 
   WatchlistState({
     required this.watchlists,
     this.selectedWatchlist,
     this.isLoading = false,
+    this.error,
   });
 
   WatchlistState copyWith({
     List<WatchlistModel>? watchlists,
     WatchlistModel? selectedWatchlist,
     bool? isLoading,
+    String? error,
   }) {
     return WatchlistState(
       watchlists: watchlists ?? this.watchlists,
       selectedWatchlist: selectedWatchlist ?? this.selectedWatchlist,
       isLoading: isLoading ?? this.isLoading,
+      error: error,
     );
   }
 }
@@ -91,7 +98,7 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
   }
 
   Future<void> loadWatchlists() async {
-    state = state.copyWith(isLoading: true);
+    state = state.copyWith(isLoading: true, error: null);
     try {
       final watchlists = await _repository.getWatchlists();
       WatchlistModel? selected = state.selectedWatchlist;
@@ -108,9 +115,9 @@ class WatchlistNotifier extends StateNotifier<WatchlistState> {
         selected = null;
       }
       
-      state = state.copyWith(watchlists: watchlists, selectedWatchlist: selected, isLoading: false);
+      state = state.copyWith(watchlists: watchlists, selectedWatchlist: selected, isLoading: false, error: null);
     } catch (e) {
-      state = state.copyWith(isLoading: false);
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -215,4 +222,77 @@ final watchlistProvider =
 final isInstrumentInWatchlistProvider = Provider.family<bool, String>((ref, instrumentId) {
   final watchlistState = ref.watch(watchlistProvider);
   return watchlistState.selectedWatchlist?.instruments.any((i) => i.id == instrumentId) ?? false;
+});
+
+final watchlistNewsProvider = FutureProvider.autoDispose<List<NewsArticle>>((ref) async {
+  final idsString = ref.watch(watchlistProvider.select((state) {
+    final watchlistId = state.selectedWatchlist?.id ?? '';
+    final ids = state.selectedWatchlist?.instruments.map((i) => i.id).join(',') ?? '';
+    return '$watchlistId|$ids';
+  }));
+
+  if (idsString.isEmpty || idsString.startsWith('|')) return [];
+
+  final watchlistState = ref.read(watchlistProvider);
+  final instruments = watchlistState.selectedWatchlist?.instruments ?? [];
+  if (instruments.isEmpty) return [];
+
+  final marketRepository = ref.watch(marketRepositoryProvider);
+  final List<NewsArticle> allArticles = [];
+  final Set<String> seenIds = {};
+
+  // Fetch news for each instrument in parallel from marketRepository, preventing 429 errors
+  final results = await Future.wait(
+    instruments.map((inst) async {
+      try {
+        return await marketRepository.getInstrumentNews(inst.id, type: inst.type);
+      } catch (e) {
+        return <MarketNewsArticle>[];
+      }
+    }),
+  );
+
+  for (int i = 0; i < results.length; i++) {
+    final instrument = instruments[i];
+    final articles = results[i];
+    for (final article in articles) {
+      final url = article.url ?? '';
+      final title = article.title;
+      final publishedAt = article.publishedAt ?? DateTime.now().toIso8601String();
+      final id = url.isNotEmpty ? url.hashCode.toString() : title.hashCode.toString();
+      
+      if (!seenIds.contains(id)) {
+        seenIds.add(id);
+        allArticles.add(
+          NewsArticle(
+            id: id,
+            title: title,
+            summary: article.summary ?? '',
+            imageUrl: article.imageUrl ?? '',
+            sourceName: article.source ?? 'News',
+            sourceLogo: article.sourceLogoUrl ?? '',
+            publishedAt: publishedAt,
+            isBookmarked: false,
+            url: url,
+            sentiment: article.sentiment ?? '',
+            readTimeMinutes: article.readTimeMinutes ?? 0,
+            type: instrument.type,
+          ),
+        );
+      }
+    }
+  }
+
+  // Sort by publishedAt desc
+  allArticles.sort((a, b) {
+    try {
+      final aDate = DateTime.parse(a.publishedAt);
+      final bDate = DateTime.parse(b.publishedAt);
+      return bDate.compareTo(aDate);
+    } catch (_) {
+      return 0;
+    }
+  });
+
+  return allArticles;
 });
