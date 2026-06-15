@@ -50,14 +50,72 @@
     <div class="logo-cover-right"></div>
   -->
   <script type="text/javascript">
+    var lastSavedData = "";
+    var restoredData = null;
+
+    function log(msg) {
+      if (window.Logger) {
+        window.Logger.postMessage(msg);
+      } else {
+        console.log(msg);
+      }
+    }
+
+    // Save chart settings (preferences like theme, resolution) to Flutter
+    // Note: The free TradingView widget does NOT store user drawings (lines, shapes)
+    // in localStorage. Only chart settings are persisted here.
+    window.saveDrawings = function() {
+      try {
+        var data = {};
+        var storage = window.localStorage;
+        if (storage && storage.length > 0) {
+          for (var i = 0; i < storage.length; i++) {
+            var key = storage.key(i);
+            data[key] = storage.getItem(key);
+          }
+        }
+
+        var jsonStr = JSON.stringify(data);
+        if (jsonStr !== lastSavedData && jsonStr !== '{}') {
+          lastSavedData = jsonStr;
+          if (window.DrawingSaver) {
+            window.DrawingSaver.postMessage(jsonStr);
+          }
+        }
+      } catch (e) {
+        log("saveSettings error: " + e.message);
+      }
+    };
+
+    // Restore chart settings from Flutter into localStorage
+    window.restoreDrawings = function(base64Data) {
+      try {
+        if (!base64Data) return;
+        var jsonData = atob(base64Data);
+        restoredData = JSON.parse(jsonData);
+        
+        // Write settings to parent localStorage so the widget reads them on init
+        var storage = window.localStorage;
+        for (var key in restoredData) {
+          storage.setItem(key, restoredData[key]);
+        }
+        log("restoreSettings: Restored " + Object.keys(restoredData).length + " keys");
+      } catch (e) {
+        log("restoreSettings error: " + e.message);
+      }
+    };
+
+    // Periodically save chart settings every 3 seconds
+    setInterval(window.saveDrawings, 3000);
+
     window.loadChart = function(symbol) {
       if (typeof TradingView === 'undefined') {
-        // Retry if tv.js script is not fully loaded/executed yet
         setTimeout(function() {
           window.loadChart(symbol);
         }, 100);
         return;
       }
+      
       document.getElementById('tradingview_chart').innerHTML = '';
       new TradingView.widget({
         "autosize": true,
