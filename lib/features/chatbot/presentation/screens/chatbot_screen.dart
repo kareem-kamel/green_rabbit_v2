@@ -45,6 +45,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   void initState() {
     super.initState();
     _scrollController.addListener(_scrollListener);
+    if (widget.initialPrompt != null) {
+      _textController.text = widget.initialPrompt!;
+    }
   }
 
   @override
@@ -174,13 +177,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           });
         }
 
-        if (widget.initialPrompt != null && !_initialPromptSent) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            _initialPromptSent = true;
-            cubit.sendMessage(widget.initialPrompt!);
-          });
-        }
+        // Don't auto-send initial prompt; leave it in text field for user to edit
 
         if (widget.summaryId != null && widget.summaryType != null && !_initialPromptSent) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
