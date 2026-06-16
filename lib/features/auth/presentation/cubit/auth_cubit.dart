@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:green_rabbit/core/constants/app_constants.dart';
@@ -6,6 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import '../../data/repository/auth_repository.dart';
 import 'auth_state.dart';
+import 'package:green_rabbit/core/errors/failures.dart';
 
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository repository;
@@ -73,6 +76,9 @@ class AuthCubit extends Cubit<AuthState> {
       } else {
         emit(AuthSuccess());
       }
+    } on NoInternetFailure catch (e) {
+      if (isClosed) return;
+      emit(AuthFailure(errorMessage: e.message, isOffline: true));
     } catch (e) {
       final parsedError = e.toString().replaceAll('Exception: ', '');
 
@@ -101,6 +107,9 @@ class AuthCubit extends Cubit<AuthState> {
 
       if (isClosed) return;
       emit(AuthNeedsVerification());
+    } on NoInternetFailure catch (e) {
+      if (isClosed) return;
+      emit(AuthFailure(errorMessage: e.message, isOffline: true));
     } catch (e) {
       if (isClosed) return;
       emit(
@@ -116,31 +125,61 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> signInWithGoogle() async {
     emit(AuthLoading());
 
+    // Step 1: Open the native Google picker — catch SDK-level failures here.
+    GoogleSignInAccount? googleUser;
     try {
-      // Start Google authentication flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      googleUser = await _googleSignIn.signIn();
+    } on PlatformException catch (e) {
+      // Google SDK throws PlatformException for network_error / sign_in_failed
+      if (!isClosed) {
+        if (e.code == 'network_error' || e.code == 'sign_in_failed') {
+          emit(AuthFailure(
+            errorMessage: 'No internet connection. Please try again.',
+            isOffline: true,
+          ));
+        } else {
+          emit(AuthFailure(errorMessage: e.message ?? 'Google Sign-In failed.'));
+        }
+      }
+      return;
+    } on SocketException {
+      // Low-level socket error — device is offline
+      if (!isClosed) {
+        emit(AuthFailure(
+          errorMessage: 'No internet connection. Please try again.',
+          isOffline: true,
+        ));
+      }
+      return;
+    } catch (e) {
+      debugPrint('Google Sign-In picker error: $e');
+      if (!isClosed) {
+        emit(AuthFailure(errorMessage: e.toString().replaceAll('Exception: ', '')));
+      }
+      return;
+    }
 
-      if (googleUser == null) {
+    // User cancelled the picker
+    if (googleUser == null) {
+      if (!isClosed) emit(AuthInitial());
+      return;
+    }
+
+    if (isClosed) return;
+
+    // Step 2: Exchange Google token with our backend
+    try {
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+      final String? idToken = googleAuth.idToken;
+
+      if (idToken == null || idToken.isEmpty) {
         if (!isClosed) {
-          emit(AuthInitial());
+          emit(AuthFailure(errorMessage: 'Failed to retrieve Google ID token.'));
         }
         return;
       }
 
-      if (isClosed) return;
-
-      // Retrieve authentication data
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      final String? idToken = googleAuth.idToken;
-
-      if (idToken == null || idToken.isEmpty) {
-        emit(AuthFailure(errorMessage: 'Failed to retrieve Google ID token.'));
-        return;
-      }
-
-      // Send token to backend
       final bool onboardingDone = await repository.signInWithGoogle(idToken);
 
       if (isClosed) return;
@@ -150,14 +189,16 @@ class AuthCubit extends Cubit<AuthState> {
       } else {
         emit(AuthSuccess());
       }
+    } on NoInternetFailure catch (e) {
+      // Backend call failed due to no connectivity
+      if (!isClosed) {
+        emit(AuthFailure(errorMessage: e.message, isOffline: true));
+      }
     } catch (e) {
-      debugPrint('Google Sign-In Error: $e');
-
-      if (isClosed) return;
-
-      emit(
-        AuthFailure(errorMessage: e.toString().replaceAll('Exception: ', '')),
-      );
+      debugPrint('Google Sign-In backend error: $e');
+      if (!isClosed) {
+        emit(AuthFailure(errorMessage: e.toString().replaceAll('Exception: ', '')));
+      }
     }
   }
 
@@ -310,6 +351,9 @@ class AuthCubit extends Cubit<AuthState> {
   // --------------------------------------------------
 
   String _getErrorMessage(DioException e, String fallback) {
+    if (e.error is AppFailure) {
+      throw e.error as AppFailure;
+    }
     return e.response?.data?['error']?['message'] ?? e.message ?? fallback;
   }
 }

@@ -8,5 +8,6 @@ class ForgotPasswordSuccess extends ForgotPasswordState {}
 
 class ForgotPasswordError extends ForgotPasswordState {
   final String message;
-  ForgotPasswordError(this.message);
+  final bool isOffline;
+  ForgotPasswordError(this.message, {this.isOffline = false});
 }

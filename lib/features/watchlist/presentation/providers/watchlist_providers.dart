@@ -6,7 +6,6 @@ import '../../data/models/watchlist_model.dart';
 import '../../data/repositories/watchlist_repository_impl.dart';
 import '../../../market/presentation/providers/market_providers.dart';
 import '../../../news/data/models/news_model.dart';
-import '../../../news/data/repositories/news_repository.dart';
 
 class WatchlistState {
   final List<WatchlistModel> watchlists;

@@ -29,7 +29,8 @@ class AuthSuccess extends AuthState {
 
 class AuthFailure extends AuthState {
   final String errorMessage;
-  AuthFailure({required this.errorMessage});
+  final bool isOffline;
+  AuthFailure({required this.errorMessage, this.isOffline = false});
 }
 class _AuthTextFieldState extends State<AuthTextField> {
   bool _obscureText = true;

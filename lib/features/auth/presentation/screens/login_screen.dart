@@ -10,6 +10,7 @@ import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
 import 'package:green_rabbit/features/auth/presentation/widget/social_login_section.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
+import 'package:green_rabbit/core/widgets/no_internet_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
   final bool isFromSignup;
@@ -43,12 +44,23 @@ class _LoginScreenState extends State<LoginScreen> {
       body: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is AuthFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(state.errorMessage),
-                backgroundColor: Colors.red,
-              ),
-            );
+            if (state.isOffline) {
+              // Show the global non-dismissible No Internet dialog
+              NoInternetDialog.show(context);
+            } else {
+              // Non-network error: show a simple SnackBar
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    state.errorMessage,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  backgroundColor: Colors.red,
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+            }
           } else if (state is AuthSuccess || state is AuthNeedsPreferences) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(

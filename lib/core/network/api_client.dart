@@ -1,10 +1,13 @@
 import 'package:flutter/foundation.dart';
+import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logger/logger.dart';
 import '../constants/app_constants.dart';
+import '../errors/failures.dart';
 import 'package:flutter/material.dart';
 import '../../main.dart';
+import 'package:green_rabbit/core/widgets/no_internet_dialog.dart';
 import '../di/injection_container.dart' as di;
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/auth/presentation/screens/login_screen.dart';
@@ -97,6 +100,24 @@ class ApiClient {
 
         // ── onError ──────────────────────────────────────────────────────────
         onError: (DioException e, handler) async {
+          if (e.type == DioExceptionType.connectionError ||
+              e.type == DioExceptionType.connectionTimeout ||
+              e.type == DioExceptionType.sendTimeout ||
+              e.type == DioExceptionType.receiveTimeout ||
+              e.error is SocketException ||
+              (e.message?.contains('SocketException') ?? false) ||
+              (e.error?.toString().contains('SocketException') ?? false)) {
+            _logger.w('Network connection issue detected. Mapping to NoInternetFailure.');
+            NoInternetDialog.show(globalNavigatorKey.currentContext!);
+            final noInternetException = DioException(
+              requestOptions: e.requestOptions,
+              error: const NoInternetFailure(),
+              type: DioExceptionType.connectionError,
+              message: "No internet connection. Please try again.",
+            );
+            return handler.next(noInternetException);
+          }
+
           _logger.e(
             'API Error [${e.response?.statusCode}] for ${e.requestOptions.uri}: ${e.message}',
           );

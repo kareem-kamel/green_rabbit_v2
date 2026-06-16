@@ -5,6 +5,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:green_rabbit/core/constants/app_constants.dart';
 import 'package:green_rabbit/core/network/api_client.dart';
+import 'package:green_rabbit/core/errors/failures.dart';
+import 'dart:io';
 import 'package:green_rabbit/core/network/sse_post_stream.dart';
 import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 
@@ -49,6 +51,18 @@ class AIService {
   }
 
   static Future<Exception> handleDioError(DioException e) async {
+    if (e.error is AppFailure) {
+      return e.error as AppFailure;
+    }
+    if (e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.error is SocketException ||
+        (e.message?.contains('SocketException') ?? false) ||
+        (e.error?.toString().contains('SocketException') ?? false)) {
+      return const NoInternetFailure();
+    }
     if (e.response != null) {
       final responseData = e.response!.data;
       

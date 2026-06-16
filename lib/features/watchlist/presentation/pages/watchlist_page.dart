@@ -12,12 +12,9 @@ import '../../../market/presentation/providers/market_providers.dart';
 import '../../../market/data/models/market_instrument.dart';
 import 'package:intl/intl.dart';
 
-import 'package:green_rabbit/features/news/presentation/cubit/news_cubit.dart';
-import 'package:green_rabbit/features/news/presentation/cubit/news_state.dart';
 import 'package:green_rabbit/features/news/data/models/news_model.dart';
 import 'package:green_rabbit/features/news/presentation/screens/news_detail_screen.dart';
 import 'package:green_rabbit/core/utils/image_utils.dart';
-import 'package:flutter_bloc/flutter_bloc.dart' as bloc;
 import 'package:shimmer/shimmer.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../widgets/watchlist_skeleton_loader.dart';

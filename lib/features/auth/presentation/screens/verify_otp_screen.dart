@@ -167,8 +167,23 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                   // Don't forget to show errors if the code is wrong!
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(state.message),
-                      backgroundColor: Colors.red,
+                      content: Row(
+                        children: [
+                          if (state.isOffline) ...[
+                            const Icon(Icons.wifi_off_rounded, color: Colors.white, size: 20),
+                            const SizedBox(width: 8),
+                          ],
+                          Expanded(
+                            child: Text(
+                              state.message,
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: state.isOffline ? Colors.orange.shade800 : Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: state.isOffline ? 6 : 4),
                     ),
                   );
                 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:green_rabbit/core/constants/app_constants.dart';
 import 'package:green_rabbit/core/network/api_client.dart';
+import 'package:green_rabbit/core/errors/failures.dart';
 
 class AuthRepository {
   final ApiClient apiClient;
@@ -35,6 +36,9 @@ class AuthRepository {
 
   // Helper method to safely extract error message from DioException
   String _getErrorMessage(DioException e, String defaultMessage) {
+    if (e.error is AppFailure) {
+      throw e.error as AppFailure;
+    }
     try {
       return _extractMessageFromData(e.response?.data, defaultMessage);
     } catch (_) {}

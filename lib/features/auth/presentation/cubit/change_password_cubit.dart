@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
 import 'change_password_state.dart';
+import 'package:green_rabbit/core/errors/failures.dart';
 
 class ChangePasswordCubit extends Cubit<ChangePasswordState> {
   final AuthRepository repository;
@@ -42,6 +43,9 @@ class ChangePasswordCubit extends Cubit<ChangePasswordState> {
       
       if (isClosed) return;
       emit(ChangePasswordSuccess());
+    } on NoInternetFailure catch (e) {
+      if (isClosed) return;
+      emit(ChangePasswordError(e.message, isOffline: true));
     } catch (e) {
       if (isClosed) return;
       emit(ChangePasswordError(e.toString().replaceAll('Exception: ', '')));

@@ -11,5 +11,6 @@ class ChangePasswordSuccess extends ChangePasswordState {}
 
 class ChangePasswordError extends ChangePasswordState {
   final String message;
-  ChangePasswordError(this.message);
+  final bool isOffline;
+  ChangePasswordError(this.message, {this.isOffline = false});
 }

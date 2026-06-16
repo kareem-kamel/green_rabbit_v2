@@ -25,6 +25,7 @@ import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
 import 'package:green_rabbit/shared/widgets/global_calculator_overlay.dart';
 import 'core/di/injection_container.dart' as di;
 
+
 final GlobalKey<NavigatorState> globalNavigatorKey =
     GlobalKey<NavigatorState>();
 
@@ -35,6 +36,7 @@ void main() async {
   await di.init();
 
   // Set up 401 Unauthorized handler to automatically logout and redirect to login screen
+  // Set up No Internet handler to display blocking dialog
   di.sl<ApiClient>().onUnauthorized = () {
     final context = globalNavigatorKey.currentContext;
     if (context != null) {

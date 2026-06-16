@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
 import 'verify_otp_state.dart';
+import 'package:green_rabbit/core/errors/failures.dart';
 // Import your repository!
 
 
@@ -30,6 +31,9 @@ class VerifyOtpCubit extends Cubit<VerifyOtpState> {
       // If it doesn't crash, it was a success!
       if (isClosed) return;
       emit(VerifyOtpSuccess(onboardingDone: onboardingDone));
+    } on NoInternetFailure catch (e) {
+      if (isClosed) return;
+      emit(VerifyOtpError(e.message, isOffline: true));
     } catch (e) {
       // Clean up the error message
       if (isClosed) return;

@@ -10,7 +10,6 @@ import '../../features/market/presentation/providers/market_providers.dart';
 import '../../features/market/data/models/market_instrument.dart';
 import '../../features/market/data/repositories/market_repository_impl.dart';
 import '../../features/watchlist/presentation/providers/watchlist_providers.dart';
-import '../../features/watchlist/data/models/watchlist_model.dart';
 
 import 'package:green_rabbit/shared/widgets/feature_guide_overlay.dart';
 import 'package:green_rabbit/shared/widgets/main_wrapper.dart';

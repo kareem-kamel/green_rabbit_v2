@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:green_rabbit/features/auth/data/repository/auth_repository.dart';
 import 'forgot_password_state.dart';
+import 'package:green_rabbit/core/errors/failures.dart';
 
 class ForgotPasswordCubit extends Cubit<ForgotPasswordState> {
   final AuthRepository repository;
@@ -25,6 +26,9 @@ class ForgotPasswordCubit extends Cubit<ForgotPasswordState> {
       await repository.forgotPassword(email);
       if (isClosed) return;
       emit(ForgotPasswordSuccess());
+    } on NoInternetFailure catch (e) {
+      if (isClosed) return;
+      emit(ForgotPasswordError(e.message, isOffline: true));
     } catch (e) {
       if (isClosed) return;
       emit(ForgotPasswordError(e.toString().replaceAll('Exception: ', '')));

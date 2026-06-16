@@ -11,5 +11,6 @@ class VerifyOtpSuccess extends VerifyOtpState {
 
 class VerifyOtpError extends VerifyOtpState {
   final String message;
-  VerifyOtpError(this.message);
+  final bool isOffline;
+  VerifyOtpError(this.message, {this.isOffline = false});
 }

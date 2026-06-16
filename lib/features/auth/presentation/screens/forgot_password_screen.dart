@@ -78,8 +78,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 else if (state is ForgotPasswordError) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(state.message),
-                      backgroundColor: Colors.redAccent,
+                      content: Row(
+                        children: [
+                          if (state.isOffline) ...[
+                            const Icon(Icons.wifi_off_rounded, color: Colors.white, size: 20),
+                            const SizedBox(width: 8),
+                          ],
+                          Expanded(
+                            child: Text(
+                              state.message,
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                      backgroundColor: state.isOffline ? Colors.orange.shade800 : Colors.redAccent,
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: state.isOffline ? 6 : 4),
                     ),
                   );
                 }

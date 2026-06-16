@@ -8,5 +8,6 @@ class SetPasswordSuccess extends SetPasswordState {}
 
 class SetPasswordError extends SetPasswordState {
   final String message;
-  SetPasswordError(this.message);
+  final bool isOffline;
+  SetPasswordError(this.message, {this.isOffline = false});
 }
