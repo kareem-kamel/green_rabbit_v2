@@ -919,8 +919,9 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
     // 1. Convert 'from' to USD
     double amountInUSD = amount;
     if (from != "USD") {
-      if (from == "EUR") amountInUSD = amount * (rates['EURUSD'] ?? 1.08);
-      else if (from == "GBP") amountInUSD = amount * (rates['GBPUSD'] ?? 1.27);
+      if (from == "EUR") {
+        amountInUSD = amount * (rates['EURUSD'] ?? 1.08);
+      } else if (from == "GBP") amountInUSD = amount * (rates['GBPUSD'] ?? 1.27);
       else if (from == "JPY") amountInUSD = amount / (rates['USDJPY'] ?? 150.0);
       else if (from == "CHF") amountInUSD = amount / (rates['USDCHF'] ?? 0.90);
       else if (from == "AUD") amountInUSD = amount * (rates['AUDUSD'] ?? 0.66);

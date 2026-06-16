@@ -12,7 +12,6 @@ import 'package:green_rabbit/features/profile/presentation/screens/profile_scree
 import '../../../../shared/widgets/app_card.dart';
 import '../../../../shared/widgets/price_flash_widget.dart';
 import '../../../../shared/widgets/app_section_header.dart';
-import '../../../../shared/widgets/sparkline_painter.dart';
 import 'instrument_detail_page.dart';
 import '../providers/market_providers.dart';
 import '../../../watchlist/presentation/providers/watchlist_providers.dart';
