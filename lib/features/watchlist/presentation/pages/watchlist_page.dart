@@ -9,6 +9,8 @@ import 'package:green_rabbit/features/chatbot/presentation/screens/chatbot_scree
 import '../../../../shared/widgets/main_wrapper.dart';
 import '../../../../shared/widgets/price_flash_widget.dart';
 import '../../../market/presentation/providers/market_providers.dart';
+import '../../../market/data/models/market_instrument.dart';
+import 'package:intl/intl.dart';
 
 import 'package:green_rabbit/features/news/presentation/cubit/news_cubit.dart';
 import 'package:green_rabbit/features/news/presentation/cubit/news_state.dart';
@@ -30,6 +32,51 @@ class WatchlistPage extends ConsumerWidget {
 
     if (watchlistState.isLoading) {
       return const WatchlistSkeletonLoader();
+    }
+
+    if (watchlistState.error != null && watchlistState.selectedWatchlist == null) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
+                const SizedBox(height: 16),
+                Text(
+                  'Load Failed',
+                  style: TextStyle(color: isDark ? Colors.white : Colors.black87, fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  watchlistState.error!.contains('Connection') || watchlistState.error!.contains('SocketException')
+                      ? 'Please check your internet connection and try again.'
+                      : watchlistState.error!,
+                  style: const TextStyle(color: Colors.grey, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    ref.read(watchlistProvider.notifier).loadWatchlists();
+                  },
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Try Again'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2D5CFF),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -247,7 +294,7 @@ class WatchlistPage extends ConsumerWidget {
   }
 
   Widget _buildTrackedSection(BuildContext context, WidgetRef ref, WatchlistState state) {
-    final instruments = state.selectedWatchlist?.instruments ?? [];
+    final instruments = List<MarketInstrument>.from(state.selectedWatchlist?.instruments ?? []);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -273,6 +320,7 @@ class WatchlistPage extends ConsumerWidget {
           _buildEmptyState(context, ref),
         if (instruments.isNotEmpty)
           ReorderableListView.builder(
+            buildDefaultDragHandles: false,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: instruments.length,
@@ -281,7 +329,7 @@ class WatchlistPage extends ConsumerWidget {
               final item = instruments.removeAt(oldIndex);
               instruments.insert(newIndex, item);
               
-              final instrumentIds = instruments.map((i) => i.id).toList();
+              final List<String> instrumentIds = instruments.map((i) => i.id).toList();
               ref.read(watchlistProvider.notifier).reorder(state.selectedWatchlist!.id, instrumentIds);
             },
             itemBuilder: (context, index) {
@@ -320,6 +368,22 @@ class WatchlistPage extends ConsumerWidget {
                     (instrument.change ?? 0) >= 0,
                     rawPrice: instrument.price,
                     logoUrl: instrument.logoUrl,
+                    instrument: instrument,
+                    index: index,
+                    onMoveUp: index > 0 ? () {
+                      final updatedList = List<MarketInstrument>.from(instruments);
+                      final item = updatedList.removeAt(index);
+                      updatedList.insert(index - 1, item);
+                      final List<String> instrumentIds = updatedList.map((i) => i.id).toList();
+                      ref.read(watchlistProvider.notifier).reorder(state.selectedWatchlist!.id, instrumentIds);
+                    } : null,
+                    onMoveDown: index < instruments.length - 1 ? () {
+                      final updatedList = List<MarketInstrument>.from(instruments);
+                      final item = updatedList.removeAt(index);
+                      updatedList.insert(index + 1, item);
+                      final List<String> instrumentIds = updatedList.map((i) => i.id).toList();
+                      ref.read(watchlistProvider.notifier).reorder(state.selectedWatchlist!.id, instrumentIds);
+                    } : null,
                     onTap: () {
                       Navigator.push(
                         context,
@@ -454,14 +518,59 @@ class WatchlistPage extends ConsumerWidget {
     );
   }
 
-  Widget _stockItem(BuildContext context, String name, String ticker, String price, String change, bool isUp, {double? rawPrice, String? logoUrl, VoidCallback? onTap}) {
-    return AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          const Icon(Icons.unfold_more, color: AppColors.textMuted, size: 20),
-          const SizedBox(width: 12),
+  Widget _stockItem(
+    BuildContext context, 
+    String name, 
+    String ticker, 
+    String price, 
+    String change, 
+    bool isUp, {
+    double? rawPrice, 
+    String? logoUrl, 
+    required MarketInstrument instrument,
+    required int index,
+    VoidCallback? onMoveUp,
+    VoidCallback? onMoveDown,
+    VoidCallback? onTap,
+  }) {
+    return ReorderableDelayedDragStartListener(
+      index: index,
+      child: AppCard(
+        onTap: onTap,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: onMoveUp,
+                  child: Icon(
+                    Icons.keyboard_arrow_up_rounded,
+                    color: onMoveUp != null
+                        ? (Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black)
+                        : AppColors.textMuted.withOpacity(0.3),
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                GestureDetector(
+                  onTap: onMoveDown,
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: onMoveDown != null
+                        ? (Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black)
+                        : AppColors.textMuted.withOpacity(0.3),
+                    size: 22,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(width: 8),
           Container(
             width: 36,
             height: 36,
@@ -488,18 +597,27 @@ class WatchlistPage extends ConsumerWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
+                Text(
+                  ticker,
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w500),
+                ),
+                const SizedBox(height: 2),
                 Row(
                   children: [
                     const Icon(Icons.access_time, color: AppColors.textMuted, size: 12),
                     const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        '$ticker | 23/01', 
-                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                    Text(
+                      (() {
+                        if (instrument.lastUpdatedAt == null) return '23/01';
+                        try {
+                          final dt = DateTime.parse(instrument.lastUpdatedAt!).toLocal();
+                          return DateFormat('dd/MM HH:mm').format(dt);
+                        } catch (_) {
+                          return instrument.lastUpdatedAt!;
+                        }
+                      })(),
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                     ),
                   ],
                 ),
@@ -522,6 +640,7 @@ class WatchlistPage extends ConsumerWidget {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -536,6 +655,8 @@ class WatchlistPage extends ConsumerWidget {
   }
 
   Widget _buildNewsSection(BuildContext context, WidgetRef ref) {
+    final newsAsync = ref.watch(watchlistNewsProvider);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -560,33 +681,26 @@ class WatchlistPage extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 12),
-        bloc.BlocBuilder<NewsCubit, NewsState>(
-          builder: (context, state) {
-            if (state is NewsLoading) {
-              return Column(
-                children: List.generate(3, (index) => const Padding(
-                  padding: EdgeInsets.only(bottom: 12.0),
-                  child: _NewsSkeletonItem(),
-                )),
-              );
+        newsAsync.when(
+          data: (articles) {
+            final displayArticles = articles.take(3).toList();
+            if (displayArticles.isEmpty) {
+              return const Center(child: Text("No news available for your favorites", style: TextStyle(color: AppColors.textMuted)));
             }
-            if (state is NewsLoaded) {
-              final articles = state.articles.take(3).toList();
-              if (articles.isEmpty) {
-                return const Center(child: Text("No news available", style: TextStyle(color: AppColors.textMuted)));
-              }
-              return Column(
-                children: articles.map((article) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: _newsItem(context, article),
-                )).toList(),
-              );
-            }
-            if (state is NewsError) {
-              return Center(child: Text(state.message, style: const TextStyle(color: AppColors.error)));
-            }
-            return const SizedBox.shrink();
+            return Column(
+              children: displayArticles.map((article) => Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: _newsItem(context, article),
+              )).toList(),
+            );
           },
+          loading: () => Column(
+            children: List.generate(3, (index) => const Padding(
+              padding: EdgeInsets.only(bottom: 12.0),
+              child: _NewsSkeletonItem(),
+            )),
+          ),
+          error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: AppColors.error))),
         ),
       ],
     );

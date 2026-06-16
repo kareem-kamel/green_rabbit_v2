@@ -1,11 +1,16 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme/app_colors.dart';
 import '../../main.dart'; // To access globalNavigatorKey
 import '../../features/market/presentation/providers/market_providers.dart';
 import '../../features/market/data/models/market_instrument.dart';
+import '../../features/market/data/repositories/market_repository_impl.dart';
+import '../../features/watchlist/presentation/providers/watchlist_providers.dart';
+import '../../features/watchlist/data/models/watchlist_model.dart';
 
 import 'package:green_rabbit/shared/widgets/feature_guide_overlay.dart';
 import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
@@ -109,18 +114,53 @@ class GlobalCalculatorOverlay extends ConsumerStatefulWidget {
 }
 
 class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverlay> {
-  double _xOffset = 42.0;
-  bool _isHidden = true;
+  double _buttonPositionX = 0.0; // X position from right
+  double _buttonPositionY = 60.0; // Y position from bottom
+  bool _isMinimized = true;
   bool _isPageOpen = false;
   bool _hasInteracted = false;
+  bool _isDragging = false;
+  bool _isOnLeftSide = false; // Whether button is on left or right edge
+  
+  static const double _snapThreshold = 30.0;
+  static const double _minimizedOffset = 20.0; // How much to tuck in when minimized
+  static const double _gestureSafeMargin = 0.0; // Avoid system gesture areas
+  static const String _prefsKeyX = 'calculator_button_x';
+  static const String _prefsKeyY = 'calculator_button_y';
+  static const String _prefsKeyMinimized = 'calculator_button_minimized';
+  static const String _prefsKeyLeftSide = 'calculator_button_left_side';
 
   @override
   void initState() {
     super.initState();
-    // Ensure it starts hidden
-    _xOffset = 42.0;
-    _isHidden = true;
+    _loadSavedPosition();
     calculatorRouteObserver.addListener(_onRouteChanged);
+  }
+
+  Future<void> _loadSavedPosition() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _buttonPositionX = prefs.getDouble(_prefsKeyX) ?? 0.0;
+        _buttonPositionY = prefs.getDouble(_prefsKeyY) ?? 60.0;
+        _isMinimized = prefs.getBool(_prefsKeyMinimized) ?? true;
+        _isOnLeftSide = prefs.getBool(_prefsKeyLeftSide) ?? false;
+      });
+    } catch (e) {
+      debugPrint('Error loading button position: $e');
+    }
+  }
+
+  Future<void> _savePosition() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble(_prefsKeyX, _buttonPositionX);
+      await prefs.setDouble(_prefsKeyY, _buttonPositionY);
+      await prefs.setBool(_prefsKeyMinimized, _isMinimized);
+      await prefs.setBool(_prefsKeyLeftSide, _isOnLeftSide);
+    } catch (e) {
+        debugPrint('Error saving button position: $e');
+    }
   }
 
   @override
@@ -130,25 +170,17 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
   }
 
   void _onRouteChanged() {
-    if (mounted && !_isHidden && !_isPageOpen) {
-      // If the button is pulled out (revealed) and we navigate, tuck it back in.
+    if (mounted && !_isMinimized && !_isPageOpen) {
+      // If the button is pulled out and we navigate, tuck it back in.
       setState(() {
-        _isHidden = true;
-        _xOffset = 42.0;
+        _isMinimized = true;
       });
     }
   }
 
   void _openCalculator() async {
-    if (_isHidden) {
-      setState(() {
-        _isHidden = false;
-        _xOffset = 0.0;
-        _hasInteracted = true;
-      });
-      return;
-    }
-
+    if (_isDragging) return;
+    
     final context = globalNavigatorKey.currentContext;
     if (context == null) return;
     
@@ -167,9 +199,6 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
     if (mounted) {
       setState(() {
         _isPageOpen = false;
-        // Keep it revealed after coming back so user can easily open it again or swipe it away
-        _isHidden = false;
-        _xOffset = 0.0;
       });
     }
   }
@@ -187,54 +216,104 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
 
     if (_isPageOpen) return const SizedBox.shrink();
 
-    return AnimatedPositioned(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-      bottom: 60,
-      right: -_xOffset + 16,
-      child: SafeArea(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (_isHidden && !_hasInteracted)
-              const _AnimatedSwipeHint(),
-            const SizedBox(width: 8),
-            GestureDetector(
-              onPanUpdate: (details) {
-                if (_isHidden) {
-                  // If hidden, only allow horizontal pulling to reveal
-                  if (details.delta.dx.abs() > details.delta.dy.abs()) {
-                    setState(() {
-                      // Fix: dx is negative when swiping left, so we add it to decrease _xOffset
-                      _xOffset += details.delta.dx;
-                      if (_xOffset < 0) _xOffset = 0;
-                      if (_xOffset > 42) _xOffset = 42;
-                    });
-                  }
+    final size = MediaQuery.of(context).size;
+    final safePadding = MediaQuery.of(context).padding;
+    final maxX = size.width - 72; // 56 button + 16 padding
+    final maxY = size.height - safePadding.top - safePadding.bottom - 72;
+
+    // Calculate effective position with left/right side support
+    Widget positionedChild = SafeArea(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Swap the swipe hint direction if on left side
+          if (_isMinimized && !_hasInteracted)
+            const _AnimatedSwipeHint(),
+          const SizedBox(width: 8),
+          GestureDetector(
+            onPanStart: (_) {
+              setState(() {
+                _isDragging = true;
+                if (_isMinimized) {
+                  _isMinimized = false;
+                  _hasInteracted = true;
+                }
+              });
+            },
+            onPanUpdate: (details) {
+              setState(() {
+                // Update positions from current delta
+                if (_isOnLeftSide) {
+                  // On left side, X is distance from left
+                  _buttonPositionX += details.delta.dx;
                 } else {
-                  // If revealed, ANY significant movement in ANY direction closes it
-                  if (details.delta.dx.abs() > 2 || details.delta.dy.abs() > 2) {
-                    setState(() {
-                      _xOffset = 42;
-                      _isHidden = true;
-                    });
-                  }
+                  // On right side, X is distance from right
+                  _buttonPositionX -= details.delta.dx;
                 }
-              },
-              onPanEnd: (details) {
-                if (_isHidden) {
-                  setState(() {
-                    if (_xOffset > 20) {
-                      _xOffset = 42;
-                      _isHidden = true;
-                    } else {
-                      _xOffset = 0;
-                      _isHidden = false;
-                      _hasInteracted = true;
-                    }
-                  });
+                _buttonPositionY -= details.delta.dy;
+                
+                // Constrain to screen bounds (with gesture safe margins)
+                if (_buttonPositionX < _gestureSafeMargin) {
+                  _buttonPositionX = _gestureSafeMargin;
                 }
-              },
+                if (_buttonPositionX > maxX - _gestureSafeMargin) {
+                  _buttonPositionX = maxX - _gestureSafeMargin;
+                }
+                if (_buttonPositionY < 0) _buttonPositionY = 0;
+                if (_buttonPositionY > maxY) _buttonPositionY = maxY;
+              });
+            },
+            onPanEnd: (details) async {
+              // Determine which side is closer
+              bool newIsOnLeftSide = _isOnLeftSide;
+              double newX = _buttonPositionX;
+              bool shouldMinimize = false;
+              
+              if (_isOnLeftSide) {
+                // Check distance to left edge
+                if (_buttonPositionX < _snapThreshold + _gestureSafeMargin) {
+                  shouldMinimize = true;
+                  newX = _gestureSafeMargin;
+                }
+                // Check if should move to right side
+                if (_buttonPositionX > maxX / 2) {
+                  newIsOnLeftSide = false;
+                  newX = _buttonPositionX; // Keep current position
+                }
+              } else {
+                // Check distance to right edge
+                if (_buttonPositionX < _snapThreshold + _gestureSafeMargin) {
+                  shouldMinimize = true;
+                  newX = _gestureSafeMargin;
+                }
+                // Check if should move to left side
+                if (_buttonPositionX > maxX / 2) {
+                  newIsOnLeftSide = true;
+                  newX = maxX - _buttonPositionX; // Convert to left distance
+                }
+              }
+              
+              // Snap Y to top/bottom edges
+              final snapY = _calculateSnapY(size, safePadding);
+              
+              // Haptic feedback
+              if (snapY != _buttonPositionY || shouldMinimize || newIsOnLeftSide != _isOnLeftSide) {
+                HapticFeedback.lightImpact();
+              }
+              
+              setState(() {
+                _isOnLeftSide = newIsOnLeftSide;
+                _buttonPositionX = newX;
+                _buttonPositionY = snapY;
+                _isMinimized = shouldMinimize;
+                _isDragging = false;
+              });
+              
+              await _savePosition();
+            },
+            child: AnimatedScale(
+              scale: _isDragging ? 1.1 : 1.0,
+              duration: const Duration(milliseconds: 150),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
                 width: 56,
@@ -244,9 +323,9 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
                   gradient: AppColors.primaryGradient,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      color: Colors.black.withOpacity(_isDragging ? 0.4 : 0.2),
+                      blurRadius: _isDragging ? 15 : 10,
+                      offset: Offset(0, _isDragging ? 6 : 4),
                     ),
                   ],
                 ),
@@ -258,19 +337,26 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
                     child: Stack(
                       children: [
                         Align(
-                          alignment: _isHidden ? Alignment.centerLeft : Alignment.center,
+                          alignment: _isMinimized 
+                              ? (_isOnLeftSide ? Alignment.centerRight : Alignment.centerLeft) 
+                              : Alignment.center,
                           child: Padding(
-                            padding: EdgeInsets.only(left: _isHidden ? 6.0 : 0),
+                            padding: _isMinimized 
+                                ? EdgeInsets.only(right: _isOnLeftSide ? 6.0 : 0, left: _isOnLeftSide ? 0 : 6.0) 
+                                : EdgeInsets.zero,
                             child: Icon(
-                              _isHidden ? Icons.chevron_left : Icons.calculate_outlined,
+                              _isMinimized 
+                                  ? (_isOnLeftSide ? Icons.chevron_right : Icons.chevron_left) 
+                                  : Icons.calculate_outlined,
                               color: Colors.white,
-                              size: _isHidden ? 20 : 28,
+                              size: _isMinimized ? 20 : 28,
                             ),
                           ),
                         ),
-                        if (_isHidden)
+                        if (_isMinimized)
                           Positioned(
-                            right: 8,
+                            left: _isOnLeftSide ? null : 8,
+                            right: _isOnLeftSide ? 8 : null,
                             top: 0,
                             bottom: 0,
                             child: Center(
@@ -290,10 +376,41 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
+
+    // Position using either left or right depending on which side we're on
+    if (_isOnLeftSide) {
+      final effectiveLeft = _isMinimized ? -_minimizedOffset : _buttonPositionX;
+      return AnimatedPositioned(
+        duration: _isDragging ? Duration.zero : const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        bottom: _buttonPositionY,
+        left: effectiveLeft,
+        child: positionedChild,
+      );
+    } else {
+      final effectiveRight = _isMinimized ? -_minimizedOffset : _buttonPositionX;
+      return AnimatedPositioned(
+        duration: _isDragging ? Duration.zero : const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        bottom: _buttonPositionY,
+        right: effectiveRight,
+        child: positionedChild,
+      );
+    }
+  }
+
+  double _calculateSnapY(Size size, EdgeInsets safePadding) {
+    final maxY = size.height - safePadding.top - safePadding.bottom - 72;
+    final distanceTop = maxY - _buttonPositionY;
+    final distanceBottom = _buttonPositionY;
+    
+    if (distanceTop < _snapThreshold) return maxY;
+    if (distanceBottom < _snapThreshold) return 0.0;
+    return _buttonPositionY;
   }
 }
 
@@ -519,7 +636,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
         initialChildSize: 0.8,
         minChildSize: 0.5,
         maxChildSize: 0.95,
-        builder: (_, scrollController) => Container(
+        builder: (_, sheetScrollController) => Container(
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF131517) : Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -540,13 +657,73 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                       ),
                     ),
                     const SizedBox(height: 20),
-                    Text(
-                      "Select Instrument",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "Select Instrument",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
+                        ),
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final sort = ref.watch(_instrumentSortProvider);
+                            final sortLabels = {
+                              'alphabetical': 'A-Z',
+                              'price_high': 'Price High',
+                              'price_low': 'Price Low',
+                            };
+                            return PopupMenuButton<String>(
+                              onSelected: (value) {
+                                final notifier = ref.read(calculatorSearchProvider.notifier);
+                                final category = ref.read(_instrumentSearchCategoryProvider);
+                                final query = ref.read(_instrumentSearchQueryProvider);
+                                ref.read(_instrumentSortProvider.notifier).state = value;
+                                notifier.refresh(category, query, value);
+                              },
+                              itemBuilder: (context) => [
+                                const PopupMenuItem(
+                                  value: 'alphabetical',
+                                  child: Text('A-Z (Alphabetical)'),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'price_high',
+                                  child: Text('Price: High to Low'),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'price_low',
+                                  child: Text('Price: Low to High'),
+                                ),
+                              ],
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.white10 : Colors.grey[200],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.sort, color: isDark ? Colors.white70 : Colors.black87),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      sortLabels[sort] ?? 'Sort',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark ? Colors.white70 : Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -561,22 +738,23 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                     color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: StatefulBuilder(
-                    builder: (context, setLocalState) => TextField(
-                      style: TextStyle(color: isDark ? Colors.white : Colors.black),
-                      decoration: const InputDecoration(
-                        hintText: "Search instruments...",
-                        hintStyle: TextStyle(color: Colors.grey),
-                        border: InputBorder.none,
-                        icon: Icon(Icons.search, color: Colors.grey),
-                      ),
-                      onChanged: (val) {
-                        setLocalState(() {
-                          // Trigger local rebuild of the list
-                        });
-                        _debouncedSearch(val);
-                      },
+                  child: TextField(
+                    style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                    decoration: const InputDecoration(
+                      hintText: "Search instruments...",
+                      hintStyle: TextStyle(color: Colors.grey),
+                      border: InputBorder.none,
+                      icon: Icon(Icons.search, color: Colors.grey),
                     ),
+                    onChanged: (val) {
+                      Future.microtask(() {
+                        final notifier = ref.read(calculatorSearchProvider.notifier);
+                        final category = ref.read(_instrumentSearchCategoryProvider);
+                        final sort = ref.read(_instrumentSortProvider);
+                        ref.read(_instrumentSearchQueryProvider.notifier).state = val;
+                        notifier.refresh(category, val, sort);
+                      });
+                    },
                   ),
                 ),
               ),
@@ -589,7 +767,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  children: ["All", "Forex", "Crypto", "Stock", "ETF", "Commodities"].map((cat) {
+                  children: ["All", "Favorites", "Forex", "Crypto", "Stock", "ETF", "Commodities"].map((cat) {
                     return Consumer(builder: (context, ref, _) {
                       final selectedCategory = ref.watch(_instrumentSearchCategoryProvider);
                       final isSelected = selectedCategory == cat;
@@ -601,6 +779,9 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                           onSelected: (selected) {
                             if (selected) {
                               ref.read(_instrumentSearchCategoryProvider.notifier).state = cat;
+                              final query = ref.read(_instrumentSearchQueryProvider);
+                              final sort = ref.read(_instrumentSortProvider);
+                              ref.read(calculatorSearchProvider.notifier).refresh(cat, query, sort);
                             }
                           },
                           selectedColor: AppColors.primaryPurple,
@@ -618,34 +799,131 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
               
               // List
               Expanded(
-                child: _InstrumentSearchList(
-                  scrollController: scrollController,
-                  isDark: isDark,
-                  onSelected: (instrument) async {
-                    setState(() {
-                      _globalForexInstrument = instrument;
-                      _globalForexOpenPrice = instrument.price ?? 0.0;
-                      _forexOpenPriceController.text = _globalForexOpenPrice.toString();
-                      
-                      // Reset close price when instrument changes
-                      _globalForexClosePrice = 0.0;
-                      _forexClosePriceController.text = '';
-                    });
+                child: Consumer(
+                  builder: (context, ref, child) {
+                    final resultsAsync = ref.watch(calculatorSearchProvider);
+                    final notifier = ref.read(calculatorSearchProvider.notifier);
                     
-                    // Fetch full details to ensure we have the most accurate price
-                    try {
-                      final detail = await ref.read(marketRepositoryProvider).getInstrumentDetails(instrument.id);
-                      if (detail.price.current != null) {
-                        setState(() {
-                          _globalForexOpenPrice = detail.price.current!;
-                          _forexOpenPriceController.text = _globalForexOpenPrice.toString();
-                        });
-                      }
-                    } catch (e) {
-                      debugPrint('Error fetching accurate price: $e');
-                    }
-                    
-                    if (mounted) Navigator.pop(context);
+                    return resultsAsync.when(
+                      data: (instruments) {
+                        if (instruments.isEmpty) {
+                          return Center(
+                            child: Text(
+                              "No instruments found",
+                              style: TextStyle(color: isDark ? Colors.white38 : Colors.black38),
+                            ),
+                          );
+                        }
+                        return ListView.builder(
+                          controller: sheetScrollController,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          itemCount: instruments.length + ((notifier.hasNext && !notifier.isLoadingMore) ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == instruments.length) {
+                              if (!notifier.isLoadingMore) {
+                                Future.microtask(() {
+                                  notifier.loadMore();
+                                });
+                              }
+                              return const Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: Center(child: CircularProgressIndicator()),
+                              );
+                            }
+                            
+                            final instrument = instruments[index];
+                            
+                            return ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                              leading: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Center(
+                                  child: instrument.logoUrl != null
+                                      ? Image.network(
+                                          instrument.logoUrl!,
+                                          width: 24,
+                                          height: 24,
+                                          errorBuilder: (_, __, ___) => Icon(Icons.show_chart, color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24)),
+                                        )
+                                      : Icon(Icons.show_chart, color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24)),
+                                ),
+                              ),
+                              title: Text(
+                                instrument.symbol,
+                                style: TextStyle(
+                                  color: isDark ? Colors.white : Colors.black,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: Text(
+                                instrument.name,
+                                style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 12),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: Text(
+                                instrument.price != null && instrument.price! > 0
+                                    ? '\$${instrument.price!.toStringAsFixed(instrument.type.toLowerCase() == 'forex' ? 5 : 2)}'
+                                    : '--',
+                                style: const TextStyle(
+                                  color: AppColors.primaryPurple,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              onTap: () async {
+                                setState(() {
+                                  _globalForexInstrument = instrument;
+                                  _globalForexOpenPrice = instrument.price ?? 0.0;
+                                  _forexOpenPriceController.text = _globalForexOpenPrice.toString();
+                                  
+                                  // Reset close price when instrument changes
+                                  _globalForexClosePrice = 0.0;
+                                  _forexClosePriceController.text = '';
+                                });
+                                
+                                // Fetch full details to ensure we have the most accurate price
+                                try {
+                                  final detail = await ref.read(marketRepositoryProvider).getInstrumentDetails(instrument.id);
+                                  if (detail.price.current != null) {
+                                    setState(() {
+                                      _globalForexOpenPrice = detail.price.current!;
+                                      _forexOpenPriceController.text = _globalForexOpenPrice.toString();
+                                    });
+                                  }
+                                } catch (e) {
+                                  debugPrint('Error fetching accurate price: $e');
+                                }
+                                
+                                if (mounted) Navigator.pop(context);
+                              },
+                            );
+                          },
+                        );
+                      },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (e, stack) => Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Error loading instruments: $e'),
+                            TextButton(
+                              onPressed: () {
+                                final category = ref.read(_instrumentSearchCategoryProvider);
+                                final query = ref.read(_instrumentSearchQueryProvider);
+                                final sort = ref.read(_instrumentSortProvider);
+                                ref.read(calculatorSearchProvider.notifier).refresh(category, query, sort);
+                              },
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
                   },
                 ),
               ),
@@ -1634,168 +1912,316 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
   }
 }
 
-// Searchable List for the Picker
-final _instrumentSearchQueryProvider = StateProvider.autoDispose<String>((ref) => "");
-final _instrumentSearchCategoryProvider = StateProvider.autoDispose<String>((ref) => "All");
-
-final _instrumentSearchResultsProvider = FutureProvider.autoDispose<List<MarketInstrument>>((ref) async {
-  final query = ref.watch(_instrumentSearchQueryProvider);
-  final category = ref.watch(_instrumentSearchCategoryProvider);
-  final repo = ref.watch(marketRepositoryProvider);
+// --- Instrument Search Notifier ---
+class CalculatorSearchNotifier extends StateNotifier<AsyncValue<List<MarketInstrument>>> {
+  final MarketRepository _repository;
+  final Ref _ref;
   
-  List<MarketInstrument> instruments;
+  int _currentPage = 1;
+  bool _hasNext = true;
+  bool _isLoadingMore = false;
+  List<MarketInstrument> _instruments = [];
+  ProviderSubscription? _livePricesSubscription;
+  ProviderSubscription? _watchlistSubscription;
+  String _lastCategory = "All";
+  String _lastQuery = "";
+  String _lastSort = "alphabetical";
   
-  // Use correct API type mapping for the backend
-  String? apiType;
-  if (category != "All") {
-    apiType = category.toLowerCase();
-    if (apiType == 'stock') apiType = 'stocks';
-  }
+  // Expose hasNext and isLoadingMore as getters
+  bool get hasNext => _hasNext;
+  bool get isLoadingMore => _isLoadingMore;
 
-  if (query.isEmpty) {
-    if (apiType != null) {
-      try {
-        instruments = await repo.getTrendingInstruments(type: apiType);
-      } catch (e) {
-        debugPrint('Fallback to market overview for $apiType due to: $e');
-        try {
-          final overview = await repo.getMarketOverview(apiType);
-          instruments = overview.instruments;
-        } catch (e2) {
-          instruments = [];
+  CalculatorSearchNotifier(this._repository, this._ref) : super(const AsyncValue.loading()) {
+    _loadInstruments("All", "", "alphabetical");
+    
+    // Subscribe to watchlistProvider to reload favorites when it changes!
+    _watchlistSubscription = _ref.listen<WatchlistState>(
+      watchlistProvider,
+      (previous, next) {
+        if (_lastCategory == "Favorites" && !next.isLoading) {
+          _loadInstruments(_lastCategory, _lastQuery, _lastSort);
         }
-      }
-    } else {
-      instruments = await repo.getTrendingInstruments();
-    }
-  } else {
-    // Search endpoint does not support asset class filtering directly, so we filter locally
-    instruments = await repo.searchInstruments(query);
-    
-    if (category != "All") {
-      instruments = instruments.where((inst) {
-        final type = inst.type.toLowerCase();
-        final c = category.toLowerCase();
-        if (c == 'stock' && (type == 'stock' || type == 'stocks' || type == 'equity')) return true;
-        if (c == 'crypto' && (type == 'crypto' || type == 'cryptocurrency')) return true;
-        if (c == 'forex' && (type == 'forex' || type == 'currency' || type == 'fx')) return true;
-        if (c == 'etf' && (type == 'etf' || type == 'etfs')) return true;
-        if (c == 'commodities' && (type == 'commodity' || type == 'commodities')) return true;
-        return type == c;
-      }).toList();
-    }
+      },
+      fireImmediately: false,
+    );
   }
-
-  // Proactively fetch full details for any instrument missing a price (like CLSK in search)
-  // to ensure the list shows ACTUAL values from the start.
-  final results = await Future.wait(instruments.map((inst) async {
-    // If we already have a valid non-zero price, keep it
-    if (inst.price != null && inst.price! > 0.0) return inst;
-    
-    try {
-      // Use a shorter timeout or be more selective if needed, but here we want accuracy.
-      // We use the repository to get full details which includes the real-time price.
-      final detail = await repo.getInstrumentDetails(inst.id);
-      
-      // Map the detail price back to the instrument object for the UI list
-      if (detail.price.current != null && detail.price.current! > 0.0) {
-        return inst.copyWith(price: detail.price.current);
-      }
-      return inst;
-    } catch (e) {
-      debugPrint('Error fetching price for ${inst.symbol} during search: $e');
-      return inst;
-    }
-  }));
-
-  return results;
-});
-
-class _InstrumentSearchList extends ConsumerWidget {
-  final ScrollController scrollController;
-  final bool isDark;
-  final Function(MarketInstrument) onSelected;
-
-  const _InstrumentSearchList({
-    required this.scrollController,
-    required this.isDark,
-    required this.onSelected,
-  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final resultsAsync = ref.watch(_instrumentSearchResultsProvider);
+  void dispose() {
+    _livePricesSubscription?.close();
+    _watchlistSubscription?.close();
+    super.dispose();
+  }
 
-    return resultsAsync.when(
-      data: (instruments) {
-        if (instruments.isEmpty) {
-          return Center(
-            child: Text(
-              "No instruments found",
-              style: TextStyle(color: isDark ? Colors.white38 : Colors.black38),
-            ),
+  Future<void> _loadInstruments(String category, String query, String sort) async {
+    _lastCategory = category;
+    _lastQuery = query;
+    _lastSort = sort;
+    _currentPage = 1;
+    // No pagination for Favorites or All category
+    _hasNext = category != "All" && category != "Favorites";
+    _instruments = [];
+    state = const AsyncValue.loading();
+
+    try {
+      if (category == "Favorites") {
+        // Load favorites from watchlist
+        final watchlistState = _ref.read(watchlistProvider);
+        
+        // If watchlist is still loading, keep loading state until it's done
+        if (watchlistState.isLoading) {
+          // Wait a little and retry
+          await Future.delayed(const Duration(milliseconds: 300));
+          // Re-call load instruments now that watchlist might be loaded
+          return _loadInstruments(category, query, sort);
+        }
+        
+        _instruments = watchlistState.selectedWatchlist?.instruments ?? [];
+        
+        // Apply search filter
+        if (query.isNotEmpty) {
+          final lowerQuery = query.toLowerCase();
+          _instruments = _instruments.where((inst) {
+            final symbol = inst.symbol.toLowerCase();
+            final name = inst.name.toLowerCase();
+            return symbol.contains(lowerQuery) || name.contains(lowerQuery);
+          }).toList();
+        }
+      } else {
+        // Load from trending or search
+        String? apiType = category == "All" ? null : category.toLowerCase();
+        if (apiType == 'stock') apiType = 'stocks';
+
+        if (query.isEmpty) {
+          if (apiType != null) {
+            try {
+              _instruments = await _repository.getTrendingInstruments(type: apiType);
+              _hasNext = false; // No pagination for trending
+            } catch (e) {
+              debugPrint('Fallback to market overview for $apiType due to: $e');
+              try {
+                final overview = await _repository.getMarketOverview(apiType);
+                _instruments = overview.instruments;
+                _hasNext = overview.meta.hasNext; // Enable pagination for market overview!
+              } catch (e2) {
+                _instruments = [];
+                _hasNext = false;
+              }
+            }
+          } else {
+            // All category: combine trending instruments from all types!
+            final futures = [
+              _repository.getTrendingInstruments(type: 'stocks'),
+              _repository.getTrendingInstruments(type: 'crypto'),
+              _repository.getTrendingInstruments(type: 'forex'),
+              _repository.getTrendingInstruments(type: 'etf'),
+              _repository.getTrendingInstruments(type: 'commodities'),
+            ];
+            final results = await Future.wait(futures);
+            _instruments = results.expand((x) => x).toList();
+            
+            // Remove duplicates by instrument ID
+            final seenIds = <String>{};
+            _instruments = _instruments.where((instrument) {
+              if (seenIds.contains(instrument.id)) return false;
+              seenIds.add(instrument.id);
+              return true;
+            }).toList();
+          }
+        } else {
+          // If there's a search query, use search endpoint
+          _instruments = await _repository.searchInstruments(query);
+          
+          // Apply category filter if needed
+          if (category != "All") {
+            _instruments = _instruments.where((inst) {
+              final type = inst.type.toLowerCase();
+              final cat = category.toLowerCase();
+              if (cat == 'stock' && (type == 'stock' || type == 'stocks' || type == 'equity')) return true;
+              if (cat == 'crypto' && (type == 'crypto' || type == 'cryptocurrency')) return true;
+              if (cat == 'forex' && (type == 'forex' || type == 'currency' || type == 'fx')) return true;
+              if (cat == 'etf' && (type == 'etf' || type == 'etfs')) return true;
+              if (cat == 'commodities' && (type == 'commodity' || type == 'commodities')) return true;
+              return type == cat;
+            }).toList();
+          }
+        }
+      }
+
+      // First, set visible instruments so SSE stream starts updating prices!
+      if (_instruments.isNotEmpty) {
+        _ref.read(visibleInstrumentsProvider.notifier).state = _instruments.map((inst) => inst.id).toList();
+      }
+
+      // Check globalLivePricesProvider for cached prices first, then fetch details!
+      final cachedPrices = _ref.read(globalLivePricesProvider);
+      _instruments = await Future.wait(_instruments.map((inst) async {
+        final cleanId = inst.id.contains(':') ? inst.id.split(':')[1] : inst.id;
+        
+        // Check if we have a cached price!
+        if (cachedPrices[cleanId] != null) {
+          final cached = cachedPrices[cleanId]!;
+          return inst.copyWith(
+            price: cached.price,
+            change: cached.change,
+            changePercent: cached.changePercent,
           );
         }
-        return ListView.builder(
-          controller: scrollController,
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          itemCount: instruments.length,
-          itemBuilder: (context, index) {
-            final instrument = instruments[index];
-            return ListTile(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-              leading: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Center(
-                  child: instrument.logoUrl != null
-                      ? Image.network(
-                          instrument.logoUrl!,
-                          width: 24,
-                          height: 24,
-                          errorBuilder: (_, __, ___) => Icon(Icons.show_chart, color: isDark ? Colors.white24 : Colors.black26),
-                        )
-                      : Icon(Icons.show_chart, color: isDark ? Colors.white24 : Colors.black26),
-                ),
-              ),
-              title: Text(
-                instrument.symbol,
-                style: TextStyle(
-                  color: isDark ? Colors.white : Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              subtitle: Text(
-                instrument.name,
-                style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 12),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              trailing: Text(
-                instrument.price != null
-                    ? "\$${instrument.price!.toStringAsFixed(instrument.type.toLowerCase() == 'forex' ? 5 : 2)}"
-                    : "---",
-                style: const TextStyle(
-                  color: AppColors.primaryPurple,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              onTap: () => onSelected(instrument),
+        
+        // If we have a price from the API, keep it!
+        if (inst.price != null && inst.price! > 0.0) return inst;
+        
+        // Otherwise, fetch details!
+        try {
+          final detail = await _repository.getInstrumentDetails(inst.id);
+          if (detail.price.current != null && detail.price.current! > 0.0) {
+            return inst.copyWith(
+              price: detail.price.current,
+              change: detail.price.change,
+              changePercent: detail.price.changePercent,
             );
-          },
-        );
+          }
+          return inst;
+        } catch (e) {
+          debugPrint('Error fetching price for ${inst.symbol} during initial load: $e');
+          return inst;
+        }
+      }));
+
+      // Apply sorting
+      _applySorting(sort);
+      
+      state = AsyncValue.data(List.of(_instruments));
+      _updateLivePricesSubscription();
+    } catch (e, stack) {
+      debugPrint('Error loading instruments: $e');
+      state = AsyncValue.error(e, stack);
+    }
+  }
+
+  Future<void> loadMore() async {
+    // Load more only for market overview endpoints, not for trending or search
+    if (_isLoadingMore || !_hasNext || _lastCategory == "Favorites" || _lastQuery.isNotEmpty || _lastCategory == "All") return;
+    
+    _isLoadingMore = true;
+    try {
+      String? apiType = _lastCategory == "All" ? null : _lastCategory.toLowerCase();
+      if (apiType == 'stock') apiType = 'stocks';
+      
+      // Only try to load more if we actually have pageable data
+      if (apiType == null) return;
+      
+      final response = await _repository.getMarketOverview(
+        apiType,
+        search: _lastQuery.isNotEmpty ? _lastQuery : null,
+        page: _currentPage + 1,
+        limit: 50,
+      );
+      
+      _currentPage++;
+      _hasNext = response.meta.hasNext;
+      
+      // Fetch prices for new instruments
+      final newInstruments = await Future.wait(response.instruments.map((inst) async {
+        if (inst.price != null && inst.price! > 0.0) return inst;
+        try {
+          final detail = await _repository.getInstrumentDetails(inst.id);
+          if (detail.price.current != null && detail.price.current! > 0.0) {
+            return inst.copyWith(price: detail.price.current);
+          }
+          return inst;
+        } catch (e) {
+          debugPrint('Error fetching price for ${inst.symbol} during load more: $e');
+          return inst;
+        }
+      }));
+      
+      _instruments.addAll(newInstruments);
+      
+      // Re-apply sorting after adding new instruments
+      _applySorting(_lastSort);
+      
+      state = AsyncValue.data(List.of(_instruments));
+      _updateLivePricesSubscription();
+    } catch (e) {
+      debugPrint('Error loading more instruments: $e');
+    } finally {
+      _isLoadingMore = false;
+    }
+  }
+
+  void _applySorting(String sortBy) {
+    switch (sortBy) {
+      case 'price_high':
+        _instruments.sort((a, b) {
+          final priceA = a.price ?? 0.0;
+          final priceB = b.price ?? 0.0;
+          return priceB.compareTo(priceA);
+        });
+        break;
+      case 'price_low':
+        _instruments.sort((a, b) {
+          final priceA = a.price ?? 0.0;
+          final priceB = b.price ?? 0.0;
+          return priceA.compareTo(priceB);
+        });
+        break;
+      case 'alphabetical':
+      default:
+        _instruments.sort((a, b) {
+          return a.symbol.toLowerCase().compareTo(b.symbol.toLowerCase());
+        });
+        break;
+    }
+  }
+
+  void refresh(String category, String query, String sort) {
+    _loadInstruments(category, query, sort);
+  }
+
+  void _updateLivePricesSubscription() {
+    _livePricesSubscription?.close();
+    _livePricesSubscription = null;
+
+    _livePricesSubscription = _ref.listen<Map<String, LivePriceUpdate>>(
+      globalLivePricesProvider,
+      (previous, next) {
+        bool updated = false;
+        _instruments = _instruments.map((instrument) {
+          final cleanInstId = instrument.id.contains(':') ? instrument.id.split(':')[1] : instrument.id;
+          final update = next[cleanInstId];
+          if (update != null) {
+            if (update.price != instrument.price ||
+                update.change != instrument.change ||
+                update.changePercent != instrument.changePercent) {
+              updated = true;
+              return instrument.copyWith(
+                price: update.price,
+                change: update.change,
+                changePercent: update.changePercent,
+              );
+            }
+          }
+          return instrument;
+        }).toList();
+
+        if (updated) {
+          state = AsyncValue.data(List.of(_instruments));
+        }
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (err, stack) => Center(
-        child: Text(
-          "Error loading instruments",
-          style: TextStyle(color: isDark ? Colors.redAccent : Colors.red),
-        ),
-      ),
+      fireImmediately: true,
     );
   }
 }
+
+final calculatorSearchProvider = StateNotifierProvider.autoDispose<CalculatorSearchNotifier, AsyncValue<List<MarketInstrument>>>((ref) {
+  final repository = ref.watch(marketRepositoryProvider);
+  return CalculatorSearchNotifier(repository, ref);
+});
+
+// --- End Instrument Search Notifier ---
+
+// Searchable List for the Picker
+final _instrumentSearchQueryProvider = StateProvider.autoDispose<String>((ref) => "");
+final _instrumentSearchCategoryProvider = StateProvider.autoDispose<String>((ref) => "All");
+final _instrumentSortProvider = StateProvider.autoDispose<String>((ref) => "alphabetical"); // options: alphabetical, price_high, price_low

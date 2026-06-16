@@ -17,7 +17,7 @@ class NewsRepository {
   Future<void> cacheFavorites(List<NewsArticle> articles) => _cacheService.cacheFavorites(articles);
 
   // THIS NAME MUST MATCH THE CUBIT CALL
-  Future<List<NewsArticle>> fetchNewsFeed({int page = 1, int limit = 20, String? category}) async {
+  Future<List<NewsArticle>> fetchNewsFeed({int page = 1, int limit = 20, String? category, String? country, String? region}) async {
     try {
       final queryParameters = <String, dynamic>{
         'page': page,
@@ -33,6 +33,17 @@ class NewsRepository {
           queryParameters['category'] = apiCategory;
         }
       }
+
+      if (country != null && country.isNotEmpty) {
+        queryParameters['country'] = country;
+      }
+
+      if (region != null && region.isNotEmpty) {
+        queryParameters['region'] = region;
+      }
+      
+      print('DEBUG: fetchNewsFeed queryParameters: $queryParameters');
+      print('DEBUG: fetchNewsFeed endpoint: $_endpoint');
 
       final response = await _apiClient.dio.get(_endpoint, queryParameters: queryParameters);
 

@@ -182,10 +182,17 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
 
   late StateController<bool> _detailsPageActiveController;
 
+  void _handleTabChange() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 8, vsync: this);
+    _tabController.addListener(_handleTabChange);
     _detailsPageActiveController = ref.read(isDetailsPageActiveProvider.notifier);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _detailsPageActiveController.state = true;
@@ -198,6 +205,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
     Future.microtask(() {
       _detailsPageActiveController.state = false;
     });
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
   }
@@ -214,7 +222,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
 
     return OrientationBuilder(
       builder: (context, orientation) {
-        if (orientation == Orientation.landscape) {
+        if (orientation == Orientation.landscape && _tabController.index == 7) {
           return _buildLandscapeUI(detailAsync);
         }
 
@@ -357,32 +365,53 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   Widget _buildContent(MarketInstrumentDetail detail) {
     // Preload news provider immediately to ensure the request starts right away
     ref.watch(instrumentNewsProvider(_getNewsProviderKey(detail)));
-    return Column(
-      children: [
-        _buildHeader(detail),
-        const SizedBox(height: 20),
-        _buildTabBar(),
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 700;
-              return TabBarView(
-                controller: _tabController,
-                children: [
-                   _buildOverviewTab(detail, isWide: isWide),
-                  _buildTechnicalTab(detail),
-                  _buildNewsTab(detail),
-                  _buildAnalysisTab(detail),
-                  _buildHistoryDataTab(detail),
-                  _buildContractsTab(detail),
-                  _buildCommentsTab(detail),
-                  _buildChartTab(detail),
-                ],
-              );
-            }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth > 700;
+        return NestedScrollView(
+          controller: _scrollController,
+          // When the Chart tab is active, disable outer scroll so WebView gets all gestures
+          physics: _tabController.index == 7
+              ? const NeverScrollableScrollPhysics()
+              : null,
+          headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+            return <Widget>[
+              SliverToBoxAdapter(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeader(detail),
+                    const SizedBox(height: 20),
+                  ],
+                ),
+              ),
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _SliverTabBarDelegate(
+                  _buildTabBar(),
+                ),
+              ),
+            ];
+          },
+          body: TabBarView(
+            controller: _tabController,
+            // Disable horizontal swipe on chart tab to avoid conflicts with chart interaction
+            physics: _tabController.index == 7
+                ? const NeverScrollableScrollPhysics()
+                : null,
+            children: [
+              _buildOverviewTab(detail, isWide: isWide),
+              _buildTechnicalTab(detail),
+              _buildNewsTab(detail),
+              _buildAnalysisTab(detail),
+              _buildHistoryDataTab(detail),
+              _buildContractsTab(detail),
+              _buildCommentsTab(detail),
+              _buildChartTab(detail),
+            ],
           ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -502,7 +531,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                         const SizedBox(width: 6),
                         Text(
                           detail.price.lastUpdatedAt != null 
-                            ? DateFormat('HH : mm : ss').format(DateTime.parse(detail.price.lastUpdatedAt!))
+                            ? DateFormat('HH : mm : ss').format(DateTime.parse(detail.price.lastUpdatedAt!).toLocal())
                             : DateFormat('HH : mm : ss').format(DateTime.now()), 
                           style: TextStyle(color: _textSecondary, fontSize: 13),
                         ),
@@ -916,24 +945,25 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
               );
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFF6B5AE0),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Image.asset('assets/trade_logo.png', width: 16, height: 16, errorBuilder: (_, __, ___) => const Icon(Icons.psychology, color: Colors.purple, size: 16)),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text('Financial Advisor Analysis', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-                ],
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Image.asset(
+                  'assets/trade_logo3.png', 
+                  width: 24, 
+                  height: 24, 
+                  cacheWidth: 84, 
+                  cacheHeight: 84,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.psychology, color: Colors.purple, size: 28),
+                ),
               ),
             ),
           ),
@@ -3610,4 +3640,28 @@ class _TrianglePainter extends CustomPainter {
   bool shouldRepaint(covariant _TrianglePainter oldDelegate) => oldDelegate.color != color;
 }
 
+class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+
+  _SliverTabBarDelegate(this.child);
+
+  @override
+  double get minExtent => 80.0;
+
+  @override
+  double get maxExtent => 80.0;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: child,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_SliverTabBarDelegate oldDelegate) {
+    return oldDelegate.child != child;
+  }
+}
 

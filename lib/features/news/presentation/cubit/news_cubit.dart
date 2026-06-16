@@ -8,10 +8,16 @@ class NewsCubit extends Cubit<NewsState> {
   NewsCubit({required this.repository}) : super(NewsInitial());
 
   // Fetch initial news feed
-  Future<void> fetchNewsFeed({int limit = 10, String? category}) async {
+  Future<void> fetchNewsFeed({int limit = 10, String? category, String? country, String? region}) async {
     try {
       emit(NewsLoading());
-      final articles = await repository.fetchNewsFeed(page: 1, limit: limit, category: category);
+      final articles = await repository.fetchNewsFeed(
+        page: 1,
+        limit: limit,
+        category: category,
+        country: country,
+        region: region,
+      );
       
       // If we got fewer articles than requested, we assume there's no more
       final hasMore = articles.length >= limit;
@@ -28,7 +34,7 @@ class NewsCubit extends Cubit<NewsState> {
   }
 
   // Load more news for pagination
-  Future<void> loadMoreNews({int limit = 10, String? category}) async {
+  Future<void> loadMoreNews({int limit = 10, String? category, String? country, String? region}) async {
     if (state is! NewsLoaded) return;
     
     final currentState = state as NewsLoaded;
@@ -42,6 +48,8 @@ class NewsCubit extends Cubit<NewsState> {
         page: nextPage,
         limit: limit,
         category: category,
+        country: country,
+        region: region,
       );
       
       final hasMore = newArticles.length >= limit;

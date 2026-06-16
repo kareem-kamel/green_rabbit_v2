@@ -75,6 +75,10 @@ class MarketOverviewNotifier extends StateNotifier<AsyncValue<List<MarketInstrum
       _hasNext = response.meta.hasNext;
       _instruments = response.instruments;
 
+      // Update overview metadata providers
+      _ref.read(marketOverviewLastUpdatedProvider(_type).notifier).state = response.lastUpdatedAt;
+      _ref.read(marketOverviewStatusProvider(_type).notifier).state = response.marketStatus;
+
       state = AsyncValue.data(_instruments);
       _updateLivePricesSubscription();
     } catch (e, stack) {
@@ -159,6 +163,10 @@ class MarketOverviewNotifier extends StateNotifier<AsyncValue<List<MarketInstrum
       
       _currentPage = nextPage;
       _hasNext = response.meta.hasNext;
+
+      // Update overview metadata providers
+      _ref.read(marketOverviewLastUpdatedProvider(_type).notifier).state = response.lastUpdatedAt;
+      _ref.read(marketOverviewStatusProvider(_type).notifier).state = response.marketStatus;
       
       final newInstruments = response.instruments;
       _instruments.addAll(newInstruments);
@@ -205,6 +213,9 @@ class MarketOverviewNotifier extends StateNotifier<AsyncValue<List<MarketInstrum
     );
   }
 }
+
+final marketOverviewLastUpdatedProvider = StateProvider.family<String?, String>((ref, type) => null);
+final marketOverviewStatusProvider = StateProvider.family<String?, String>((ref, type) => null);
 
 final marketOverviewProvider = StateNotifierProvider.autoDispose.family<MarketOverviewNotifier, AsyncValue<List<MarketInstrument>>, String>((ref, type) {
   final repository = ref.watch(marketRepositoryProvider);

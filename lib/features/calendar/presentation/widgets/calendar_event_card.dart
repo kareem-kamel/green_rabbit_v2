@@ -164,28 +164,18 @@ class CalendarEventCard extends StatelessWidget {
                       const SizedBox(width: 8),
                     ],
                     // Country Flag
-                    if (event.country != null && event.country!.isNotEmpty)
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(2),
-                        child: SafeCountryFlag(
-                          country: event.country!,
-                          isoCode: event.isoCountryCode,
-                          width: 16,
-                          height: 11,
-                        ),
-                      )
-                    else
-                      Container(
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: SafeCountryFlag(
+                        symbol: event.symbol,
+                        country: event.country,
+                        isoCode: event.isoCountryCode,
+                        exchange: event.exchange ?? event.instrument?.exchange,
+                        currency: event.currency,
                         width: 16,
                         height: 11,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(2),
-                          image: event.instrument?.logoUrl != null 
-                            ? DecorationImage(image: NetworkImage(event.instrument!.logoUrl!), fit: BoxFit.cover)
-                            : null,
-                          color: Colors.grey[800],
-                        ),
                       ),
+                    ),
                     if (currencyVal != null && currencyVal.isNotEmpty) ...[
                       const SizedBox(width: 6),
                       Text(
@@ -789,20 +779,21 @@ class CalendarEventCard extends StatelessWidget {
                   ),
                   Row(
                     children: [
-                      if (event.country != null && event.country!.isNotEmpty) ...[
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(2),
-                          child: SafeCountryFlag(
-                            country: event.country!,
-                            isoCode: event.isoCountryCode,
-                            width: 24,
-                            height: 16,
-                          ),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: SafeCountryFlag(
+                          symbol: event.symbol,
+                          country: event.country,
+                          isoCode: event.isoCountryCode,
+                          exchange: event.exchange ?? event.instrument?.exchange,
+                          currency: event.currency,
+                          width: 24,
+                          height: 16,
                         ),
-                        const SizedBox(width: 8),
-                      ],
+                      ),
+                      const SizedBox(width: 8),
                       Text(
-                        event.country ?? '',
+                        event.country ?? event.exchange ?? event.instrument?.exchange ?? '',
                         style: TextStyle(color: textSecondaryColor, fontSize: 14),
                       ),
                     ],
@@ -997,15 +988,21 @@ class CalendarEventCard extends StatelessWidget {
 }
 
 class SafeCountryFlag extends StatelessWidget {
-  final String country;
+  final String? symbol;
+  final String? country;
   final String? isoCode;
+  final String? exchange;
+  final String? currency;
   final double width;
   final double height;
 
   const SafeCountryFlag({
     super.key,
-    required this.country,
+    this.symbol,
+    this.country,
     this.isoCode,
+    this.exchange,
+    this.currency,
     required this.width,
     required this.height,
   });
@@ -1035,15 +1032,177 @@ class SafeCountryFlag extends StatelessWidget {
     'ANGOLA': 'AO',
     'EUROPEAN UNION': 'EU',
     'EUROPE': 'EU',
+    'TAIWAN': 'TW',
+    'MALAYSIA': 'MY',
+    'ITALY': 'IT',
+    'SPAIN': 'ES',
+    'NETHERLANDS': 'NL',
+    'BELGIUM': 'BE',
+    'SWITZERLAND': 'CH',
+    'SWEDEN': 'SE',
+    'NORWAY': 'NO',
+    'DENMARK': 'DK',
+    'FINLAND': 'FI',
+    'POLAND': 'PL',
+    'TURKEY': 'TR',
+    'RUSSIA': 'RU',
+    'SOUTH KOREA': 'KR',
+    'KOREA': 'KR',
+    'SINGAPORE': 'SG',
+    'HONG KONG': 'HK',
+    'SOUTH AFRICA': 'ZA',
+    'INDONESIA': 'ID',
+    'THAILAND': 'TH',
+    'ISRAEL': 'IL',
+    'NEW ZEALAND': 'NZ',
+    'AUSTRIA': 'AT',
+    'GREECE': 'GR',
+    'IRELAND': 'IE',
+    'PORTUGAL': 'PT',
+    'PHILIPPINES': 'PH',
+    'VIETNAM': 'VN',
+  };
+
+  static const Map<String, String> _currencyToCountryCode = {
+    'MYR': 'MY',
+    'TWD': 'TW',
+    'GBP': 'GB',
+    'GBp': 'GB',
+    'USD': 'US',
+    'CAD': 'CA',
+    'AUD': 'AU',
+    'JPY': 'JP',
+    'CNY': 'CN',
+    'INR': 'IN',
+    'HKD': 'HK',
+    'SGD': 'SG',
+    'ZAR': 'ZA',
+    'BRL': 'BR',
+    'KRW': 'KR',
+    'SAR': 'SA',
+    'AED': 'AE',
+    'SEK': 'SE',
+    'DKK': 'DK',
+    'NOK': 'NO',
+    'TRY': 'TR',
+    'CHF': 'CH',
+    'NZD': 'NZ',
+    'ILS': 'IL',
+    'PLN': 'PL',
+    'MXN': 'MX',
+    'EGP': 'EG',
+    'RUB': 'RU',
+    'EUR': 'EU',
+  };
+
+  static const Map<String, String> _exchangeToCountryCode = {
+    'MYX': 'MY',
+    'BURSA': 'MY',
+    'KLSE': 'MY',
+    'TWSE': 'TW',
+    'TWO': 'TW',
+    'TSEC': 'TW',
+    'TPEX': 'TW',
+    'MTA': 'IT',
+    'MIL': 'IT',
+    'BIT': 'IT',
+    'NYSE': 'US',
+    'NASDAQ': 'US',
+    'AMEX': 'US',
+    'BATS': 'US',
+    'OTC': 'US',
+    'LSE': 'GB',
+    'GPW': 'PL',
+    'WSE': 'PL',
+    'TSE': 'JP',
+    'TYO': 'JP',
+    'ASX': 'AU',
+    'TSX': 'CA',
+    'TSXV': 'CA',
+    'SEHK': 'HK',
+    'HKEX': 'HK',
+    'NSE': 'IN',
+    'BSE': 'IN',
+    'FWB': 'DE',
+    'XETR': 'DE',
+    'DB': 'DE',
+    'SGX': 'SG',
+    'JSE': 'ZA',
+    'B3': 'BR',
+    'SAO': 'BR',
+    'SSE': 'CN',
+    'SZSE': 'CN',
+    'KRX': 'KR',
+    'KOSDAQ': 'KR',
+    'KOSE': 'KR',
+    'TADAWUL': 'SA',
+    'DFM': 'AE',
+    'ADX': 'AE',
+    'OMXS': 'SE',
+    'STO': 'SE',
+    'OMXC': 'DK',
+    'CSE': 'DK',
+    'HEX': 'FI',
+    'HEL': 'FI',
+    'OSE': 'NO',
+    'OSL': 'NO',
+    'BME': 'ES',
+    'MAD': 'ES',
+    'ATHEX': 'GR',
+    'ASE': 'GR',
+    'BIST': 'TR',
+    'IDX': 'ID',
+    'SET': 'TH',
+    'SIX': 'CH',
+    'SWX': 'CH',
+    'VTX': 'CH',
+    'MOEX': 'RU',
+    'NZX': 'NZ',
+    'TASE': 'IL',
+    'ISE': 'IE',
+    'ISEQ': 'IE',
+    'ENX': 'FR',
+    'EPA': 'FR',
+    'AMS': 'NL',
+    'EBR': 'BE',
+    'ELI': 'PT',
   };
 
   @override
   Widget build(BuildContext context) {
-    final normalizedInput = country.trim().toUpperCase();
     String code = isoCode?.trim().toUpperCase() ?? '';
+    if (code == 'NULL') code = '';
+
+    String normalizedInput = country?.trim().toUpperCase() ?? '';
+    if (normalizedInput == 'NULL') normalizedInput = '';
 
     if (code.isEmpty || code.length < 2 || code.length > 3) {
-      code = _countryNameToCode[normalizedInput] ?? normalizedInput;
+      if (normalizedInput.isNotEmpty) {
+        code = _countryNameToCode[normalizedInput] ?? normalizedInput;
+      }
+    }
+
+    if (code.isEmpty || code.length < 2 || code.length > 3) {
+      final cleanExchange = exchange?.trim().toUpperCase() ?? '';
+      if (cleanExchange.isNotEmpty) {
+        code = _exchangeToCountryCode[cleanExchange] ?? '';
+      }
+    }
+
+    if (code.isEmpty || code.length < 2 || code.length > 3) {
+      final cleanCurrency = currency?.trim().toUpperCase() ?? '';
+      if (cleanCurrency.isNotEmpty) {
+        code = _currencyToCountryCode[cleanCurrency] ?? '';
+      }
+    }
+
+    if (code.isEmpty) {
+      debugPrint("SafeCountryFlag Error: Failed to resolve flag code for symbol '$symbol'. (country: $country, isoCode: $isoCode, exchange: $exchange, currency: $currency)");
+      return Container(
+        width: width,
+        height: height,
+        color: Colors.grey[800],
+      );
     }
 
     if (code == 'EU') {
@@ -1069,6 +1228,7 @@ class SafeCountryFlag extends StatelessWidget {
     }
 
     // Fallback: render clean placeholder box if invalid code
+    debugPrint("SafeCountryFlag Error: Invalid resolved flag code '$finalCode' for symbol '$symbol'. (country: $country, isoCode: $isoCode, exchange: $exchange, currency: $currency)");
     return Container(
       width: width,
       height: height,

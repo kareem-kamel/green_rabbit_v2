@@ -26,6 +26,8 @@ class NewsArticle {
   final int readTimeMinutes;
   final List<NewsArticle> relatedNews;
   final List<NewsArticle> analysisOpinions;
+  final String? country;
+  final String? region;
 
   NewsArticle({
     required this.id,
@@ -55,6 +57,8 @@ class NewsArticle {
     this.readTimeMinutes = 0,
     this.relatedNews = const [],
     this.analysisOpinions = const [],
+    this.country,
+    this.region,
   });
 
   // Keep these for backward compatibility if needed in UI
@@ -133,6 +137,8 @@ class NewsArticle {
       analysisOpinions: (json['analysis_opinions'] as List? ?? [])
           .map((a) => NewsArticle.fromJson(Map<String, dynamic>.from(a)))
           .toList(),
+      country: articleData['country']?.toString(),
+      region: articleData['region']?.toString(),
     );
   }
 
@@ -164,6 +170,8 @@ class NewsArticle {
     int? readTimeMinutes,
     List<NewsArticle>? relatedNews,
     List<NewsArticle>? analysisOpinions,
+    String? country,
+    String? region,
   }) {
     return NewsArticle(
       id: id ?? this.id,
@@ -193,6 +201,8 @@ class NewsArticle {
       readTimeMinutes: readTimeMinutes ?? this.readTimeMinutes,
       relatedNews: relatedNews ?? this.relatedNews,
       analysisOpinions: analysisOpinions ?? this.analysisOpinions,
+      country: country ?? this.country,
+      region: region ?? this.region,
     );
   }
 
@@ -227,6 +237,8 @@ class NewsArticle {
       'relevanceScore': relevanceScore,
       'tickers': tickers,
       'readTimeMinutes': readTimeMinutes,
+      'country': country,
+      'region': region,
     };
   }
 }

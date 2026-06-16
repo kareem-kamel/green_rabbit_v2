@@ -7,19 +7,13 @@ import '../cubit/profile_state.dart';
 import 'country_selection_screen.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:green_rabbit/features/auth/presentation/screens/login_screen.dart';
+import 'package:green_rabbit/core/models/country_model.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
 
   @override
   State<EditProfileScreen> createState() => _EditProfileScreenState();
-}
-
-class CountryModel {
-  final String code;
-  final String name;
-  final String flag;
-  CountryModel({required this.code, required this.name, required this.flag});
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
