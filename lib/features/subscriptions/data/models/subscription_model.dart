@@ -76,17 +76,33 @@ class SubscriptionModel {
   }
 
   factory SubscriptionModel.fromJson(Map<String, dynamic> json) {
+    // Check if the json contains a nested "subscription" field (like in the verify response)
+    final Map<String, dynamic> subJson = json.containsKey('subscription') && json['subscription'] is Map<String, dynamic>
+        ? json['subscription'] as Map<String, dynamic>
+        : json;
+
+    final planIdValue = subJson['planId'] ?? subJson['providerProductId'] ?? '';
+    final isPro = planIdValue.toString().toLowerCase().contains('pro') || 
+                  subJson['planName']?.toString().toLowerCase().contains('pro') == true;
+
     return SubscriptionModel(
-      id: json['id'] ?? '',
-      planId: json['planId'] ?? '',
-      planName: json['planName'] ?? '',
-      status: json['status'] ?? 'none',
-      currentPeriodStart: json['currentPeriodStart'] != null ? DateTime.parse(json['currentPeriodStart']) : null,
-      currentPeriodEnd: json['currentPeriodEnd'] != null ? DateTime.parse(json['currentPeriodEnd']) : null,
-      cancelAtPeriodEnd: json['cancelAtPeriodEnd'] ?? false,
-      features: List<String>.from(json['features'] ?? []),
-      paymentMethod: json['paymentMethod'] != null ? PaymentMethodModel.fromJson(json['paymentMethod']) : null,
-      isFullPro: json['isFullPro'] ?? false,
+      id: subJson['id'] ?? '',
+      planId: planIdValue,
+      planName: subJson['planName'] ?? (isPro ? 'Pro Plan' : 'Classic Plan'),
+      status: subJson['status'] ?? 'none',
+      currentPeriodStart: subJson['currentPeriodStart'] != null
+          ? DateTime.parse(subJson['currentPeriodStart'])
+          : (subJson['startsAt'] != null ? DateTime.parse(subJson['startsAt']) : null),
+      currentPeriodEnd: subJson['currentPeriodEnd'] != null
+          ? DateTime.parse(subJson['currentPeriodEnd'])
+          : (subJson['endsAt'] != null ? DateTime.parse(subJson['endsAt']) : null),
+      cancelAtPeriodEnd: subJson['cancelAtPeriodEnd'] ??
+          (subJson['autoRenew'] != null ? !(subJson['autoRenew'] as bool) : false),
+      features: List<String>.from(subJson['features'] ?? []),
+      paymentMethod: subJson['paymentMethod'] != null
+          ? PaymentMethodModel.fromJson(subJson['paymentMethod'])
+          : null,
+      isFullPro: subJson['isFullPro'] ?? isPro,
     );
   }
 

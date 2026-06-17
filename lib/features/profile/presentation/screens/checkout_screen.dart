@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -19,106 +21,203 @@ class CheckoutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isIOS = !kIsWeb && Platform.isIOS;
+
     return BlocListener<SubscriptionCubit, SubscriptionState>(
       listener: (context, state) {
         if (state is PurchaseSuccess) {
           SubscriptionSuccessDialog.show(context, subscription: state.subscription);
+        } else if (state is PurchaseRestored) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Purchases successfully restored!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else if (state is SubscriptionError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       },
       child: Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 20),
-          onPressed: () => Navigator.pop(context),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: Icon(
+              Icons.arrow_back_ios,
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+              size: 20,
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            'Checkout',
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          centerTitle: false,
         ),
-        title: Text(
-          'Checkout',
-          style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: false,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        body: Stack(
           children: [
-            const SizedBox(height: 10),
-            Text(
-              'Complete your purchase to unlock Pro features',
-              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87, fontSize: 16),
-            ),
-            const SizedBox(height: 24),
-
-            // Summary Card
-            _buildSummaryCard(context),
-            const SizedBox(height: 32),
-
-            // Quick Pay
-            Text(
-              'Quick pay',
-              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(child: _buildQuickPayButton(context, 'assets/apple_pay.png')),
-                const SizedBox(width: 16),
-                Expanded(child: _buildQuickPayButton(context, 'assets/google_pay.png')),
-              ],
-            ),
-            const SizedBox(height: 32),
-
-            // Divider
-            Row(
-              children: [
-                Expanded(child: Divider(color: Theme.of(context).dividerColor)),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    'Or pay with',
-                    style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.6) : Colors.black45, fontSize: 14),
+            SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 10),
+                  Text(
+                    'Complete your purchase to unlock Pro features',
+                    style: TextStyle(
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black87,
+                      fontSize: 16,
+                    ),
                   ),
-                ),
-                Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
-              ],
-            ),
-            const SizedBox(height: 32),
+                  const SizedBox(height: 24),
 
-            // Form
-            _buildTextField(context, 'Card holer name', 'First abd second name'),
-            const SizedBox(height: 24),
-            _buildTextField(context, 'Card number', 'xxxx-xxxx-xxxx-xxxx'),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(child: _buildTextField(context, 'Exp. Date', 'mm/yy')),
-                const SizedBox(width: 16),
-                Expanded(child: _buildTextField(context, 'CVV', 'xxx')),
-              ],
-            ),
-            const SizedBox(height: 40),
+                  // Summary Card
+                  _buildSummaryCard(context),
+                  const SizedBox(height: 32),
 
-            // Confirm Button
-            _buildConfirmButton(context),
-            const SizedBox(height: 32),
+                  if (isIOS) ...[
+                    // Apple IAP Specific Flow
+                    Text(
+                      'Payment method',
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    InkWell(
+                      onTap: () {
+                        context.read<SubscriptionCubit>().buyPlan(planId: planId);
+                      },
+                      borderRadius: BorderRadius.circular(28),
+                      child: _buildQuickPayButton(context, 'assets/apple_pay.png'),
+                    ),
+                    const SizedBox(height: 24),
+                    Center(
+                      child: TextButton(
+                        onPressed: () {
+                          context.read<SubscriptionCubit>().restorePurchases();
+                        },
+                        child: const Text(
+                          'Restore Purchases',
+                          style: TextStyle(
+                            color: AppColors.premiumGold,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    // Credit Card / Google Pay Flow (Android/Web)
+                    Text(
+                      'Quick pay',
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(child: _buildQuickPayButton(context, 'assets/apple_pay.png')),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildQuickPayButton(context, 'assets/google_pay.png')),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
 
-            // Footer
-            Center(
-              child: Text(
-                'Your payment information is encrypted and secure',
-                style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.4) : Colors.black38, fontSize: 13),
+                    // Divider
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: Theme.of(context).dividerColor)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text(
+                            'Or pay with',
+                            style: TextStyle(
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.white.withOpacity(0.6)
+                                  : Colors.black45,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: Colors.white.withOpacity(0.1))),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Card Payment Form
+                    _buildTextField(context, 'Card holder name', 'First and second name'),
+                    const SizedBox(height: 24),
+                    _buildTextField(context, 'Card number', 'xxxx-xxxx-xxxx-xxxx'),
+                    const SizedBox(height: 24),
+                    Row(
+                      children: [
+                        Expanded(child: _buildTextField(context, 'Exp. Date', 'mm/yy')),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildTextField(context, 'CVV', 'xxx')),
+                      ],
+                    ),
+                    const SizedBox(height: 40),
+
+                    // Confirm Button
+                    _buildConfirmButton(context),
+                  ],
+                  const SizedBox(height: 32),
+
+                  // Footer Security Text
+                  Center(
+                    child: Text(
+                      'Your payment information is encrypted and secure',
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white.withOpacity(0.4)
+                            : Colors.black38,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 48),
+                ],
               ),
             ),
-            const SizedBox(height: 48),
+            // Loading Overlay
+            BlocBuilder<SubscriptionCubit, SubscriptionState>(
+              builder: (context, state) {
+                if (state is SubscriptionLoading) {
+                  return Container(
+                    color: Colors.black45,
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.premiumGold,
+                      ),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
           ],
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildSummaryCard(BuildContext context) {
     return Container(
@@ -133,7 +232,10 @@ class CheckoutScreen extends StatelessWidget {
         children: [
           Text(
             'Summary',
-            style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 15),
+            style: TextStyle(
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+              fontSize: 15,
+            ),
           ),
           const SizedBox(height: 20),
           _buildSummaryRow(context, isYearly ? 'Pro yearly plan' : 'Pro monthly plan', '\$${amount.toStringAsFixed(2)}'),
@@ -145,10 +247,13 @@ class CheckoutScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-            Text(
-              'Total',
-              style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 18),
-            ),
+              Text(
+                'Total',
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                  fontSize: 18,
+                ),
+              ),
               Text(
                 '\$${amount.toStringAsFixed(2)}',
                 style: const TextStyle(color: AppColors.premiumGold, fontSize: 24, fontWeight: FontWeight.bold),
@@ -164,7 +269,13 @@ class CheckoutScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white60 : Colors.black54, fontSize: 14)),
+        Text(
+          label,
+          style: TextStyle(
+            color: Theme.of(context).brightness == Brightness.dark ? Colors.white60 : Colors.black54,
+            fontSize: 14,
+          ),
+        ),
         Text(
           value,
           style: TextStyle(
@@ -186,13 +297,20 @@ class CheckoutScreen extends StatelessWidget {
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
       alignment: Alignment.center,
-      child: assetPath.contains('apple') 
+      child: assetPath.contains('apple')
           ? Row(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(Icons.apple, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 28),
-                Text('Pay', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(
+                  'Pay with Apple',
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             )
           : Row(
@@ -205,7 +323,14 @@ class CheckoutScreen extends StatelessWidget {
                   size: 40,
                 ),
                 const SizedBox(width: 8),
-                Text('Pay', style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, fontSize: 20, fontWeight: FontWeight.bold)),
+                Text(
+                  'Pay',
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
     );

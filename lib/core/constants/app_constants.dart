@@ -97,6 +97,8 @@ class AppConstants {
   static const String subscriptionPayments = "subscriptions/payments";
   static String subscriptionSync(String ref) => "subscriptions/payments/$ref/sync";
   static String subscriptionConfirm(String ref) => "subscriptions/payments/$ref/confirm";
+  static const String verifyApplePurchase = "/verify";
+
 
   // Animation Durations
   static const Duration splashDelay = Duration(seconds: 3);

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../subscriptions/presentation/cubit/subscription_cubit.dart';
+import '../../../subscriptions/presentation/cubit/subscription_state.dart';
 import '../widgets/gradient_button.dart';
 
 import 'checkout_screen.dart';
@@ -26,12 +29,46 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
           icon: Icon(Icons.close, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 24),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              context.read<SubscriptionCubit>().restorePurchases();
+            },
+            child: const Text(
+              'Restore',
+              style: TextStyle(
+                color: AppColors.premiumGold,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final double horizontalPadding = constraints.maxWidth > 900 
-              ? (constraints.maxWidth - 800) / 2 
-              : 24.0;
+      body: BlocListener<SubscriptionCubit, SubscriptionState>(
+        listener: (context, state) {
+          if (state is PurchaseRestored) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Purchases successfully restored!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          } else if (state is SubscriptionError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        },
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final double horizontalPadding = constraints.maxWidth > 900 
+                ? (constraints.maxWidth - 800) / 2 
+                : 24.0;
 
           return SingleChildScrollView(
             child: Padding(
@@ -95,8 +132,9 @@ class _UpgradePlansScreenState extends State<UpgradePlansScreen> {
           );
         },
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildBillingToggle() {
     return Center(
