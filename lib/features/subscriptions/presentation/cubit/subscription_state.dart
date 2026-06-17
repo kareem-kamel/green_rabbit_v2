@@ -54,3 +54,12 @@ class SubscriptionError extends SubscriptionState {
   @override
   List<Object?> get props => [message];
 }
+
+class PurchaseRestored extends SubscriptionState {
+  final SubscriptionModel subscription;
+
+  const PurchaseRestored({required this.subscription});
+
+  @override
+  List<Object?> get props => [subscription];
+}

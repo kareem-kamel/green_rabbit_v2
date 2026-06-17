@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 import 'dart:math';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/api_client.dart';
@@ -14,6 +16,12 @@ class SubscriptionRepository {
   SubscriptionModel? _currentSubscription;
   final List<TransactionModel> _transactions = [];
   bool _hasUsedTrial = false;
+
+  StreamSubscription<List<PurchaseDetails>>? _iapSubscription;
+  final _subscriptionController = StreamController<SubscriptionModel>.broadcast();
+  Completer<SubscriptionModel>? _purchaseCompleter;
+
+  Stream<SubscriptionModel> get subscriptionStream => _subscriptionController.stream;
 
   SubscriptionRepository(this._apiClient);
 
@@ -211,8 +219,22 @@ class SubscriptionRepository {
   }
 
   Future<SubscriptionModel> buyPlan({String planId = 'plan_pro_yearly'}) async {
+    if (!kIsWeb && Platform.isIOS) {
+      _purchaseCompleter = Completer<SubscriptionModel>();
+      try {
+        await buyAppleProduct(planId);
+        return await _purchaseCompleter!.future;
+      } catch (e) {
+        print("Apple Purchase failed: $e");
+        rethrow;
+      } finally {
+        _purchaseCompleter = null;
+      }
+    }
+
     try {
       final idempotencyKey = _generateUUID();
+
       final response = await _apiClient.dio.post(
         AppConstants.subscriptionIntents,
         data: {
@@ -326,4 +348,124 @@ class SubscriptionRepository {
     await Future.delayed(const Duration(milliseconds: 500));
     _currentSubscription = SubscriptionModel.none();
   }
+
+  void initializeIAP() {
+    if (_iapSubscription != null || kIsWeb) return;
+    
+    _iapSubscription = InAppPurchase.instance.purchaseStream.listen(
+      _onPurchaseUpdated,
+      onError: (error) {
+        print("IAP Stream Error: $error");
+        if (_purchaseCompleter != null && !_purchaseCompleter!.isCompleted) {
+          _purchaseCompleter!.completeError(error);
+        }
+      },
+    );
+  }
+
+  void disposeIAP() {
+    _iapSubscription?.cancel();
+    _iapSubscription = null;
+  }
+
+  Future<void> _onPurchaseUpdated(List<PurchaseDetails> purchaseDetailsList) async {
+    for (final purchaseDetails in purchaseDetailsList) {
+      if (purchaseDetails.status == PurchaseStatus.pending) {
+        print("Purchase pending for ${purchaseDetails.productID}");
+      } else if (purchaseDetails.status == PurchaseStatus.error) {
+        print("Purchase error: ${purchaseDetails.error}");
+        if (_purchaseCompleter != null && !_purchaseCompleter!.isCompleted) {
+          _purchaseCompleter!.completeError(purchaseDetails.error ?? Exception("Purchase failed"));
+        }
+        if (purchaseDetails.pendingCompletePurchase) {
+          await InAppPurchase.instance.completePurchase(purchaseDetails);
+        }
+      } else if (purchaseDetails.status == PurchaseStatus.purchased ||
+                 purchaseDetails.status == PurchaseStatus.restored) {
+        final jws = purchaseDetails.verificationData.serverVerificationData;
+        if (jws.isNotEmpty) {
+          print("Successful purchase/restore for ${purchaseDetails.productID}. JWS Token: $jws. Sending to /verify...");
+          try {
+            final verifiedSub = await verifyApplePurchase(jws);
+            _subscriptionController.add(verifiedSub);
+            if (_purchaseCompleter != null && !_purchaseCompleter!.isCompleted) {
+              _purchaseCompleter!.complete(verifiedSub);
+            }
+          } catch (e) {
+            print("Server verification failed for ${purchaseDetails.productID}: $e");
+            if (_purchaseCompleter != null && !_purchaseCompleter!.isCompleted) {
+              _purchaseCompleter!.completeError(e);
+            }
+          }
+        } else {
+          print("Purchase completed/restored but JWS verification data is empty!");
+          if (_purchaseCompleter != null && !_purchaseCompleter!.isCompleted) {
+            _purchaseCompleter!.completeError(Exception("Purchase verification data is empty"));
+          }
+        }
+        
+        if (purchaseDetails.pendingCompletePurchase) {
+          await InAppPurchase.instance.completePurchase(purchaseDetails);
+        }
+      }
+    }
+  }
+
+  Future<void> buyAppleProduct(String planId) async {
+    final isAvailable = await InAppPurchase.instance.isAvailable();
+    if (!isAvailable) {
+      throw Exception("In-App Purchases are not available on this device.");
+    }
+    
+    final appleProductId = planToAppleProductId[planId] ?? planId;
+    print("Querying App Store product ID: $appleProductId");
+    
+    final response = await InAppPurchase.instance.queryProductDetails({appleProductId});
+    if (response.notFoundIDs.contains(appleProductId) || response.productDetails.isEmpty) {
+      throw Exception("Product $appleProductId not found in App Store Connect.");
+    }
+    
+    final productDetails = response.productDetails.first;
+    final purchaseParam = PurchaseParam(productDetails: productDetails);
+    
+    await InAppPurchase.instance.buyNonConsumable(purchaseParam: purchaseParam);
+  }
+
+  Future<SubscriptionModel> verifyApplePurchase(String signedTransaction) async {
+    try {
+      final response = await _apiClient.dio.post(
+        AppConstants.verifyApplePurchase,
+        data: {
+          'signedTransaction': signedTransaction,
+        },
+      );
+      
+      if (response.statusCode == 200 && response.data != null && response.data['success'] == true) {
+        final sub = SubscriptionModel.fromJson(response.data['data']);
+        _currentSubscription = sub;
+        return sub;
+      } else {
+        throw Exception("Server verification failed: ${response.statusMessage}");
+      }
+    } catch (e) {
+      print("Exception verifying purchase: $e");
+      rethrow;
+    }
+  }
+
+  Future<void> restorePurchases() async {
+    final isAvailable = await InAppPurchase.instance.isAvailable();
+    if (!isAvailable) {
+      throw Exception("In-App Purchases are not available on this device.");
+    }
+    print("Initiating restore purchases flow...");
+    await InAppPurchase.instance.restorePurchases();
+  }
+
+  static const Map<String, String> planToAppleProductId = {
+    'plan_pro_yearly': 'com.greenrabbit.pro.yearly',
+    'plan_pro_monthly': 'com.greenrabbit.pro.monthly',
+    'plan_classic_yearly': 'com.greenrabbit.classic.yearly',
+    'plan_classic_monthly': 'com.greenrabbit.classic.monthly',
+  };
 }
