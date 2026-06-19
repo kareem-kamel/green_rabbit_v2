@@ -219,13 +219,17 @@ class SubscriptionRepository {
   }
 
   Future<SubscriptionModel> buyPlan({String planId = 'plan_pro_yearly'}) async {
-    if (!kIsWeb && Platform.isIOS) {
+    if (!kIsWeb && (Platform.isIOS || Platform.isAndroid)) {
       _purchaseCompleter = Completer<SubscriptionModel>();
       try {
-        await buyAppleProduct(planId);
+        if (Platform.isIOS) {
+          await buyAppleProduct(planId);
+        } else {
+          await buyGoogleProduct(planId);
+        }
         return await _purchaseCompleter!.future;
       } catch (e) {
-        print("Apple Purchase failed: $e");
+        print("Purchase failed: $e");
         rethrow;
       } finally {
         _purchaseCompleter = null;
@@ -382,11 +386,24 @@ class SubscriptionRepository {
         }
       } else if (purchaseDetails.status == PurchaseStatus.purchased ||
                  purchaseDetails.status == PurchaseStatus.restored) {
-        final jws = purchaseDetails.verificationData.serverVerificationData;
-        if (jws.isNotEmpty) {
-          print("Successful purchase/restore for ${purchaseDetails.productID}. JWS Token: $jws. Sending to /verify...");
+        final token = purchaseDetails.verificationData.serverVerificationData;
+        if (token.isNotEmpty) {
+          print("Successful purchase/restore for ${purchaseDetails.productID}. Token: $token. Sending to verify...");
           try {
-            final verifiedSub = await verifyApplePurchase(jws);
+            final SubscriptionModel verifiedSub;
+            if (Platform.isIOS) {
+              verifiedSub = await verifyApplePurchase(token);
+            } else if (Platform.isAndroid) {
+              final isSub = _isSubscriptionProduct(purchaseDetails.productID);
+              verifiedSub = await verifyGooglePurchase(
+                purchaseToken: token,
+                productId: purchaseDetails.productID,
+                isSubscription: isSub,
+              );
+            } else {
+              throw Exception("Unsupported platform for IAP verification");
+            }
+            
             _subscriptionController.add(verifiedSub);
             if (_purchaseCompleter != null && !_purchaseCompleter!.isCompleted) {
               _purchaseCompleter!.complete(verifiedSub);
@@ -398,9 +415,9 @@ class SubscriptionRepository {
             }
           }
         } else {
-          print("Purchase completed/restored but JWS verification data is empty!");
+          print("Purchase completed/restored but verification token is empty!");
           if (_purchaseCompleter != null && !_purchaseCompleter!.isCompleted) {
-            _purchaseCompleter!.completeError(Exception("Purchase verification data is empty"));
+            _purchaseCompleter!.completeError(Exception("Purchase verification token is empty"));
           }
         }
         
@@ -431,6 +448,26 @@ class SubscriptionRepository {
     await InAppPurchase.instance.buyNonConsumable(purchaseParam: purchaseParam);
   }
 
+  Future<void> buyGoogleProduct(String planId) async {
+    final isAvailable = await InAppPurchase.instance.isAvailable();
+    if (!isAvailable) {
+      throw Exception("In-App Purchases are not available on this device.");
+    }
+    
+    final googleProductId = planToGoogleProductId[planId] ?? planId;
+    print("Querying Google Play product ID: $googleProductId");
+    
+    final response = await InAppPurchase.instance.queryProductDetails({googleProductId});
+    if (response.notFoundIDs.contains(googleProductId) || response.productDetails.isEmpty) {
+      throw Exception("Product $googleProductId not found in Google Play Console.");
+    }
+    
+    final productDetails = response.productDetails.first;
+    final purchaseParam = PurchaseParam(productDetails: productDetails);
+    
+    await InAppPurchase.instance.buyNonConsumable(purchaseParam: purchaseParam);
+  }
+
   Future<SubscriptionModel> verifyApplePurchase(String signedTransaction) async {
     try {
       final response = await _apiClient.dio.post(
@@ -453,6 +490,45 @@ class SubscriptionRepository {
     }
   }
 
+  Future<SubscriptionModel> verifyGooglePurchase({
+    required String purchaseToken,
+    required String productId,
+    required bool isSubscription,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        AppConstants.verifyGooglePurchase,
+        data: {
+          'purchaseToken': purchaseToken,
+          'productId': productId,
+          'isSubscription': isSubscription,
+        },
+      );
+      
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data;
+        if (resData['success'] == true) {
+          final subData = resData['data']?['subscription'];
+          if (subData != null) {
+            final sub = SubscriptionModel.fromJson(subData);
+            _currentSubscription = sub;
+            return sub;
+          }
+        }
+      }
+      throw Exception("Google verification failed: ${response.statusMessage}");
+    } catch (e) {
+      print("Exception verifying Google purchase: $e");
+      rethrow;
+    }
+  }
+
+  bool _isSubscriptionProduct(String productId) {
+    return planToGoogleProductId.containsValue(productId) ||
+           productId.contains('monthly') ||
+           productId.contains('yearly');
+  }
+
   Future<void> restorePurchases() async {
     final isAvailable = await InAppPurchase.instance.isAvailable();
     if (!isAvailable) {
@@ -463,6 +539,13 @@ class SubscriptionRepository {
   }
 
   static const Map<String, String> planToAppleProductId = {
+    'plan_pro_yearly': 'com.greenrabbit.pro.yearly',
+    'plan_pro_monthly': 'com.greenrabbit.pro.monthly',
+    'plan_classic_yearly': 'com.greenrabbit.classic.yearly',
+    'plan_classic_monthly': 'com.greenrabbit.classic.monthly',
+  };
+
+  static const Map<String, String> planToGoogleProductId = {
     'plan_pro_yearly': 'com.greenrabbit.pro.yearly',
     'plan_pro_monthly': 'com.greenrabbit.pro.monthly',
     'plan_classic_yearly': 'com.greenrabbit.classic.yearly',

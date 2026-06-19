@@ -134,9 +134,43 @@ class CheckoutScreen extends StatelessWidget {
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        Expanded(child: _buildQuickPayButton(context, 'assets/apple_pay.png')),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              if (!kIsWeb && Platform.isIOS) {
+                                context.read<SubscriptionCubit>().buyPlan(planId: planId);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Apple Pay is only available on iOS devices'),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(28),
+                            child: _buildQuickPayButton(context, 'assets/apple_pay.png'),
+                          ),
+                        ),
                         const SizedBox(width: 16),
-                        Expanded(child: _buildQuickPayButton(context, 'assets/google_pay.png')),
+                        Expanded(
+                          child: InkWell(
+                            onTap: () {
+                              if (!kIsWeb && Platform.isAndroid) {
+                                context.read<SubscriptionCubit>().buyPlan(planId: planId);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Google Pay is only available on Android devices'),
+                                    backgroundColor: Colors.orange,
+                                  ),
+                                );
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(28),
+                            child: _buildQuickPayButton(context, 'assets/google_pay.png'),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 32),
@@ -289,6 +323,7 @@ class CheckoutScreen extends StatelessWidget {
   }
 
   Widget _buildQuickPayButton(BuildContext context, String assetPath) {
+    final isApple = assetPath.contains('apple');
     return Container(
       height: 56,
       decoration: BoxDecoration(
@@ -297,42 +332,49 @@ class CheckoutScreen extends StatelessWidget {
         border: Border.all(color: Theme.of(context).dividerColor),
       ),
       alignment: Alignment.center,
-      child: assetPath.contains('apple')
-          ? Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.apple, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 28),
-                Text(
-                  'Pay with Apple',
-                  style: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: isApple
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.apple, color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black, size: 28),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Apple Pay',
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.g_mobiledata,
+                      color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                      size: 40,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Google Pay',
+                      style: TextStyle(
+                        color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            )
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.g_mobiledata,
-                  color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-                  size: 40,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Pay',
-                  style: TextStyle(
-                    color: Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+        ),
+      ),
     );
   }
 
