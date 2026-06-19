@@ -98,6 +98,7 @@ class AppConstants {
   static String subscriptionSync(String ref) => "subscriptions/payments/$ref/sync";
   static String subscriptionConfirm(String ref) => "subscriptions/payments/$ref/confirm";
   static const String verifyApplePurchase = "/verify";
+  static const String verifyGooglePurchase = "/payments/google/verify";
 
 
   // Animation Durations
