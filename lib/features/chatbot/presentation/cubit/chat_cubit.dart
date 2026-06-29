@@ -248,7 +248,7 @@ class ChatCubit extends Cubit<ChatState> {
         if (cancelToken.isCancelled) break;
         streamTarget = _mergeStreamChunk(streamTarget, chunk);
         // Update immediately if there's a lot of backlog
-        if (streamTarget.length - streamDisplayed.length > 100) {
+        if (streamTarget.length - streamDisplayed.length > 200) {
           streamDisplayed = _advanceTypewriter(streamDisplayed, streamTarget);
           _emitStreamingAssistantMessage('summary', streamDisplayed);
         }
@@ -263,7 +263,7 @@ class ChatCubit extends Cubit<ChatState> {
       );
       _cancelRevealTimer();
       
-      print('[DEBUG] Summarize post-stream: emitting full target len=${streamTarget.length}');
+      // print('[DEBUG] Summarize post-stream: emitting full target len=${streamTarget.length}');
       emit(state.copyWith(isGenerating: false));
     } catch (e) {
       _cancelRevealTimer();
@@ -421,10 +421,10 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   int _revealCharsPerTick(int backlog) {
-    if (backlog > 200) return 50;
-    if (backlog > 100) return 30;
-    if (backlog > 40) return 15;
-    if (backlog > 12) return 5;
+    if (backlog > 500) return 30;
+    if (backlog > 200) return 15;
+    if (backlog > 100) return 8;
+    if (backlog > 40) return 4;
     return 2;
   }
 
@@ -465,14 +465,14 @@ class ChatCubit extends Cubit<ChatState> {
     required bool Function() isCancelled,
   }) async {
     var shown = displayed;
-    print('[DEBUG] _waitForRevealCatchUp start: shown len = ${shown.length}, target len = ${target.length}');
+    // print('[DEBUG] _waitForRevealCatchUp start: shown len = ${shown.length}, target len = ${target.length}');
     while (shown.length < target.length && !isCancelled()) {
       shown = _advanceTypewriter(shown, target);
-      print('[DEBUG] _waitForRevealCatchUp: updating to shown len = ${shown.length}');
+      // print('[DEBUG] _waitForRevealCatchUp: updating to shown len = ${shown.length}');
       _emitStreamingAssistantMessage(conversationId, shown);
       await Future.delayed(const Duration(milliseconds: _revealTickMs ~/ 2));
     }
-    print('[DEBUG] _waitForRevealCatchUp end: shown len = ${shown.length}');
+    // print('[DEBUG] _waitForRevealCatchUp end: shown len = ${shown.length}');
   }
 
   void _emitStreamingAssistantMessage(
@@ -592,21 +592,21 @@ class ChatCubit extends Cubit<ChatState> {
           });
 
           await for (final chunk in repository.sendMessageStream(
-            conversationId,
-            text,
-            history: history,
-            cancelToken: cancelToken,
-          )) {
-            print('[DEBUG] sendMessageStream received chunk: len=${chunk.length}, chunk="${chunk.substring(0, chunk.length > 100 ? 100 : chunk.length)}"');
-            if (isClosed || cancelToken.isCancelled) return;
-            if (state.activeConversationId != conversationId) return;
-            streamTarget = _mergeStreamChunk(streamTarget, chunk);
-            // Update immediately if there's a lot of backlog
-            if (streamTarget.length - streamDisplayed.length > 100) {
-              streamDisplayed = _advanceTypewriter(streamDisplayed, streamTarget);
-              _emitStreamingAssistantMessage(conversationId, streamDisplayed);
-            }
-          }
+                conversationId,
+                text,
+                history: history,
+                cancelToken: cancelToken,
+              )) {
+                print('[DEBUG] sendMessageStream received chunk: len=${chunk.length}, chunk="${chunk.substring(0, chunk.length > 100 ? 100 : chunk.length)}"');
+                if (isClosed || cancelToken.isCancelled) return;
+                if (state.activeConversationId != conversationId) return;
+                streamTarget = _mergeStreamChunk(streamTarget, chunk);
+                // Update immediately if there's a lot of backlog
+                if (streamTarget.length - streamDisplayed.length > 200) {
+                  streamDisplayed = _advanceTypewriter(streamDisplayed, streamTarget);
+                  _emitStreamingAssistantMessage(conversationId, streamDisplayed);
+                }
+              }
           
           // Wait for typewriter to catch up
           await _waitForRevealCatchUp(
@@ -617,11 +617,9 @@ class ChatCubit extends Cubit<ChatState> {
           );
           _cancelRevealTimer();
 
-          print('[DEBUG] Post-stream: emitting full target len=${streamTarget.length}');
+          // print('[DEBUG] Post-stream: emitting full target len=${streamTarget.length}');
           if (kDebugMode) {
-            print(
-              '[CHAT_STREAM] UI final len=${streamTarget.length} chars',
-            );
+            // print('[CHAT_STREAM] UI final len=${streamTarget.length} chars');
           }
           lastError = null;
           break;

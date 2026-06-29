@@ -383,20 +383,34 @@ class AIService {
 
   bool _isStreamDoneEvent(Map decoded) {
     final type = decoded['type']?.toString().toLowerCase();
-    return type == 'done' ||
+    final result = type == 'done' ||
         type == 'end' ||
         type == 'complete' ||
         type == 'finished';
+    debugPrint('[DEBUG _isStreamDoneEvent] decoded=$decoded, type=$type → result=$result');
+    return result;
   }
 
   String? _extractStreamText(dynamic decoded) {
-    if (decoded == null) return null;
-    if (decoded is String) return decoded.isEmpty ? null : decoded;
-    if (decoded is! Map) return null;
+    debugPrint('[DEBUG _extractStreamText] ENTER decoded=$decoded, type=${decoded.runtimeType}');
+    if (decoded == null) {
+      debugPrint('[DEBUG _extractStreamText] EXIT (decoded == null');
+      return null;
+    }
+    if (decoded is String) {
+      debugPrint('[DEBUG _extractStreamText] EXIT (is String=$decoded');
+      return decoded.isEmpty ? null : decoded;
+    }
+    if (decoded is! Map) {
+      debugPrint('[DEBUG _extractStreamText] EXIT (not Map or String');
+      return null;
+    }
 
     final map = Map<String, dynamic>.from(decoded);
+    debugPrint('[DEBUG _extractStreamText] map keys=${map.keys}');
 
     if (map['success'] == false && map['error'] != null) {
+      debugPrint('[DEBUG _extractStreamText] Found error map');
       final err = map['error'];
       if (err is Map) {
         throw AIException(
@@ -406,69 +420,95 @@ class AIService {
       }
     }
 
-    if (_isStreamDoneEvent(map)) return null;
+    if (_isStreamDoneEvent(map)) {
+      debugPrint('[DEBUG _extractStreamText] EXIT (_isStreamDoneEvent returned true');
+      return null;
+    }
 
     if (map['success'] == true && map['data'] != null) {
+      debugPrint('[DEBUG _extractStreamText] Checking success: true, checking data');
       final nested = _extractStreamText(map['data']);
       if (nested != null) return nested;
     }
 
+    // Check for any possible text content regardless of the event type!
+    final piece = map['content'] ??
+        map['text'] ??
+        map['delta'] ??
+        map['token'] ??
+        map['value'] ??
+        map['chunk'] ??
+        map['partial'] ??
+        map['output'] ??
+        map['message'] ??
+        map['response'];
+    debugPrint('[DEBUG _extractStreamText] Checking for piece: $piece');
+    if (piece != null && piece is! Map && piece is! List) {
+      return piece.toString();
+    }
+    if (piece is Map) {
+      final nestedPiece = _extractStreamText(piece);
+      if (nestedPiece != null) return nestedPiece;
+    }
+
     final type = map['type']?.toString().toLowerCase();
+    debugPrint('[DEBUG _extractStreamText] type=$type');
     if (type != null &&
         type != 'done' &&
         type != 'end' &&
         type != 'error' &&
         type != 'message_start' &&
         type != 'start') {
-      final piece = map['content'] ??
-          map['text'] ??
-          map['delta'] ??
-          map['token'] ??
-          map['value'] ??
-          map['chunk'];
-      if (piece != null && piece is! Map && piece is! List) {
-        return piece.toString();
-      }
-      if (piece is Map) {
-        return _extractStreamText(piece);
-      }
+      // Already checked piece above
     }
 
+    debugPrint('[DEBUG _extractStreamText] Checking choices');
     final choices = map['choices'];
     if (choices is List && choices.isNotEmpty && choices.first is Map) {
       final choice = Map<String, dynamic>.from(choices.first as Map);
       final delta = choice['delta'];
       if (delta is Map && delta['content'] != null) {
+        debugPrint('[DEBUG _extractStreamText] FOUND choice delta content found');
         return delta['content'].toString();
       }
-      if (choice['text'] != null) return choice['text'].toString();
+      if (choice['text'] != null) {
+        debugPrint('[DEBUG _extractStreamText] FOUND choice text');
+        return choice['text'].toString();
+      }
     }
 
     if (map['content'] != null && map['content'] is! Map && map['content'] is! List) {
+      debugPrint('[DEBUG _extractStreamText] FOUND map.content');
       return map['content'].toString();
     }
     if (map['text'] != null && map['text'] is! Map && map['text'] is! List) {
+      debugPrint('[DEBUG _extractStreamText] FOUND map.text');
       return map['text'].toString();
     }
     if (map['summary'] != null && map['summary'] is! Map && map['summary'] is! List) {
+      debugPrint('[DEBUG _extractStreamText] FOUND map.summary');
       return map['summary'].toString();
     }
     if (map['result'] != null && map['result'] is! Map && map['result'] is! List) {
+      debugPrint('[DEBUG _extractStreamText] FOUND map.result');
       return map['result'].toString();
     }
 
+    debugPrint('[DEBUG _extractStreamText] Checking message');
     final message = map['message'];
     if (message is Map) {
       final nested = _extractStreamText(message);
       if (nested != null) return nested;
     }
 
+    debugPrint('[DEBUG _extractStreamText] Checking assistant_message');
     final assistant = map['assistant_message'] ?? map['assistantMessage'];
     if (assistant is Map) {
       final nested = _extractStreamText(assistant);
       if (nested != null) return nested;
     }
 
+    debugPrint('[DEBUG _extractStreamText] EXIT with null');
     return null;
   }
 
@@ -480,9 +520,11 @@ class AIService {
 
   Stream<String> _parseSsePayload(String payload, String eventType) async* {
     final trimmed = payload.trim();
+    debugPrint('[DEBUG _parseSsePayload] payload="$trimmed", eventType="$eventType"');
     if (trimmed.isEmpty || trimmed == '[DONE]') return;
 
     if (eventType == 'error') {
+      debugPrint('[DEBUG _parseSsePayload] Got error event');
       try {
         final decoded = json.decode(trimmed);
         if (decoded is Map) {
@@ -499,6 +541,7 @@ class AIService {
 
     try {
       final decoded = json.decode(trimmed);
+      debugPrint('[DEBUG _parseSsePayload] decoded JSON=$decoded');
       if (decoded is Map) {
         if (decoded.containsKey('code') &&
             decoded.containsKey('message') &&
@@ -508,17 +551,23 @@ class AIService {
             message: decoded['message']?.toString() ?? 'Stream error',
           );
         }
-        if (_isStreamDoneEvent(decoded)) return;
+        if (_isStreamDoneEvent(decoded)) {
+          debugPrint('[DEBUG _parseSsePayload] Got stream done event');
+          return;
+        }
         final text = _extractStreamText(decoded);
+        debugPrint('[DEBUG _parseSsePayload] _extractStreamText returned="$text"');
         if (text != null && text.isNotEmpty) {
           yield* _streamPieces(text);
         }
         return;
       }
     } catch (e) {
+      debugPrint('[DEBUG _parseSsePayload] Error parsing JSON: $e');
       if (e is AIException) rethrow;
     }
 
+    debugPrint('[DEBUG _parseSsePayload] Yielding raw trimmed text="$trimmed"');
     yield* _streamPieces(trimmed);
   }
 
