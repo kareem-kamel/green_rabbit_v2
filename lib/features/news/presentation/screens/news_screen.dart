@@ -574,6 +574,10 @@ class _NewsScreenState extends State<NewsScreen> {
         setState(() {
           selectedCategory = label;
           _isExpanded = false; // Reset expansion on category change
+          // Clear country filter when switching to Cryptocurrency
+          if (label == "Cryptocurrency") {
+            selectedCountry = null;
+          }
         });
         if (label == "Favorites") {
           context.read<NewsCubit>().fetchFavoriteNews(limit: 20);
@@ -590,7 +594,7 @@ class _NewsScreenState extends State<NewsScreen> {
             categoryParam = "most_popular";
           }
           
-          context.read<NewsCubit>().fetchNewsFeed(limit: 5, category: categoryParam);
+          context.read<NewsCubit>().fetchNewsFeed(limit: 5, category: categoryParam, country: selectedCountry);
         }
       },
       child: Container(
@@ -631,6 +635,7 @@ class _NewsScreenState extends State<NewsScreen> {
   Widget _buildSectionHeader(String title, {bool hasFilter = false, bool hasViewAll = false, VoidCallback? onViewAll}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final isCryptoCategory = selectedCategory == "Cryptocurrency";
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -647,77 +652,98 @@ class _NewsScreenState extends State<NewsScreen> {
         ),
         if (hasFilter) ...[
           const SizedBox(width: 8),
-          if (selectedCountry != null) ...[
+          if (selectedCountry != null && !isCryptoCategory) ...[
             Text(
               _countries.firstWhere((c) => c.code == selectedCountry, orElse: () => _countries.first).flag,
               style: const TextStyle(fontSize: 18),
             ),
             const SizedBox(width: 4),
           ],
-          PopupMenuButton<String>(
-            icon: Image.asset(
-              'assets/icons/filter.png',
-              width: 24,
-              height: 24,
-              color: isDark ? null : Colors.black87,
-            ),
-            onSelected: (String? countryCode) {
-              print('DEBUG: Country selected: $countryCode');
-              print('DEBUG: Before setState selectedCountry: $selectedCountry');
-              setState(() {
-                selectedCountry = countryCode;
-              });
-              print('DEBUG: After setState selectedCountry: $selectedCountry');
-              if (selectedCategory == "Favorites") {
-                print('DEBUG: Fetching favorite news');
-                context.read<NewsCubit>().fetchFavoriteNews(limit: 20);
-              } else {
-                String? categoryParam;
-                if (selectedCategory == "Stocks") {
-                  categoryParam = "stocks";
-                } else if (selectedCategory == "Cryptocurrency") {
-                  categoryParam = "crypto";
-                } else if (selectedCategory == "Forex") {
-                  categoryParam = "forex";
-                } else if (selectedCategory == "Popular") {
-                  categoryParam = "most_popular";
-                }
-                print('DEBUG: Fetching news feed with category: $categoryParam, country: $countryCode');
-                context.read<NewsCubit>().fetchNewsFeed(
-                  limit: 5,
-                  category: categoryParam,
-                  country: countryCode,
-                );
-              }
-            },
-            itemBuilder: (BuildContext context) {
-              final sortedCountries = [..._countries]..sort((a, b) => a.name.compareTo(b.name));
-              return [
-                const PopupMenuItem<String>(
-                  value: null,
-                  child: Row(
-                    children: [
-                      Icon(Icons.public, size: 18),
-                      SizedBox(width: 8),
-                      Text("All Countries"),
-                    ],
+          if (isCryptoCategory)
+            GestureDetector(
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("There are no country filters for cryptocurrency news"),
+                    duration: Duration(seconds: 2),
                   ),
+                );
+              },
+              child: Opacity(
+                opacity: 0.5,
+                child: Image.asset(
+                  'assets/icons/filter.png',
+                  width: 24,
+                  height: 24,
+                  color: isDark ? null : Colors.black87,
                 ),
-                ...sortedCountries.map((country) {
-                  return PopupMenuItem<String>(
-                    value: country.code,
+              ),
+            )
+          else
+            PopupMenuButton<String>(
+              icon: Image.asset(
+                'assets/icons/filter.png',
+                width: 24,
+                height: 24,
+                color: isDark ? null : Colors.black87,
+              ),
+              onSelected: (String? countryCode) {
+                print('DEBUG: Country selected: $countryCode');
+                print('DEBUG: Before setState selectedCountry: $selectedCountry');
+                setState(() {
+                  selectedCountry = countryCode;
+                });
+                print('DEBUG: After setState selectedCountry: $selectedCountry');
+                if (selectedCategory == "Favorites") {
+                  print('DEBUG: Fetching favorite news');
+                  context.read<NewsCubit>().fetchFavoriteNews(limit: 20);
+                } else {
+                  String? categoryParam;
+                  if (selectedCategory == "Stocks") {
+                    categoryParam = "stocks";
+                  } else if (selectedCategory == "Cryptocurrency") {
+                    categoryParam = "crypto";
+                  } else if (selectedCategory == "Forex") {
+                    categoryParam = "forex";
+                  } else if (selectedCategory == "Popular") {
+                    categoryParam = "most_popular";
+                  }
+                  print('DEBUG: Fetching news feed with category: $categoryParam, country: $countryCode');
+                  context.read<NewsCubit>().fetchNewsFeed(
+                    limit: 5,
+                    category: categoryParam,
+                    country: countryCode,
+                  );
+                }
+              },
+              itemBuilder: (BuildContext context) {
+                final sortedCountries = [..._countries]..sort((a, b) => a.name.compareTo(b.name));
+                return [
+                  const PopupMenuItem<String>(
+                    value: null,
                     child: Row(
                       children: [
-                        Text(country.flag, style: const TextStyle(fontSize: 18)),
-                        const SizedBox(width: 8),
-                        Text(country.name),
+                        Icon(Icons.public, size: 18),
+                        SizedBox(width: 8),
+                        Text("All Countries"),
                       ],
                     ),
-                  );
-                }),
-              ];
-            },
-          ),
+                  ),
+                  ...sortedCountries.map((country) {
+                    return PopupMenuItem<String>(
+                      value: country.code,
+                      child: Row(
+                        children: [
+                          Text(country.flag, style: const TextStyle(fontSize: 18)),
+                          const SizedBox(width: 8),
+                          Text(country.name),
+                        ],
+                      ),
+                    );
+                  }),
+                ];
+              },
+            ),
         ],
         if (hasViewAll) ...[
           const SizedBox(width: 8),

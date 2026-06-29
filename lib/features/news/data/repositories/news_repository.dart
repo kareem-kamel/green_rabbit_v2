@@ -25,7 +25,8 @@ class NewsRepository {
       };
       
       if (category != null && category.isNotEmpty) {
-        String apiCategory = category.toLowerCase();
+        // Remove any whitespace and trailing/leading non-alphanumeric characters
+        String apiCategory = category.trim().replaceAll(RegExp(r'^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$'), '').toLowerCase();
         if (apiCategory == 'popular') apiCategory = 'most_popular';
         if (apiCategory == 'stock') apiCategory = 'stocks';
         

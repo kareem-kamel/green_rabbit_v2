@@ -118,8 +118,8 @@ Stream<String> _webSseLines({
       if (cancelToken?.isCancelled == true) break;
       hadData = true;
       lineIndex++;
-      if (kDebugMode && lineIndex <= 5) {
-        print('[CHAT_STREAM] web line#$lineIndex len=${line.length}');
+      if (kDebugMode) {
+        print('[CHAT_STREAM] web line#$lineIndex len=${line.length} content="$line"');
       }
       yield line;
     }
@@ -153,8 +153,8 @@ Stream<String> _dioSseLines({
       in utf8.decoder.bind(byteStream).transform(const LineSplitter())) {
     if (cancelToken?.isCancelled == true) break;
     lineIndex++;
-    if (kDebugMode && lineIndex <= 5) {
-      print('[CHAT_STREAM] dio line#$lineIndex len=${line.length}');
+    if (kDebugMode) {
+      print('[CHAT_STREAM] dio line#$lineIndex len=${line.length} content="$line"');
     }
     yield line;
   }

@@ -226,7 +226,19 @@ class ChatCubit extends Cubit<ChatState> {
     var streamDisplayed = '';
 
     try {
-      // Temporarily disable typewriter effect in summarize as well
+      // Start typewriter timer
+      _revealTimer = Timer.periodic(const Duration(milliseconds: _revealTickMs), (timer) {
+        if (isClosed || cancelToken.isCancelled) {
+          timer.cancel();
+          return;
+        }
+        final newDisplayed = _advanceTypewriter(streamDisplayed, streamTarget);
+        if (newDisplayed != streamDisplayed) {
+          streamDisplayed = newDisplayed;
+          _emitStreamingAssistantMessage('summary', streamDisplayed);
+        }
+      });
+
       await for (final chunk in repository.summarizeContentStream(
         entityId,
         entityType,
@@ -235,8 +247,21 @@ class ChatCubit extends Cubit<ChatState> {
       )) {
         if (cancelToken.isCancelled) break;
         streamTarget = _mergeStreamChunk(streamTarget, chunk);
-        _emitStreamingAssistantMessage('summary', streamTarget);
+        // Update immediately if there's a lot of backlog
+        if (streamTarget.length - streamDisplayed.length > 100) {
+          streamDisplayed = _advanceTypewriter(streamDisplayed, streamTarget);
+          _emitStreamingAssistantMessage('summary', streamDisplayed);
+        }
       }
+      
+      // Wait for typewriter to catch up
+      await _waitForRevealCatchUp(
+        conversationId: 'summary',
+        target: streamTarget,
+        displayed: streamDisplayed,
+        isCancelled: () => cancelToken.isCancelled || isClosed,
+      );
+      _cancelRevealTimer();
       
       print('[DEBUG] Summarize post-stream: emitting full target len=${streamTarget.length}');
       emit(state.copyWith(isGenerating: false));
@@ -553,8 +578,19 @@ class ChatCubit extends Cubit<ChatState> {
           streamDisplayed = '';
           _cancelRevealTimer();
 
-          // Temporarily disable typewriter effect to fix display issues
-          // Just show all text immediately
+          // Start typewriter timer
+          _revealTimer = Timer.periodic(const Duration(milliseconds: _revealTickMs), (timer) {
+            if (isClosed || cancelToken.isCancelled) {
+              timer.cancel();
+              return;
+            }
+            final newDisplayed = _advanceTypewriter(streamDisplayed, streamTarget);
+            if (newDisplayed != streamDisplayed) {
+              streamDisplayed = newDisplayed;
+              _emitStreamingAssistantMessage(conversationId, streamDisplayed);
+            }
+          });
+
           await for (final chunk in repository.sendMessageStream(
             conversationId,
             text,
@@ -565,9 +601,22 @@ class ChatCubit extends Cubit<ChatState> {
             if (isClosed || cancelToken.isCancelled) return;
             if (state.activeConversationId != conversationId) return;
             streamTarget = _mergeStreamChunk(streamTarget, chunk);
-            _emitStreamingAssistantMessage(conversationId, streamTarget);
+            // Update immediately if there's a lot of backlog
+            if (streamTarget.length - streamDisplayed.length > 100) {
+              streamDisplayed = _advanceTypewriter(streamDisplayed, streamTarget);
+              _emitStreamingAssistantMessage(conversationId, streamDisplayed);
+            }
           }
           
+          // Wait for typewriter to catch up
+          await _waitForRevealCatchUp(
+            conversationId: conversationId,
+            target: streamTarget,
+            displayed: streamDisplayed,
+            isCancelled: () => cancelToken.isCancelled || isClosed,
+          );
+          _cancelRevealTimer();
+
           print('[DEBUG] Post-stream: emitting full target len=${streamTarget.length}');
           if (kDebugMode) {
             print(
