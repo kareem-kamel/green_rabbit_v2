@@ -2941,7 +2941,15 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
   }
 
   Widget _buildChartTab(MarketInstrumentDetail detail) {
-    return TradingViewChartWebView(symbol: detail.symbol);
+    return TradingViewChartWebView(
+      symbol: detail.symbol,
+      name: detail.name,
+      price: detail.price.current,
+      change: detail.price.change,
+      changePercent: detail.price.changePercent,
+      sector: detail.sector,
+      marketCap: detail.fundamentals?.marketCap?.toString(),
+    );
   }
 
   void _showIndicatorsBottomSheet(BuildContext context) {
