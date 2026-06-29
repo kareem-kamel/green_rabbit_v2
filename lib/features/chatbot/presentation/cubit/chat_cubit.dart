@@ -400,6 +400,10 @@ class ChatCubit extends Cubit<ChatState> {
   ) {
     if (isClosed || state.activeConversationId != conversationId) return;
     if (state.messages.isEmpty || state.messages.last.isUser) return;
+    // Skip updating if message already has user-stopped suffix
+    if (state.messages.last.content.contains('(Response ended by the user)')) {
+      return;
+    }
 
     final messages = List<ChatMessage>.from(state.messages);
     messages[messages.length - 1] =
@@ -418,19 +422,26 @@ class ChatCubit extends Cubit<ChatState> {
     emit(state.copyWith(messages: messages, isGenerating: false));
   }
 
-  Future<void> sendMessage(String text) async {
+  Future<void> sendMessage(String text, {bool skipAddingUserMessage = false}) async {
     if (text.isEmpty || state.isGenerating) return;
 
-    final userMessage = ChatMessage(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      conversationId: state.activeConversationId ?? 'current',
-      role: 'user',
-      content: text,
-      createdAt: DateTime.now(),
-    );
+    List<ChatMessage> updatedMessages;
+    if (skipAddingUserMessage) {
+      // Skip adding user's message (it's already in the list)
+      updatedMessages = List<ChatMessage>.from(state.messages);
+    } else {
+      // Normal case: add user's message
+      final userMessage = ChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        conversationId: state.activeConversationId ?? 'current',
+        role: 'user',
+        content: text,
+        createdAt: DateTime.now(),
+      );
 
-    final updatedMessages = List<ChatMessage>.from(state.messages)
-      ..add(userMessage);
+      updatedMessages = List<ChatMessage>.from(state.messages)
+        ..add(userMessage);
+    }
 
     emit(state.copyWith(
       hasMessages: true,
@@ -550,8 +561,8 @@ class ChatCubit extends Cubit<ChatState> {
         }
       }
 
+      // stopGenerating() already handles emitting final state when user cancels
       if (cancelToken.isCancelled) {
-        emit(state.copyWith(isGenerating: false));
         return;
       }
 
@@ -608,7 +619,7 @@ class ChatCubit extends Cubit<ChatState> {
         messages.removeLast();
       } else {
         messages[messages.length - 1] = last.copyWith(
-          content: '${last.content.trim()}\n\n*(Response stopped)*',
+          content: '${last.content.trim()}\n\n*(Response ended by the user)*',
         );
       }
     }
@@ -632,6 +643,6 @@ class ChatCubit extends Cubit<ChatState> {
     }
     
     emit(state.copyWith(messages: updatedMessages));
-    sendMessage(lastUserMessage.content);
+    sendMessage(lastUserMessage.content, skipAddingUserMessage: true);
   }
 }

@@ -40,6 +40,10 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   bool _scrollScheduled = false;
   Timer? _recordingTimer;
   int _recordingSeconds = 0;
+  // Local state for summary params, so we can clear after use
+  String? _pendingSummaryId;
+  String? _pendingSummaryType;
+  String? _pendingSummaryUrl;
 
   @override
   void initState() {
@@ -47,6 +51,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     _scrollController.addListener(_scrollListener);
     if (widget.initialPrompt != null) {
       _textController.text = widget.initialPrompt!;
+    } else if (widget.summaryId != null && widget.summaryType != null) {
+      _textController.text = "Summarize this news article";
+      _pendingSummaryId = widget.summaryId;
+      _pendingSummaryType = widget.summaryType;
+      _pendingSummaryUrl = widget.summaryUrl;
     }
   }
 
@@ -178,14 +187,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         }
 
         // Don't auto-send initial prompt; leave it in text field for user to edit
-
-        if (widget.summaryId != null && widget.summaryType != null && !_initialPromptSent) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!mounted) return;
-            _initialPromptSent = true;
-            cubit.summarize(widget.summaryId!, widget.summaryType!, url: widget.summaryUrl);
-          });
-        }
+        // Don't auto-summarize either; let user edit and send first
 
         return GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
@@ -508,8 +510,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             alignment: WrapAlignment.center,
             children: suggestions.map((s) => GestureDetector(
               onTap: () {
-                cubit.sendMessage(s["query"]!);
-                _textController.clear();
+                _textController.text = s["query"]!;
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -641,6 +642,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
     final isError = _isErrorMessage(msg);
     final isPlanError = isError && (msg.content.toLowerCase().contains('current plan') || msg.content.toLowerCase().contains('free trial'));
+    final isEndedByUser = msg.content.contains('(Response ended by the user)');
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -653,7 +655,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             decoration: BoxDecoration(
               color: isError
                   ? Colors.red.withOpacity(0.12)
-                  : AppColors.primaryPurple.withOpacity(0.08),
+                  : (isEndedByUser
+                      ? Colors.red.withOpacity(0.08)
+                      : AppColors.primaryPurple.withOpacity(0.08)),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(4),
                 topRight: Radius.circular(16),
@@ -663,8 +667,10 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               border: Border.all(
                 color: isError
                     ? Colors.redAccent.withOpacity(0.5)
-                    : AppColors.primaryPurple.withOpacity(0.15),
-                width: 1,
+                    : (isEndedByUser
+                        ? Colors.redAccent.withOpacity(0.6)
+                        : AppColors.primaryPurple.withOpacity(0.15)),
+                width: isEndedByUser ? 2 : 1,
               ),
             ),
             child: msg.content.isEmpty && isLastGenerating
@@ -1083,7 +1089,17 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   void _handleSend(ChatCubit cubit) {
     final text = _textController.text.trim();
     if (text.isNotEmpty) {
-      cubit.sendMessage(text);
+      if (_pendingSummaryId != null && _pendingSummaryType != null) {
+        // We have pending summary params, call summarize
+        cubit.summarize(_pendingSummaryId!, _pendingSummaryType!, url: _pendingSummaryUrl);
+        // Clear the pending params so next time it's a normal send
+        _pendingSummaryId = null;
+        _pendingSummaryType = null;
+        _pendingSummaryUrl = null;
+      } else {
+        // Normal send message
+        cubit.sendMessage(text);
+      }
       _textController.clear();
     }
   }
