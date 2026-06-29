@@ -12,12 +12,12 @@ Stream<String> openSsePostLineStream({
   required Future<String?> Function() resolveToken,
   required String baseUrl,
   required String path,
-  required Map<String, dynamic> body,
+  required dynamic body,
   required Map<String, String> extraHeaders,
   CancelToken? cancelToken,
   required Future<Response<dynamic>> Function(
     String path,
-    Map<String, dynamic> data,
+    dynamic data,
     CancelToken? cancelToken,
     Map<String, String> headers,
   ) dioPostStream,
@@ -45,7 +45,7 @@ Stream<String> _webSseLines({
   required Future<String?> Function() resolveToken,
   required String baseUrl,
   required String path,
-  required Map<String, dynamic> body,
+  required dynamic body,
   required Map<String, String> extraHeaders,
   CancelToken? cancelToken,
 }) async* {
@@ -60,7 +60,7 @@ Stream<String> _webSseLines({
     final uri = AppConstants.apiUri(path);
     final request = http.Request('POST', uri);
     request.headers.addAll({
-      'Content-Type': 'application/json',
+      'Content-Type': body is FormData ? 'multipart/form-data' : 'application/json',
       'Accept': 'text/event-stream',
       'Cache-Control': 'no-cache',
       ...extraHeaders,
@@ -68,7 +68,23 @@ Stream<String> _webSseLines({
     if (token != null && token.isNotEmpty) {
       request.headers['Authorization'] = 'Bearer $token';
     }
-    request.body = json.encode(body);
+    
+    if (body is FormData) {
+      // Note: Web doesn't support FormData with file uploads via http.Client in Flutter web
+      // For web image uploads, we'd need a different approach, but let's handle JSON case first
+      if (kDebugMode) {
+        print('[CHAT_STREAM] web FormData not fully supported for images');
+      }
+      // Fallback: If we have an image, let's skip for now or handle differently
+      // For now, let's only handle Map<String, dynamic> for web
+      throw DioException(
+        requestOptions: RequestOptions(path: uri.toString()),
+        type: DioExceptionType.unknown,
+        message: 'Image upload not supported on web',
+      );
+    } else if (body is Map<String, dynamic>) {
+      request.body = json.encode(body);
+    }
 
     if (kDebugMode) {
       print('[CHAT_STREAM] web SSE POST $uri');
@@ -134,12 +150,12 @@ Stream<String> _webSseLines({
 
 Stream<String> _dioSseLines({
   required String path,
-  required Map<String, dynamic> body,
+  required dynamic body,
   required Map<String, String> extraHeaders,
   CancelToken? cancelToken,
   required Future<Response<dynamic>> Function(
     String path,
-    Map<String, dynamic> data,
+    dynamic data,
     CancelToken? cancelToken,
     Map<String, String> headers,
   ) dioPostStream,

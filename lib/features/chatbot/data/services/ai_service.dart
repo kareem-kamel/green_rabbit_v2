@@ -348,14 +348,27 @@ class AIService {
     }
   }
 
-  Future<ChatMessage> sendMessage(String conversationId, String content, {List<ChatMessage> history = const []}) async {
+  Future<ChatMessage> sendMessage(String conversationId, String content, {List<ChatMessage> history = const [], String? imagePath}) async {
     try {
       final url = '$_conversationsEndpoint/$conversationId/messages';
       final messagesJson = history.map((m) => m.toJson()).toList();
-      final data = {
-        'content': content,
-        'messages': messagesJson,
-      };
+      dynamic data;
+      
+      if (imagePath != null && imagePath.isNotEmpty) {
+        data = FormData.fromMap({
+          'content': content,
+          'messages': jsonEncode(messagesJson),
+          'image': await MultipartFile.fromFile(
+            imagePath,
+            filename: 'image.${imagePath.split('.').last}',
+          ),
+        });
+      } else {
+        data = {
+          'content': content,
+          'messages': messagesJson,
+        };
+      }
       
       final response = await _apiClient.dio.post(
         url,
@@ -575,20 +588,41 @@ class AIService {
     String conversationId,
     String content, {
     List<ChatMessage> history = const [],
+    String? imagePath,
     CancelToken? cancelToken,
   }) async* {
     try {
       final path =
           '$_conversationsEndpoint/$conversationId/messages?stream=true';
       final messagesJson = history.map((m) => m.toJson()).toList();
-      final data = {
-        'content': content,
-        'messages': messagesJson,
-        'metadata': {
-          'temperature': 0.7,
-          'maxTokens': 1000,
-        },
-      };
+      FormData? formData;
+      Map<String, dynamic>? jsonData;
+      
+      if (imagePath != null && imagePath.isNotEmpty) {
+        // Create multipart form data with image
+        formData = FormData.fromMap({
+          'content': content,
+          'messages': jsonEncode(messagesJson),
+          'metadata': jsonEncode({
+            'temperature': 0.7,
+            'maxTokens': 1000,
+          }),
+          'image': await MultipartFile.fromFile(
+            imagePath,
+            filename: 'image.${imagePath.split('.').last}',
+          ),
+        });
+      } else {
+        // Regular JSON data
+        jsonData = {
+          'content': content,
+          'messages': messagesJson,
+          'metadata': {
+            'temperature': 0.7,
+            'maxTokens': 1000,
+          },
+        };
+      }
 
       final sseHeaders = {
         ..._getHeaders(),
@@ -603,7 +637,7 @@ class AIService {
         resolveToken: _apiClient.resolveAuthToken,
         baseUrl: AppConstants.apiBaseUrl,
         path: path,
-        body: data,
+        body: formData ?? jsonData,
         extraHeaders: sseHeaders,
         cancelToken: cancelToken,
         dioPostStream: (p, d, token, headers) => _apiClient.postStreamResponse(

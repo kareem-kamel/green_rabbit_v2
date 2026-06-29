@@ -278,7 +278,6 @@ class ChatCubit extends Cubit<ChatState> {
       );
       _cancelRevealTimer();
       
-      // print('[DEBUG] Summarize post-stream: emitting full target len=${streamTarget.length}');
       emit(state.copyWith(isGenerating: false));
     } catch (e) {
       _cancelRevealTimer();
@@ -480,14 +479,11 @@ class ChatCubit extends Cubit<ChatState> {
     required bool Function() isCancelled,
   }) async {
     var shown = displayed;
-    // print('[DEBUG] _waitForRevealCatchUp start: shown len = ${shown.length}, target len = ${target.length}');
     while (shown.length < target.length && !isCancelled()) {
       shown = _advanceTypewriter(shown, target);
-      // print('[DEBUG] _waitForRevealCatchUp: updating to shown len = ${shown.length}');
       _emitStreamingAssistantMessage(conversationId, shown);
       await Future.delayed(const Duration(milliseconds: _revealTickMs ~/ 2));
     }
-    // print('[DEBUG] _waitForRevealCatchUp end: shown len = ${shown.length}');
   }
 
   void _emitStreamingAssistantMessage(
@@ -522,6 +518,11 @@ class ChatCubit extends Cubit<ChatState> {
     if (text.isEmpty && state.selectedImages.isEmpty) return;
     if (state.isGenerating) return;
 
+    // Capture images before clearing
+    final imagesToSend = List<String>.from(state.selectedImages);
+    // Pass first image path to API (backend currently supports one image)
+    final String? imagePath = imagesToSend.isNotEmpty ? imagesToSend.first : null;
+
     List<ChatMessage> updatedMessages;
     if (skipAddingUserMessage) {
       // Skip adding user's message (it's already in the list)
@@ -533,7 +534,7 @@ class ChatCubit extends Cubit<ChatState> {
         conversationId: state.activeConversationId ?? 'current',
         role: 'user',
         content: text,
-        imagePaths: state.selectedImages.isNotEmpty ? List.from(state.selectedImages) : null,
+        imagePaths: imagesToSend.isNotEmpty ? imagesToSend : null,
         createdAt: DateTime.now(),
       );
 
@@ -613,6 +614,7 @@ class ChatCubit extends Cubit<ChatState> {
                 conversationId,
                 text,
                 history: history,
+                imagePath: imagePath,
                 cancelToken: cancelToken,
               )) {
                 print('[DEBUG] sendMessageStream received chunk: len=${chunk.length}, chunk="${chunk.substring(0, chunk.length > 100 ? 100 : chunk.length)}"');
@@ -635,7 +637,6 @@ class ChatCubit extends Cubit<ChatState> {
           );
           _cancelRevealTimer();
 
-          // print('[DEBUG] Post-stream: emitting full target len=${streamTarget.length}');
           if (kDebugMode) {
             // print('[CHAT_STREAM] UI final len=${streamTarget.length} chars');
           }

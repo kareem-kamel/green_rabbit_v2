@@ -68,9 +68,9 @@ class ChatMessage extends Equatable {
       conversationId: json['conversationId']?.toString() ?? '',
       role: json['role']?.toString() ?? 'assistant',
       content: json['content']?.toString() ?? '',
-      imagePaths: json['imagePaths'] != null 
-          ? (json['imagePaths'] as List<dynamic>).map((e) => e.toString()).toList() 
-          : null,
+      imagePaths: json['imagePaths'] != null
+          ? (json['imagePaths'] as List<dynamic>).map((e) => e.toString()).toList()
+          : (json['imagePath'] != null ? [json['imagePath'].toString()] : null),
       tokensUsed: json['tokensUsed'] is int ? json['tokensUsed'] as int : null,
       tokensIn: json['tokensIn'] is int ? json['tokensIn'] as int : null,
       tokensOut: json['tokensOut'] is int ? json['tokensOut'] as int : null,
@@ -104,9 +104,8 @@ class ChatMessage extends Equatable {
       'role': role,
       'content': content,
     };
-    final localImagePaths = imagePaths;
-    if (localImagePaths != null) {
-      map['imagePaths'] = localImagePaths;
+    if (imagePaths != null) {
+      map['imagePaths'] = imagePaths;
     }
     return map;
   }
@@ -190,7 +189,7 @@ class AISummary extends Equatable {
       targetId: json['targetId']?.toString() ?? '',
       summary: json['summary']?.toString() ?? '',
       sourceTitle: json['sourceTitle']?.toString() ?? '',
-      tokensUsed: json['tokensUsed'] is int ? json['tokensUsed'] as int : 0,
+      tokensUsed: _asInt(json['tokensUsed'], fallback: 0),
       generatedAt: json['generatedAt'] != null ? DateTime.tryParse(json['generatedAt'].toString()) : null,
     );
   }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../widgets/typing_indicator.dart';
@@ -36,6 +37,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ImagePicker _imagePicker = ImagePicker();
   bool _clearedOnOpen = false;
   bool _initialPromptSent = false;
   bool _autoScroll = true;
@@ -46,6 +48,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   String? _pendingSummaryId;
   String? _pendingSummaryType;
   String? _pendingSummaryUrl;
+  // Selected image for attachment
 
   @override
   void initState() {
@@ -627,40 +630,41 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 ),
                 const SizedBox(height: 8),
               ],
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primaryPurple,
-                      AppColors.primaryPurple.withOpacity(0.8),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                    bottomLeft: Radius.circular(16),
-                    bottomRight: Radius.circular(4),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryPurple.withOpacity(0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+              if (msg.content.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.primaryPurple,
+                        AppColors.primaryPurple.withOpacity(0.8),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
-                ),
-                child: MarkdownBody(
-                  data: msg.content,
-                  selectable: true,
-                  styleSheet: MarkdownStyleSheet(
-                    p: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
-                    strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                      bottomLeft: Radius.circular(16),
+                      bottomRight: Radius.circular(4),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryPurple.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: MarkdownBody(
+                    data: msg.content,
+                    selectable: true,
+                    styleSheet: MarkdownStyleSheet(
+                      p: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                      strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
         ),
@@ -991,12 +995,182 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ChatInputField(
-            controller: _textController,
-            onSend: () => _handleSend(cubit),
-            selectedImages: state.selectedImages,
-            onAddImage: (path) => cubit.addSelectedImage(path),
-            onRemoveImage: (path) => cubit.removeSelectedImage(path),
+          if (state.selectedImages.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: SizedBox(
+                height: 100,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: state.selectedImages.length,
+                  itemBuilder: (context, index) {
+                    final imagePath = state.selectedImages[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Stack(
+                        children: [
+                          Container(
+                            height: 100,
+                            width: 100,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              image: DecorationImage(
+                                image: FileImage(File(imagePath)),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: GestureDetector(
+                              onTap: () => cubit.removeSelectedImage(imagePath),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.close, color: Colors.white, size: 16),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: () async {
+                    final XFile? image = await _imagePicker.pickImage(
+                      source: ImageSource.gallery,
+                      imageQuality: 80,
+                    );
+                    if (image != null) {
+                      cubit.addSelectedImage(image.path);
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Icon(
+                      Icons.image_outlined,
+                      color: Colors.white.withOpacity(0.8),
+                      size: 24,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    constraints: const BoxConstraints(
+                      minHeight: 50,
+                      maxHeight: 150,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(
+                        color: state.isListening 
+                          ? const Color(0xFF8B5CF6).withOpacity(0.3) 
+                          : Colors.white.withOpacity(0.08)
+                      ),
+                    ),
+                    child: state.isListening
+                        ? Row(
+                            children: [
+                              const _PulseIcon(),
+                              const SizedBox(width: 10),
+                              Text(
+                                _formatDuration(_recordingSeconds),
+                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  state.speechText.isEmpty ? "Listening..." : state.speechText,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Colors.white70, fontSize: 13, fontStyle: FontStyle.italic),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => cubit.stopListening(submit: false),
+                                child: const Text(
+                                  "Cancel",
+                                  style: TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _textController,
+                                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                                  decoration: const InputDecoration(
+                                    hintText: "Ask Financial Advisor",
+                                    hintStyle: TextStyle(color: Colors.grey),
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.symmetric(vertical: 8),
+                                  ),
+                                  minLines: 1,
+                                  maxLines: null,
+                                  keyboardType: TextInputType.multiline,
+                                  textInputAction: TextInputAction.newline,
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: state.isGenerating ? null : () => cubit.startListening(),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 4, bottom: 2),
+                                  child: Icon(
+                                    Icons.mic_none, 
+                                    color: state.isGenerating ? Colors.grey : const Color(0xFF8B5CF6), 
+                                    size: 22
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: state.isListening
+                      ? () => cubit.stopListening(submit: true)
+                      : (state.isGenerating
+                          ? () => cubit.stopGenerating()
+                          : () => _handleSend(cubit)),
+                  child: Container(
+                    height: 44,
+                    width: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: state.isListening 
+                          ? const Color(0xFF8B5CF6)
+                          : (state.isGenerating
+                              ? Colors.redAccent.withOpacity(0.9)
+                              : const Color(0xFF8B5CF6)),
+                    ),
+                    child: state.isListening
+                        ? const Icon(Icons.check_rounded, color: Colors.white, size: 22)
+                        : (state.isGenerating
+                            ? const Icon(Icons.stop_rounded, color: Colors.white, size: 20)
+                            : const Icon(Icons.send_rounded, color: Colors.white, size: 18)),
+                  ),
+                ),
+              ],
+            ),
           ),
           const Padding(
             padding: EdgeInsets.only(bottom: 8),

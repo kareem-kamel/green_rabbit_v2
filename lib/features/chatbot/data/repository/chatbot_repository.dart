@@ -41,20 +41,22 @@ class ChatbotRepository {
     return _aiService.getConversationMessages(conversationId);
   }
 
-  Future<ChatMessage> sendMessage(String conversationId, String content, {List<ChatMessage> history = const []}) {
-    return _aiService.sendMessage(conversationId, content, history: history);
+  Future<ChatMessage> sendMessage(String conversationId, String content, {List<ChatMessage> history = const [], String? imagePath}) {
+    return _aiService.sendMessage(conversationId, content, history: history, imagePath: imagePath);
   }
 
   Stream<String> sendMessageStream(
     String conversationId,
     String content, {
     List<ChatMessage> history = const [],
+    String? imagePath,
     CancelToken? cancelToken,
   }) {
     return _aiService.sendMessageStream(
       conversationId,
       content,
       history: history,
+      imagePath: imagePath,
       cancelToken: cancelToken,
     );
   }
