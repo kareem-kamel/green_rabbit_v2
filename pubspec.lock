@@ -522,10 +522,17 @@ packages:
     dependency: transitive
     description:
       name: flutter_plugin_android_lifecycle
+<<<<<<< HEAD
       sha256: "38d1c268de9097ff59cf0e844ac38759fc78f76836d37edad06fa21e182055a0"
       url: "https://pub.dev"
     source: hosted
     version: "2.0.34"
+=======
+      sha256: "3854fe5e3bff0b113c658f260b90c95dea17c92db0f2addeac2e343dd9969785"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.35"
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
   flutter_riverpod:
     dependency: "direct main"
     description:
@@ -788,10 +795,17 @@ packages:
     dependency: transitive
     description:
       name: image_picker_ios
+<<<<<<< HEAD
       sha256: "956c16a42c0c708f914021666ffcd8265dde36e673c9fa68c81f7d085d9774ad"
       url: "https://pub.dev"
     source: hosted
     version: "0.8.13+3"
+=======
+      sha256: b9c4a438a9ff4f60808c9cf0039b93a42bb6c2211ef6ebb647394b2b3fa84588
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.8.13+6"
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
   image_picker_linux:
     dependency: transitive
     description:
@@ -828,34 +842,62 @@ packages:
     dependency: "direct main"
     description:
       name: in_app_purchase
+<<<<<<< HEAD
       sha256: "5cddd7f463f3bddb1d37a72b95066e840d5822d66291331d7f8f05ce32c24b6c"
       url: "https://pub.dev"
     source: hosted
     version: "3.2.3"
+=======
+      sha256: "0e9510b80b0074e89ab0a8e0fc901439b779dc9ae575ab8d419253c6e1627716"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.3.0"
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
   in_app_purchase_android:
     dependency: transitive
     description:
       name: in_app_purchase_android
+<<<<<<< HEAD
       sha256: "634bee4734b17fe55f370f0ac07a22431a9666e0f3a870c6d20350856e8bbf71"
       url: "https://pub.dev"
     source: hosted
     version: "0.4.0+10"
+=======
+      sha256: b8af1b6f0e57076b5da5ede71e3af2d727017c0416ad2a41017c6ed2b102381d
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.0"
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
   in_app_purchase_platform_interface:
     dependency: transitive
     description:
       name: in_app_purchase_platform_interface
+<<<<<<< HEAD
       sha256: "1d353d38251da5b9fea6635c0ebfc6bb17a2d28d0e86ea5e083bf64244f1fb4c"
       url: "https://pub.dev"
     source: hosted
     version: "1.4.0"
+=======
+      sha256: "0b0076cac8ce4fa7048f01e76af8b123aeb6a7c4e0dea2a5206d6664454f3e36"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.1"
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
   in_app_purchase_storekit:
     dependency: transitive
     description:
       name: in_app_purchase_storekit
+<<<<<<< HEAD
       sha256: "1d512809edd9f12ff88fce4596a13a18134e2499013f4d6a8894b04699363c93"
       url: "https://pub.dev"
     source: hosted
     version: "0.4.8+1"
+=======
+      sha256: "5f9d59c86c15f56429a4fdf09097c99d5b412510e1fcf80cf874fc9638fab369"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.10"
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
   interactive_chart:
     dependency: "direct main"
     description:
@@ -1476,7 +1518,11 @@ packages:
       sha256: "522f00f556e73044315fa4585ec3270f1808a4b186c936e612cab0b565ff1e00"
       url: "https://pub.dev"
     source: hosted
+<<<<<<< HEAD
     version: "0.7.6"
+=======
+    version: "0.7.7"
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
   timezone:
     dependency: transitive
     description:
@@ -1657,10 +1703,17 @@ packages:
     dependency: "direct main"
     description:
       name: webview_flutter
+<<<<<<< HEAD
       sha256: a3da219916aba44947d3a5478b1927876a09781174b5a2b67fa5be0555154bf9
       url: "https://pub.dev"
     source: hosted
     version: "4.13.1"
+=======
+      sha256: e4d3474277c5043f5f3100ed27d94ad693abfd5c602b0221c719a4497e4ba1e4
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.14.0"
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
   webview_flutter_android:
     dependency: transitive
     description:
@@ -1681,10 +1734,17 @@ packages:
     dependency: transitive
     description:
       name: webview_flutter_wkwebview
+<<<<<<< HEAD
       sha256: e50cd97ad28e888f6a4f862a05eab917a635417f9b134df64c3abb78250c6446
       url: "https://pub.dev"
     source: hosted
     version: "3.25.0"
+=======
+      sha256: "82648217f537573e1ca9ae9952d3eacedca6ab5aee69dc84445fc763766dcea2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.25.1"
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
   win32:
     dependency: transitive
     description:
@@ -1718,5 +1778,5 @@ packages:
     source: hosted
     version: "3.1.3"
 sdks:
-  dart: ">=3.9.0 <4.0.0"
-  flutter: ">=3.35.0"
+  dart: ">=3.10.0 <4.0.0"
+  flutter: ">=3.38.0"

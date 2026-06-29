@@ -34,7 +34,11 @@ class ChatMessage extends Equatable {
   final String conversationId;
   final String role;
   final String content;
+<<<<<<< HEAD
   final String? imagePath;
+=======
+  final List<String>? imagePaths;
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
   final int? tokensUsed;
   final int? tokensIn;
   final int? tokensOut;
@@ -51,7 +55,11 @@ class ChatMessage extends Equatable {
     required this.conversationId,
     required this.role,
     required this.content,
+<<<<<<< HEAD
     this.imagePath,
+=======
+    this.imagePaths,
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
     this.tokensUsed,
     this.tokensIn,
     this.tokensOut,
@@ -68,7 +76,13 @@ class ChatMessage extends Equatable {
       conversationId: json['conversationId']?.toString() ?? '',
       role: json['role']?.toString() ?? 'assistant',
       content: json['content']?.toString() ?? '',
+<<<<<<< HEAD
       imagePath: json['imagePath']?.toString(),
+=======
+      imagePaths: json['imagePaths'] != null 
+          ? (json['imagePaths'] as List<dynamic>).map((e) => e.toString()).toList() 
+          : null,
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
       tokensUsed: json['tokensUsed'] is int ? json['tokensUsed'] as int : null,
       tokensIn: json['tokensIn'] is int ? json['tokensIn'] as int : null,
       tokensOut: json['tokensOut'] is int ? json['tokensOut'] as int : null,
@@ -86,7 +100,11 @@ class ChatMessage extends Equatable {
         conversationId,
         role,
         content,
+<<<<<<< HEAD
         imagePath,
+=======
+        imagePaths,
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
         tokensUsed,
         tokensIn,
         tokensOut,
@@ -98,11 +116,16 @@ class ChatMessage extends Equatable {
       ];
 
   Map<String, dynamic> toJson() {
-    return {
+    final Map<String, dynamic> map = {
       'role': role,
       'content': content,
       if (imagePath != null) 'imagePath': imagePath,
     };
+    final localImagePaths = imagePaths;
+    if (localImagePaths != null) {
+      map['imagePaths'] = localImagePaths;
+    }
+    return map;
   }
 
   ChatMessage copyWith({
@@ -110,7 +133,11 @@ class ChatMessage extends Equatable {
     String? conversationId,
     String? role,
     String? content,
+<<<<<<< HEAD
     String? imagePath,
+=======
+    List<String>? imagePaths,
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
     int? tokensUsed,
     int? tokensIn,
     int? tokensOut,
@@ -125,7 +152,11 @@ class ChatMessage extends Equatable {
       conversationId: conversationId ?? this.conversationId,
       role: role ?? this.role,
       content: content ?? this.content,
+<<<<<<< HEAD
       imagePath: imagePath ?? this.imagePath,
+=======
+      imagePaths: imagePaths ?? this.imagePaths,
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
       tokensUsed: tokensUsed ?? this.tokensUsed,
       tokensIn: tokensIn ?? this.tokensIn,
       tokensOut: tokensOut ?? this.tokensOut,

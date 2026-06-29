@@ -13,7 +13,15 @@ import 'package:green_rabbit/core/errors/failures.dart';
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository repository;
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    // iOS OAuth 2.0 client ID (client_type 2, ios_info bundle: com.greenrabbit.ai)
+    clientId:
+        '963276687646-g6htuquf3okdg29auu9qe0cj2uhefpt7.apps.googleusercontent.com',
+    // Web/server OAuth 2.0 client ID (client_type 3) — needed to get an idToken
+    serverClientId:
+        '963276687646-9ijmelnsmq6752a0fr64lk6q05l9sgoa.apps.googleusercontent.com',
+  );
 
   AuthCubit({required this.repository}) : super(AuthInitial());
 
@@ -208,21 +216,15 @@ class AuthCubit extends Cubit<AuthState> {
 
   Future<void> logout() async {
     try {
-      // Google logout
       await _googleSignIn.signOut();
-
-      // Optional:
-      // await _googleSignIn.disconnect();
     } catch (e) {
       debugPrint('Google Sign Out error: $e');
     }
 
-    // Clear local/backend session
     await repository.logout();
 
     if (isClosed) return;
 
-    // Navigate user back to Login
     emit(AuthInitial());
   }
 
@@ -246,6 +248,17 @@ class AuthCubit extends Cubit<AuthState> {
     await repository.setOnboardingComplete();
 
     emit(AuthInitial());
+  }
+
+  // --------------------------------------------------
+  // SET AUTHENTICATED MANUALLY
+  // --------------------------------------------------
+  void setAuthenticated({required bool onboardingDone}) {
+    if (onboardingDone) {
+      emit(AuthSuccess());
+    } else {
+      emit(AuthNeedsPreferences());
+    }
   }
 
   // --------------------------------------------------
@@ -332,17 +345,6 @@ class AuthCubit extends Cubit<AuthState> {
       );
     } catch (e) {
       throw Exception(e.toString());
-    }
-  }
-
-  // --------------------------------------------------
-  // SET AUTHENTICATED MANUALLY
-  // --------------------------------------------------
-  void setAuthenticated({required bool onboardingDone}) {
-    if (onboardingDone) {
-      emit(AuthSuccess());
-    } else {
-      emit(AuthNeedsPreferences());
     }
   }
 

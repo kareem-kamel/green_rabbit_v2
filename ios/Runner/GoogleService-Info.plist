@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.greenrabbit.app</string>
+	<string>com.greenrabbit.ai</string>
 	<key>PROJECT_ID</key>
 	<string>greenrabbit-app</string>
 	<key>STORAGE_BUCKET</key>
@@ -26,5 +26,9 @@
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
 	<string>1:963276687646:ios:01421143114f6ff6c4210f</string>
+	<key>CLIENT_ID</key>
+	<string>963276687646-g6htuquf3okdg29auu9qe0cj2uhefpt7.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.963276687646-g6htuquf3okdg29auu9qe0cj2uhefpt7</string>
 </dict>
 </plist>

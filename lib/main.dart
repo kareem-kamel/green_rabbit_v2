@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:green_rabbit/firebase_options.dart';
 import 'package:green_rabbit/core/theme/app_theme.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:green_rabbit/features/auth/presentation/cubit/auth_state.dart';
@@ -31,7 +32,9 @@ final GlobalKey<NavigatorState> globalNavigatorKey =
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   await dotenv.load(fileName: ".env");
   await di.init();
 
@@ -131,7 +134,6 @@ class GreenRabbitApp extends StatelessWidget {
                 }
 
                 // Default case: show Login (not onboarding)
-                // We show this for AuthInitial, AuthFailure, and AuthLoading.
                 return const LoginScreen(isFromSignup: false);
               },
             ),

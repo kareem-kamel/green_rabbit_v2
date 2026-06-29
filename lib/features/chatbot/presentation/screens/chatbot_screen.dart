@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../widgets/typing_indicator.dart';
+import '../widgets/chat_input_field.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 import '../cubit/chat_cubit.dart';
@@ -609,29 +610,72 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         alignment: Alignment.centerRight,
         child: Container(
           margin: const EdgeInsets.only(bottom: 12, left: 60),
+<<<<<<< HEAD
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
                 AppColors.primaryPurple,
                 AppColors.primaryPurple.withOpacity(0.8),
+=======
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (msg.imagePaths != null && msg.imagePaths!.isNotEmpty) ...[
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: msg.imagePaths!.map((path) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(
+                        File(path),
+                        width: 150,
+                        height: 150,
+                        fit: BoxFit.cover,
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 8),
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
               ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
-              bottomLeft: Radius.circular(16),
-              bottomRight: Radius.circular(4),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primaryPurple.withOpacity(0.2),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primaryPurple,
+                      AppColors.primaryPurple.withOpacity(0.8),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(4),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryPurple.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: MarkdownBody(
+                  data: msg.content,
+                  selectable: true,
+                  styleSheet: MarkdownStyleSheet(
+                    p: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                    strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
               ),
             ],
           ),
+<<<<<<< HEAD
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -663,6 +707,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 ),
             ],
           ),
+=======
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
         ),
       );
     }
@@ -991,6 +1037,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+<<<<<<< HEAD
           if (_selectedImage != null) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -1160,6 +1207,14 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 ),
               ],
             ),
+=======
+          ChatInputField(
+            controller: _textController,
+            onSend: () => _handleSend(cubit),
+            selectedImages: state.selectedImages,
+            onAddImage: (path) => cubit.addSelectedImage(path),
+            onRemoveImage: (path) => cubit.removeSelectedImage(path),
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
           ),
           const Padding(
             padding: EdgeInsets.only(bottom: 8),
@@ -1175,7 +1230,11 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   void _handleSend(ChatCubit cubit) {
     final text = _textController.text.trim();
+<<<<<<< HEAD
     if (text.isNotEmpty || _selectedImage != null) {
+=======
+    if (text.isNotEmpty || cubit.state.selectedImages.isNotEmpty) {
+>>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
       if (_pendingSummaryId != null && _pendingSummaryType != null) {
         // We have pending summary params, call summarize
         cubit.summarize(_pendingSummaryId!, _pendingSummaryType!, url: _pendingSummaryUrl);
