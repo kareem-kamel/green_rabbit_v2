@@ -33,7 +33,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '963276687646',
     projectId: 'greenrabbit-app',
     storageBucket: 'greenrabbit-app.firebasestorage.app',
-    iosBundleId: 'com.greenrabbit.app',
+    iosBundleId: 'com.greenrabbit.ai',
     // iOS OAuth 2.0 client  (client_type 2 in google-services.json)
     iosClientId:
         '963276687646-g6htuquf3okdg29auu9qe0cj2uhefpt7.apps.googleusercontent.com',
@@ -47,7 +47,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '963276687646',
     projectId: 'greenrabbit-app',
     storageBucket: 'greenrabbit-app.firebasestorage.app',
-    iosBundleId: 'com.greenrabbit.app',
+    iosBundleId: 'com.greenrabbit.ai',
     iosClientId:
         '963276687646-g6htuquf3okdg29auu9qe0cj2uhefpt7.apps.googleusercontent.com',
   );
