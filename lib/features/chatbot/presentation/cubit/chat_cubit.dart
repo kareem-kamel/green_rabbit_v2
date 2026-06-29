@@ -7,6 +7,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
 import '../../data/repository/chatbot_repository.dart';
 import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
+import 'package:green_rabbit/core/errors/failures.dart';
 import 'chat_state.dart';
 
 class ChatCubit extends Cubit<ChatState> {
@@ -280,14 +281,83 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   String _formatError(Object e) {
-    if (e is AIException) return e.message;
-    return e.toString().replaceAll('Exception: ', '');
+    // Handle specific failure types
+    if (e is NoInternetFailure) {
+      return e.message;
+    }
+    
+    if (e is ServerFailure) {
+      return 'Our server encountered a problem. Please try again later.';
+    }
+    
+    if (e is CacheFailure) {
+      return 'There was an issue loading your data. Please try again.';
+    }
+    
+    // Handle AI exceptions - show message from API but sanitize if needed
+    if (e is AIException) {
+      // Always show AIException messages (they're meant for users)
+      final msg = e.message;
+      if (msg.toLowerCase().contains('aborted')) {
+        return 'The request was stopped. This could be due to poor internet connection or a server issue. Please try again.';
+      }
+      return msg;
+    }
+    
+    // Handle Dio exceptions
+    if (e is DioException) {
+      switch (e.type) {
+        case DioExceptionType.connectionError:
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          return 'Connection issue. Please check your internet and try again.';
+        case DioExceptionType.badResponse:
+          if (e.response?.statusCode == 401) {
+            return 'Authentication issue. Please log in again.';
+          } else if (e.response?.statusCode == 429) {
+            return 'Too many requests. Please wait a moment and try again.';
+          } else if (e.response?.statusCode != null && e.response!.statusCode! >= 500) {
+            return 'Our server is having issues. Please try again later.';
+          }
+          return 'Something went wrong. Please try again.';
+        case DioExceptionType.cancel:
+          return 'The request was stopped. Please try again if you want to continue.';
+        case DioExceptionType.unknown:
+        default:
+          if (e.message?.toLowerCase().contains('aborted') ?? false) {
+            return 'The request was stopped. This could be due to poor internet connection or a server issue. Please try again.';
+          }
+          return 'Something went wrong. Please try again.';
+      }
+    }
+    
+    // Default generic error message (safe and user-friendly)
+    final msg = e.toString().replaceAll('Exception: ', '');
+    if (msg.toLowerCase().contains('aborted')) {
+      return 'The request was stopped. This could be due to poor internet connection or a server issue. Please try again.';
+    }
+    return 'Something went wrong. Please try again.';
   }
 
   bool _isReplyInFlightError(Object e) {
-    final msg = _formatError(e).toLowerCase();
-    return msg.contains('already in flight') ||
-        msg.contains('reply_in_flight');
+    // Check raw exception instead of formatted error
+    String getRawMessage(Object err) {
+      if (err is AIException) return err.message.toLowerCase();
+      if (err is DioException) {
+        if (err.response != null && err.response?.data is Map) {
+          final data = err.response?.data as Map;
+          final errMsg = data['error']?['message']?.toString().toLowerCase() ?? '';
+          if (errMsg.isNotEmpty) return errMsg;
+        }
+        return err.message?.toLowerCase() ?? '';
+      }
+      return err.toString().toLowerCase();
+    }
+    
+    final rawMsg = getRawMessage(e);
+    return rawMsg.contains('already in flight') ||
+         rawMsg.contains('reply_in_flight');
   }
 
   String _replyInFlightUserMessage() {
