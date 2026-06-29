@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../widgets/typing_indicator.dart';
+import '../widgets/chat_input_field.dart';
 import '../../../../core/theme/app_colors.dart';
 import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
 import '../cubit/chat_cubit.dart';
@@ -604,37 +606,62 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         alignment: Alignment.centerRight,
         child: Container(
           margin: const EdgeInsets.only(bottom: 12, left: 60),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppColors.primaryPurple,
-                AppColors.primaryPurple.withOpacity(0.8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (msg.imagePaths != null && msg.imagePaths!.isNotEmpty) ...[
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: msg.imagePaths!.map((path) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.file(
+                        File(path),
+                        width: 150,
+                        height: 150,
+                        fit: BoxFit.cover,
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 8),
               ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(16),
-              topRight: Radius.circular(16),
-              bottomLeft: Radius.circular(16),
-              bottomRight: Radius.circular(4),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primaryPurple.withOpacity(0.2),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primaryPurple,
+                      AppColors.primaryPurple.withOpacity(0.8),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(4),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primaryPurple.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: MarkdownBody(
+                  data: msg.content,
+                  selectable: true,
+                  styleSheet: MarkdownStyleSheet(
+                    p: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                    strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ),
               ),
             ],
-          ),
-          child: MarkdownBody(
-            data: msg.content,
-            selectable: true,
-            styleSheet: MarkdownStyleSheet(
-              p: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
-              strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-            ),
           ),
         ),
       );
@@ -964,115 +991,12 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    constraints: const BoxConstraints(
-                      minHeight: 50,
-                      maxHeight: 150,
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.06),
-                      borderRadius: BorderRadius.circular(28),
-                      border: Border.all(
-                        color: state.isListening 
-                          ? const Color(0xFF8B5CF6).withOpacity(0.3) 
-                          : Colors.white.withOpacity(0.08)
-                      ),
-                    ),
-                    child: state.isListening
-                        ? Row(
-                            children: [
-                              const _PulseIcon(),
-                              const SizedBox(width: 10),
-                              Text(
-                                _formatDuration(_recordingSeconds),
-                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  state.speechText.isEmpty ? "Listening..." : state.speechText,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(color: Colors.white70, fontSize: 13, fontStyle: FontStyle.italic),
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: () => cubit.stopListening(submit: false),
-                                child: const Text(
-                                  "Cancel",
-                                  style: TextStyle(color: AppColors.accent, fontSize: 13, fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ],
-                          )
-                        : Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: _textController,
-                                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                                  decoration: const InputDecoration(
-                                    hintText: "Ask Financial Advisor",
-                                    hintStyle: TextStyle(color: Colors.grey),
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.symmetric(vertical: 8),
-                                  ),
-                                  minLines: 1,
-                                  maxLines: null,
-                                  keyboardType: TextInputType.multiline,
-                                  textInputAction: TextInputAction.newline,
-                                ),
-                              ),
-                              GestureDetector(
-                                onTap: state.isGenerating ? null : () => cubit.startListening(),
-                                child: Padding(
-                                  padding: const EdgeInsets.only(left: 4, bottom: 2),
-                                  child: Icon(
-                                    Icons.mic_none, 
-                                    color: state.isGenerating ? Colors.grey : const Color(0xFF8B5CF6), 
-                                    size: 22
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: state.isListening
-                      ? () => cubit.stopListening(submit: true)
-                      : (state.isGenerating
-                          ? () => cubit.stopGenerating()
-                          : () => _handleSend(cubit)),
-                  child: Container(
-                    height: 44,
-                    width: 44,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: state.isListening 
-                          ? const Color(0xFF8B5CF6)
-                          : (state.isGenerating
-                              ? Colors.redAccent.withOpacity(0.9)
-                              : const Color(0xFF8B5CF6)),
-                    ),
-                    child: state.isListening
-                        ? const Icon(Icons.check_rounded, color: Colors.white, size: 22)
-                        : (state.isGenerating
-                            ? const Icon(Icons.stop_rounded, color: Colors.white, size: 20)
-                            : const Icon(Icons.send_rounded, color: Colors.white, size: 18)),
-                  ),
-                ),
-              ],
-            ),
+          ChatInputField(
+            controller: _textController,
+            onSend: () => _handleSend(cubit),
+            selectedImages: state.selectedImages,
+            onAddImage: (path) => cubit.addSelectedImage(path),
+            onRemoveImage: (path) => cubit.removeSelectedImage(path),
           ),
           const Padding(
             padding: EdgeInsets.only(bottom: 8),
@@ -1088,7 +1012,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   void _handleSend(ChatCubit cubit) {
     final text = _textController.text.trim();
-    if (text.isNotEmpty) {
+    if (text.isNotEmpty || cubit.state.selectedImages.isNotEmpty) {
       if (_pendingSummaryId != null && _pendingSummaryType != null) {
         // We have pending summary params, call summarize
         cubit.summarize(_pendingSummaryId!, _pendingSummaryType!, url: _pendingSummaryUrl);

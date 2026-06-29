@@ -34,6 +34,7 @@ class ChatMessage extends Equatable {
   final String conversationId;
   final String role;
   final String content;
+  final List<String>? imagePaths;
   final int? tokensUsed;
   final int? tokensIn;
   final int? tokensOut;
@@ -50,6 +51,7 @@ class ChatMessage extends Equatable {
     required this.conversationId,
     required this.role,
     required this.content,
+    this.imagePaths,
     this.tokensUsed,
     this.tokensIn,
     this.tokensOut,
@@ -66,6 +68,9 @@ class ChatMessage extends Equatable {
       conversationId: json['conversationId']?.toString() ?? '',
       role: json['role']?.toString() ?? 'assistant',
       content: json['content']?.toString() ?? '',
+      imagePaths: json['imagePaths'] != null 
+          ? (json['imagePaths'] as List<dynamic>).map((e) => e.toString()).toList() 
+          : null,
       tokensUsed: json['tokensUsed'] is int ? json['tokensUsed'] as int : null,
       tokensIn: json['tokensIn'] is int ? json['tokensIn'] as int : null,
       tokensOut: json['tokensOut'] is int ? json['tokensOut'] as int : null,
@@ -83,6 +88,7 @@ class ChatMessage extends Equatable {
         conversationId,
         role,
         content,
+        imagePaths,
         tokensUsed,
         tokensIn,
         tokensOut,
@@ -94,10 +100,15 @@ class ChatMessage extends Equatable {
       ];
 
   Map<String, dynamic> toJson() {
-    return {
+    final Map<String, dynamic> map = {
       'role': role,
       'content': content,
     };
+    final localImagePaths = imagePaths;
+    if (localImagePaths != null) {
+      map['imagePaths'] = localImagePaths;
+    }
+    return map;
   }
 
   ChatMessage copyWith({
@@ -105,6 +116,7 @@ class ChatMessage extends Equatable {
     String? conversationId,
     String? role,
     String? content,
+    List<String>? imagePaths,
     int? tokensUsed,
     int? tokensIn,
     int? tokensOut,
@@ -119,6 +131,7 @@ class ChatMessage extends Equatable {
       conversationId: conversationId ?? this.conversationId,
       role: role ?? this.role,
       content: content ?? this.content,
+      imagePaths: imagePaths ?? this.imagePaths,
       tokensUsed: tokensUsed ?? this.tokensUsed,
       tokensIn: tokensIn ?? this.tokensIn,
       tokensOut: tokensOut ?? this.tokensOut,

@@ -196,7 +196,22 @@ class ChatCubit extends Cubit<ChatState> {
       messages: [],
       isGenerating: false,
       clearActiveConversationId: true,
+      selectedImages: [],
     ));
+  }
+
+  void addSelectedImage(String imagePath) {
+    final updatedImages = List<String>.from(state.selectedImages)..add(imagePath);
+    emit(state.copyWith(selectedImages: updatedImages));
+  }
+
+  void removeSelectedImage(String imagePath) {
+    final updatedImages = List<String>.from(state.selectedImages)..remove(imagePath);
+    emit(state.copyWith(selectedImages: updatedImages));
+  }
+
+  void clearSelectedImages() {
+    emit(state.copyWith(selectedImages: []));
   }
 
   Future<void> summarize(String entityId, String entityType, {String? url}) async {
@@ -504,7 +519,8 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   Future<void> sendMessage(String text, {bool skipAddingUserMessage = false}) async {
-    if (text.isEmpty || state.isGenerating) return;
+    if (text.isEmpty && state.selectedImages.isEmpty) return;
+    if (state.isGenerating) return;
 
     List<ChatMessage> updatedMessages;
     if (skipAddingUserMessage) {
@@ -517,6 +533,7 @@ class ChatCubit extends Cubit<ChatState> {
         conversationId: state.activeConversationId ?? 'current',
         role: 'user',
         content: text,
+        imagePaths: state.selectedImages.isNotEmpty ? List.from(state.selectedImages) : null,
         createdAt: DateTime.now(),
       );
 
@@ -528,6 +545,7 @@ class ChatCubit extends Cubit<ChatState> {
       hasMessages: true,
       messages: updatedMessages,
       isGenerating: true,
+      selectedImages: [], // Clear selected images after sending
     ));
 
     _activeCancelToken?.cancel();
