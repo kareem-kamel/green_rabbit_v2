@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../widgets/typing_indicator.dart';
@@ -34,6 +36,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ImagePicker _imagePicker = ImagePicker();
   bool _clearedOnOpen = false;
   bool _initialPromptSent = false;
   bool _autoScroll = true;
@@ -44,6 +47,8 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   String? _pendingSummaryId;
   String? _pendingSummaryType;
   String? _pendingSummaryUrl;
+  // Selected image for attachment
+  XFile? _selectedImage;
 
   @override
   void initState() {
@@ -604,7 +609,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         alignment: Alignment.centerRight,
         child: Container(
           margin: const EdgeInsets.only(bottom: 12, left: 60),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -628,13 +632,36 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
               ),
             ],
           ),
-          child: MarkdownBody(
-            data: msg.content,
-            selectable: true,
-            styleSheet: MarkdownStyleSheet(
-              p: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
-              strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (msg.imagePath != null) ...[
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                  child: Image.file(
+                    File(msg.imagePath!),
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ],
+              if (msg.content.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: MarkdownBody(
+                    data: msg.content,
+                    selectable: true,
+                    styleSheet: MarkdownStyleSheet(
+                      p: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                      strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       );
@@ -964,10 +991,70 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if (_selectedImage != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Stack(
+                children: [
+                  Container(
+                    height: 100,
+                    width: 100,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      image: DecorationImage(
+                        image: FileImage(File(_selectedImage!.path)),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedImage = null;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close, color: Colors.white, size: 16),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Row(
               children: [
+                GestureDetector(
+                  onTap: () async {
+                    final XFile? image = await _imagePicker.pickImage(
+                      source: ImageSource.gallery,
+                      imageQuality: 80,
+                    );
+                    if (image != null) {
+                      setState(() {
+                        _selectedImage = image;
+                      });
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: Icon(
+                      Icons.image_outlined,
+                      color: Colors.white.withOpacity(0.8),
+                      size: 24,
+                    ),
+                  ),
+                ),
                 Expanded(
                   child: Container(
                     constraints: const BoxConstraints(
@@ -1088,7 +1175,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   void _handleSend(ChatCubit cubit) {
     final text = _textController.text.trim();
-    if (text.isNotEmpty) {
+    if (text.isNotEmpty || _selectedImage != null) {
       if (_pendingSummaryId != null && _pendingSummaryType != null) {
         // We have pending summary params, call summarize
         cubit.summarize(_pendingSummaryId!, _pendingSummaryType!, url: _pendingSummaryUrl);
@@ -1098,9 +1185,15 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         _pendingSummaryUrl = null;
       } else {
         // Normal send message
-        cubit.sendMessage(text);
+        cubit.sendMessage(
+          text,
+          imagePath: _selectedImage?.path,
+        );
       }
       _textController.clear();
+      setState(() {
+        _selectedImage = null;
+      });
     }
   }
 }

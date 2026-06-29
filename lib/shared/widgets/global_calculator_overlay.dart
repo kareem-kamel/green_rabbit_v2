@@ -9,7 +9,6 @@ import '../../main.dart'; // To access globalNavigatorKey
 import '../../features/market/presentation/providers/market_providers.dart';
 import '../../features/market/data/models/market_instrument.dart';
 import '../../features/market/data/repositories/market_repository_impl.dart';
-import '../../features/watchlist/presentation/providers/watchlist_providers.dart';
 
 import 'package:green_rabbit/shared/widgets/feature_guide_overlay.dart';
 import 'package:green_rabbit/shared/widgets/main_wrapper.dart';
@@ -837,73 +836,102 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                             
                             final instrument = instruments[index];
                             
-                            return ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                              leading: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Center(
-                                  child: instrument.logoUrl != null
-                                      ? Image.network(
-                                          instrument.logoUrl!,
-                                          width: 24,
-                                          height: 24,
-                                          errorBuilder: (_, __, ___) => Icon(Icons.show_chart, color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24)),
-                                        )
-                                      : Icon(Icons.show_chart, color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24)),
-                                ),
-                              ),
-                              title: Text(
-                                instrument.symbol,
-                                style: TextStyle(
-                                  color: isDark ? Colors.white : Colors.black,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              subtitle: Text(
-                                instrument.name,
-                                style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 12),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: Text(
-                                instrument.price != null && instrument.price! > 0
-                                    ? '\$${instrument.price!.toStringAsFixed(instrument.type.toLowerCase() == 'forex' ? 5 : 2)}'
-                                    : '--',
-                                style: const TextStyle(
-                                  color: AppColors.primaryPurple,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              onTap: () async {
-                                setState(() {
-                                  _globalForexInstrument = instrument;
-                                  _globalForexOpenPrice = instrument.price ?? 0.0;
-                                  _forexOpenPriceController.text = _globalForexOpenPrice.toString();
-                                  
-                                  // Reset close price when instrument changes
-                                  _globalForexClosePrice = 0.0;
-                                  _forexClosePriceController.text = '';
-                                });
+                            return Consumer(
+                              builder: (context, favoritesRef, _) {
+                                final isFavorite = favoritesRef.watch(
+                                  isCalculatorFavoriteProvider(instrument.id)
+                                );
                                 
-                                // Fetch full details to ensure we have the most accurate price
-                                try {
-                                  final detail = await ref.read(marketRepositoryProvider).getInstrumentDetails(instrument.id);
-                                  if (detail.price.current != null) {
+                                return ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+                                  leading: Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Center(
+                                      child: instrument.logoUrl != null
+                                          ? Image.network(
+                                              instrument.logoUrl!,
+                                              width: 24,
+                                              height: 24,
+                                              errorBuilder: (_, __, ___) => Icon(Icons.show_chart, color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24)),
+                                            )
+                                          : Icon(Icons.show_chart, color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24)),
+                                    ),
+                                  ),
+                                  title: Text(
+                                    instrument.symbol,
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white : Colors.black,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    instrument.name,
+                                    style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 12),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      // Favorite icon (calculator-specific!)
+                                      GestureDetector(
+                                        onTap: () {
+                                          // Toggle calculator favorite without selecting the instrument
+                                          favoritesRef.read(calculatorFavoritesProvider.notifier).toggleFavorite(instrument.id);
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(right: 12.0),
+                                          child: Icon(
+                                            isFavorite ? Icons.star : Icons.star_border,
+                                            color: isFavorite ? Colors.amber : (isDark ? Colors.white38 : Colors.black38),
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ),
+                                      // Price
+                                      Text(
+                                        instrument.price != null && instrument.price! > 0
+                                            ? '\$${instrument.price!.toStringAsFixed(instrument.type.toLowerCase() == 'forex' ? 5 : 2)}'
+                                            : '--',
+                                        style: const TextStyle(
+                                          color: AppColors.primaryPurple,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  onTap: () async {
                                     setState(() {
-                                      _globalForexOpenPrice = detail.price.current!;
+                                      _globalForexInstrument = instrument;
+                                      _globalForexOpenPrice = instrument.price ?? 0.0;
                                       _forexOpenPriceController.text = _globalForexOpenPrice.toString();
+                                      
+                                      // Reset close price when instrument changes
+                                      _globalForexClosePrice = 0.0;
+                                      _forexClosePriceController.text = '';
                                     });
-                                  }
-                                } catch (e) {
-                                  debugPrint('Error fetching accurate price: $e');
-                                }
-                                
-                                if (mounted) Navigator.pop(context);
+                                    
+                                    // Fetch full details to ensure we have the most accurate price
+                                    try {
+                                      final detail = await ref.read(marketRepositoryProvider).getInstrumentDetails(instrument.id);
+                                      if (detail.price.current != null) {
+                                        setState(() {
+                                          _globalForexOpenPrice = detail.price.current!;
+                                          _forexOpenPriceController.text = _globalForexOpenPrice.toString();
+                                        });
+                                      }
+                                    } catch (e) {
+                                      debugPrint('Error fetching accurate price: $e');
+                                    }
+                                    
+                                    if (mounted) Navigator.pop(context);
+                                  },
+                                );
                               },
                             );
                           },
@@ -1924,9 +1952,10 @@ class CalculatorSearchNotifier extends StateNotifier<AsyncValue<List<MarketInstr
   int _currentPage = 1;
   bool _hasNext = true;
   bool _isLoadingMore = false;
+  List<MarketInstrument> _allInstruments = []; // Store all loaded instruments for favorites tab
   List<MarketInstrument> _instruments = [];
   ProviderSubscription? _livePricesSubscription;
-  ProviderSubscription? _watchlistSubscription;
+  ProviderSubscription? _calculatorFavoritesSubscription;
   String _lastCategory = "All";
   String _lastQuery = "";
   String _lastSort = "alphabetical";
@@ -1938,22 +1967,21 @@ class CalculatorSearchNotifier extends StateNotifier<AsyncValue<List<MarketInstr
   CalculatorSearchNotifier(this._repository, this._ref) : super(const AsyncValue.loading()) {
     _loadInstruments("All", "", "alphabetical");
     
-    // Subscribe to watchlistProvider to reload favorites when it changes!
-    _watchlistSubscription = _ref.listen<WatchlistState>(
-      watchlistProvider,
+    // Subscribe to calculatorFavoritesProvider to reload favorites when it changes!
+    _calculatorFavoritesSubscription = _ref.listen<Set<String>>(
+      calculatorFavoritesProvider,
       (previous, next) {
-        if (_lastCategory == "Favorites" && !next.isLoading) {
+        if (_lastCategory == "Favorites") {
           _loadInstruments(_lastCategory, _lastQuery, _lastSort);
         }
       },
-      fireImmediately: false,
     );
   }
 
   @override
   void dispose() {
     _livePricesSubscription?.close();
-    _watchlistSubscription?.close();
+    _calculatorFavoritesSubscription?.close();
     super.dispose();
   }
 
@@ -1969,18 +1997,20 @@ class CalculatorSearchNotifier extends StateNotifier<AsyncValue<List<MarketInstr
 
     try {
       if (category == "Favorites") {
-        // Load favorites from watchlist
-        final watchlistState = _ref.read(watchlistProvider);
+        // Load calculator favorites!
+        final favoriteIds = _ref.read(calculatorFavoritesProvider);
+        debugPrint('🎯 Loading calculator favorites! Favorite IDs: $favoriteIds');
         
-        // If watchlist is still loading, keep loading state until it's done
-        if (watchlistState.isLoading) {
-          // Wait a little and retry
-          await Future.delayed(const Duration(milliseconds: 300));
-          // Re-call load instruments now that watchlist might be loaded
-          return _loadInstruments(category, query, sort);
+        // Filter _allInstruments to find favorites (if available)
+        if (_allInstruments.isNotEmpty) {
+          _instruments = _allInstruments.where((inst) => favoriteIds.contains(inst.id)).toList();
+          debugPrint('✅ Loaded ${_instruments.length} favorites from cache!');
+        } else {
+          // If we don't have cached instruments yet, load all first!
+          await _loadAllInstrumentsForFavorites();
+          _instruments = _allInstruments.where((inst) => favoriteIds.contains(inst.id)).toList();
+          debugPrint('✅ Loaded ${_instruments.length} favorites!');
         }
-        
-        _instruments = watchlistState.selectedWatchlist?.instruments ?? [];
         
         // Apply search filter
         if (query.isNotEmpty) {
@@ -2050,6 +2080,9 @@ class CalculatorSearchNotifier extends StateNotifier<AsyncValue<List<MarketInstr
             }).toList();
           }
         }
+
+        // Store all loaded instruments in _allInstruments for later favorite lookup!
+        _addToAllInstruments(_instruments);
       }
 
       // First, set visible instruments so SSE stream starts updating prices!
@@ -2092,6 +2125,9 @@ class CalculatorSearchNotifier extends StateNotifier<AsyncValue<List<MarketInstr
         }
       }));
 
+      // Update _allInstruments with price data
+      _addToAllInstruments(_instruments);
+
       // Apply sorting
       _applySorting(sort);
       
@@ -2100,6 +2136,42 @@ class CalculatorSearchNotifier extends StateNotifier<AsyncValue<List<MarketInstr
     } catch (e, stack) {
       debugPrint('Error loading instruments: $e');
       state = AsyncValue.error(e, stack);
+    }
+  }
+
+  Future<void> _loadAllInstrumentsForFavorites() async {
+    // Load all trending instruments so we have them cached for favorites!
+    final futures = [
+      _repository.getTrendingInstruments(type: 'stocks'),
+      _repository.getTrendingInstruments(type: 'crypto'),
+      _repository.getTrendingInstruments(type: 'forex'),
+      _repository.getTrendingInstruments(type: 'etf'),
+      _repository.getTrendingInstruments(type: 'commodities'),
+    ];
+    final results = await Future.wait(futures);
+    _allInstruments = results.expand((x) => x).toList();
+    
+    // Remove duplicates by instrument ID
+    final seenIds = <String>{};
+    _allInstruments = _allInstruments.where((instrument) {
+      if (seenIds.contains(instrument.id)) return false;
+      seenIds.add(instrument.id);
+      return true;
+    }).toList();
+  }
+
+  void _addToAllInstruments(List<MarketInstrument> instruments) {
+    // Add or update instruments in _allInstruments
+    for (final inst in instruments) {
+      // Find index if exists
+      final index = _allInstruments.indexWhere((i) => i.id == inst.id);
+      if (index != -1) {
+        // Update existing
+        _allInstruments[index] = inst;
+      } else {
+        // Add new
+        _allInstruments.add(inst);
+      }
     }
   }
 
@@ -2221,6 +2293,57 @@ class CalculatorSearchNotifier extends StateNotifier<AsyncValue<List<MarketInstr
 final calculatorSearchProvider = StateNotifierProvider.autoDispose<CalculatorSearchNotifier, AsyncValue<List<MarketInstrument>>>((ref) {
   final repository = ref.watch(marketRepositoryProvider);
   return CalculatorSearchNotifier(repository, ref);
+});
+
+// --- Calculator Favorites Provider ---
+final calculatorFavoritesProvider = StateNotifierProvider<CalculatorFavoritesNotifier, Set<String>>((ref) {
+  return CalculatorFavoritesNotifier();
+});
+
+class CalculatorFavoritesNotifier extends StateNotifier<Set<String>> {
+  static const String _prefsKey = 'calculator_favorites';
+
+  CalculatorFavoritesNotifier() : super({}) {
+    _loadFavorites();
+  }
+
+  Future<void> _loadFavorites() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final favoritesList = prefs.getStringList(_prefsKey) ?? [];
+      state = Set.from(favoritesList);
+    } catch (e) {
+      debugPrint('Error loading calculator favorites: $e');
+    }
+  }
+
+  Future<void> toggleFavorite(String instrumentId) async {
+    final newFavorites = Set<String>.from(state);
+    if (newFavorites.contains(instrumentId)) {
+      newFavorites.remove(instrumentId);
+    } else {
+      newFavorites.add(instrumentId);
+    }
+    state = newFavorites;
+
+    // Save to SharedPreferences
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList(_prefsKey, newFavorites.toList());
+    } catch (e) {
+      debugPrint('Error saving calculator favorites: $e');
+    }
+  }
+
+  bool isFavorite(String instrumentId) {
+    return state.contains(instrumentId);
+  }
+}
+
+// Provider to check if an instrument is a calculator favorite
+final isCalculatorFavoriteProvider = Provider.family<bool, String>((ref, instrumentId) {
+  final favorites = ref.watch(calculatorFavoritesProvider);
+  return favorites.contains(instrumentId);
 });
 
 // --- End Instrument Search Notifier ---

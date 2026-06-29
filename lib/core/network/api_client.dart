@@ -305,7 +305,7 @@ class ApiClient {
   /// Posts to [path] and returns a streaming response — used for AI/SSE flows.
   Future<Response<dynamic>> postStreamResponse(
     String path, {
-    required Map<String, dynamic> data,
+    required dynamic data,
     CancelToken? cancelToken,
     Map<String, String> headers = const {},
   }) {

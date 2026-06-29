@@ -34,6 +34,7 @@ class ChatMessage extends Equatable {
   final String conversationId;
   final String role;
   final String content;
+  final String? imagePath;
   final int? tokensUsed;
   final int? tokensIn;
   final int? tokensOut;
@@ -50,6 +51,7 @@ class ChatMessage extends Equatable {
     required this.conversationId,
     required this.role,
     required this.content,
+    this.imagePath,
     this.tokensUsed,
     this.tokensIn,
     this.tokensOut,
@@ -66,6 +68,7 @@ class ChatMessage extends Equatable {
       conversationId: json['conversationId']?.toString() ?? '',
       role: json['role']?.toString() ?? 'assistant',
       content: json['content']?.toString() ?? '',
+      imagePath: json['imagePath']?.toString(),
       tokensUsed: json['tokensUsed'] is int ? json['tokensUsed'] as int : null,
       tokensIn: json['tokensIn'] is int ? json['tokensIn'] as int : null,
       tokensOut: json['tokensOut'] is int ? json['tokensOut'] as int : null,
@@ -83,6 +86,7 @@ class ChatMessage extends Equatable {
         conversationId,
         role,
         content,
+        imagePath,
         tokensUsed,
         tokensIn,
         tokensOut,
@@ -97,6 +101,7 @@ class ChatMessage extends Equatable {
     return {
       'role': role,
       'content': content,
+      if (imagePath != null) 'imagePath': imagePath,
     };
   }
 
@@ -105,6 +110,7 @@ class ChatMessage extends Equatable {
     String? conversationId,
     String? role,
     String? content,
+    String? imagePath,
     int? tokensUsed,
     int? tokensIn,
     int? tokensOut,
@@ -119,6 +125,7 @@ class ChatMessage extends Equatable {
       conversationId: conversationId ?? this.conversationId,
       role: role ?? this.role,
       content: content ?? this.content,
+      imagePath: imagePath ?? this.imagePath,
       tokensUsed: tokensUsed ?? this.tokensUsed,
       tokensIn: tokensIn ?? this.tokensIn,
       tokensOut: tokensOut ?? this.tokensOut,

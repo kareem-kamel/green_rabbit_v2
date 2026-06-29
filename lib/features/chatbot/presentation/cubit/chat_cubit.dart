@@ -503,8 +503,8 @@ class ChatCubit extends Cubit<ChatState> {
     emit(state.copyWith(messages: messages, isGenerating: false));
   }
 
-  Future<void> sendMessage(String text, {bool skipAddingUserMessage = false}) async {
-    if (text.isEmpty || state.isGenerating) return;
+  Future<void> sendMessage(String text, {bool skipAddingUserMessage = false, String? imagePath}) async {
+    if (text.isEmpty && imagePath == null || state.isGenerating) return;
 
     List<ChatMessage> updatedMessages;
     if (skipAddingUserMessage) {
@@ -517,6 +517,7 @@ class ChatCubit extends Cubit<ChatState> {
         conversationId: state.activeConversationId ?? 'current',
         role: 'user',
         content: text,
+        imagePath: imagePath,
         createdAt: DateTime.now(),
       );
 
@@ -595,6 +596,7 @@ class ChatCubit extends Cubit<ChatState> {
                 conversationId,
                 text,
                 history: history,
+                imagePath: imagePath,
                 cancelToken: cancelToken,
               )) {
                 print('[DEBUG] sendMessageStream received chunk: len=${chunk.length}, chunk="${chunk.substring(0, chunk.length > 100 ? 100 : chunk.length)}"');
