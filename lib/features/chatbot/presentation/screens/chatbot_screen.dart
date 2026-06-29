@@ -599,6 +599,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   bool _isErrorMessage(ChatMessage msg) => msg.id.startsWith('err_');
 
   Widget _buildMessageBubble(BuildContext context, ChatMessage msg, bool isLastGenerating) {
+    print('[DEBUG] _buildMessageBubble: msg.id = ${msg.id}, msg.content = "${msg.content}"');
     if (msg.isUser) {
       return Align(
         alignment: Alignment.centerRight,

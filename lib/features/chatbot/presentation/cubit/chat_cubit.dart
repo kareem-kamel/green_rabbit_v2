@@ -225,18 +225,7 @@ class ChatCubit extends Cubit<ChatState> {
     var streamDisplayed = '';
 
     try {
-      _revealTimer = Timer.periodic(
-        const Duration(milliseconds: _revealTickMs),
-        (_) {
-          if (isClosed || cancelToken.isCancelled) return;
-          if (state.activeConversationId != 'summary') return;
-          if (streamDisplayed.length >= streamTarget.length) return;
-
-          streamDisplayed = _advanceTypewriter(streamDisplayed, streamTarget);
-          _emitStreamingAssistantMessage('summary', streamDisplayed);
-        },
-      );
-
+      // Temporarily disable typewriter effect in summarize as well
       await for (final chunk in repository.summarizeContentStream(
         entityId,
         entityType,
@@ -245,19 +234,10 @@ class ChatCubit extends Cubit<ChatState> {
       )) {
         if (cancelToken.isCancelled) break;
         streamTarget = _mergeStreamChunk(streamTarget, chunk);
+        _emitStreamingAssistantMessage('summary', streamTarget);
       }
-
-      // Finish revealing any leftover backlog.
-      if (!cancelToken.isCancelled) {
-        await _waitForRevealCatchUp(
-          conversationId: 'summary',
-          target: streamTarget,
-          displayed: streamDisplayed,
-          isCancelled: () => cancelToken.isCancelled,
-        );
-      }
-
-      _cancelRevealTimer();
+      
+      print('[DEBUG] Summarize post-stream: emitting full target len=${streamTarget.length}');
       emit(state.copyWith(isGenerating: false));
     } catch (e) {
       _cancelRevealTimer();
@@ -318,6 +298,7 @@ class ChatCubit extends Cubit<ChatState> {
 
   /// Backend may send deltas (append) or cumulative content (replace).
   String _mergeStreamChunk(String current, String incoming) {
+    print('[DEBUG] _mergeStreamChunk: current len=${current.length}, incoming len=${incoming.length}');
     if (incoming.isEmpty) return current;
     
     String merged;
@@ -331,10 +312,12 @@ class ChatCubit extends Cubit<ChatState> {
 
     // Aggressively strip "TL;DR" or "Summary" from the start of the accumulated text
     // We do this every time to catch cases where the prefix is split across multiple chunks
-    return merged.replaceFirst(
+    final result = merged.replaceFirst(
       RegExp(r'^\s*([\*#_~]*)\s*(TL;DR|Summary|TLDR)[:\s\-\*]*([\*#_~]*)\s*', caseSensitive: false), 
       ''
     );
+    print('[DEBUG] _mergeStreamChunk: final result len=${result.length}');
+    return result;
   }
 
   void _cancelRevealTimer() {
@@ -343,11 +326,11 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   int _revealCharsPerTick(int backlog) {
-    if (backlog > 200) return 18;
-    if (backlog > 100) return 10;
-    if (backlog > 40) return 5;
-    if (backlog > 12) return 2;
-    return 1;
+    if (backlog > 200) return 50;
+    if (backlog > 100) return 30;
+    if (backlog > 40) return 15;
+    if (backlog > 12) return 5;
+    return 2;
   }
 
   String _advanceTypewriter(String displayed, String target) {
@@ -387,11 +370,14 @@ class ChatCubit extends Cubit<ChatState> {
     required bool Function() isCancelled,
   }) async {
     var shown = displayed;
+    print('[DEBUG] _waitForRevealCatchUp start: shown len = ${shown.length}, target len = ${target.length}');
     while (shown.length < target.length && !isCancelled()) {
       shown = _advanceTypewriter(shown, target);
+      print('[DEBUG] _waitForRevealCatchUp: updating to shown len = ${shown.length}');
       _emitStreamingAssistantMessage(conversationId, shown);
       await Future.delayed(const Duration(milliseconds: _revealTickMs ~/ 2));
     }
+    print('[DEBUG] _waitForRevealCatchUp end: shown len = ${shown.length}');
   }
 
   void _emitStreamingAssistantMessage(
@@ -497,48 +483,22 @@ class ChatCubit extends Cubit<ChatState> {
           streamDisplayed = '';
           _cancelRevealTimer();
 
-          _revealTimer = Timer.periodic(
-            const Duration(milliseconds: _revealTickMs),
-            (_) {
-              if (isClosed || cancelToken.isCancelled) return;
-              if (state.activeConversationId != conversationId) return;
-              if (streamDisplayed.length >= streamTarget.length) return;
-
-              streamDisplayed =
-                  _advanceTypewriter(streamDisplayed, streamTarget);
-              _emitStreamingAssistantMessage(
-                conversationId,
-                streamDisplayed,
-              );
-            },
-          );
-
+          // Temporarily disable typewriter effect to fix display issues
+          // Just show all text immediately
           await for (final chunk in repository.sendMessageStream(
             conversationId,
             text,
             history: history,
             cancelToken: cancelToken,
           )) {
+            print('[DEBUG] sendMessageStream received chunk: len=${chunk.length}, chunk="${chunk.substring(0, chunk.length > 100 ? 100 : chunk.length)}"');
             if (isClosed || cancelToken.isCancelled) return;
-
-            if (state.activeConversationId != conversationId) {
-              return;
-            }
-
+            if (state.activeConversationId != conversationId) return;
             streamTarget = _mergeStreamChunk(streamTarget, chunk);
+            _emitStreamingAssistantMessage(conversationId, streamTarget);
           }
-
-          _cancelRevealTimer();
-          await _waitForRevealCatchUp(
-            conversationId: conversationId,
-            target: streamTarget,
-            displayed: streamDisplayed,
-            isCancelled: () => isClosed || cancelToken.isCancelled,
-          );
-          streamDisplayed = streamTarget;
-          if (streamTarget.isNotEmpty) {
-            _emitStreamingAssistantMessage(conversationId, streamDisplayed);
-          }
+          
+          print('[DEBUG] Post-stream: emitting full target len=${streamTarget.length}');
           if (kDebugMode) {
             print(
               '[CHAT_STREAM] UI final len=${streamTarget.length} chars',
