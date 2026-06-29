@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'news_state.dart';
 import '../../data/repositories/news_repository.dart';
@@ -29,7 +30,8 @@ class NewsCubit extends Cubit<NewsState> {
         isLoadingMore: false,
       ));
     } catch (e) {
-      emit(NewsError("Error: ${e.toString()}"));
+      debugPrint('[ERROR] News feed error: $e');
+      emit(NewsError("Unable to load news"));
     }
   }
 
@@ -62,6 +64,7 @@ class NewsCubit extends Cubit<NewsState> {
         isLoadingMore: false,
       ));
     } catch (e) {
+      debugPrint('[ERROR] Load more news error: $e');
       // On error, we just stop loading more but keep existing articles
       emit(currentState.copyWith(isLoadingMore: false));
     }
@@ -84,9 +87,10 @@ class NewsCubit extends Cubit<NewsState> {
       
       emit(NewsLoaded(articles, hasMore: false));
     } catch (e) {
+      debugPrint('[ERROR] Fetch favorite news error: $e');
       // If we already have cached data, don't emit error
       if (state is! NewsLoaded) {
-        emit(NewsError("Error: ${e.toString()}"));
+        emit(NewsError("Unable to load favorites"));
       }
     }
   }

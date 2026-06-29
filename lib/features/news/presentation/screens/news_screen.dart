@@ -208,9 +208,70 @@ class _NewsScreenState extends State<NewsScreen> {
             return _buildSkeletonLoading();
           } else if (state is NewsError) {
             return Center(
-              child: Text(
-                state.message,
-                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.cloud_off_outlined,
+                      color: AppColors.textGrey,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      state.message,
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Please check your internet connection and try again.",
+                      style: const TextStyle(
+                        color: AppColors.textGrey,
+                        fontSize: 13,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        if (selectedCategory == "Favorites") {
+                          context.read<NewsCubit>().fetchFavoriteNews(limit: 20);
+                        } else {
+                          String? categoryParam;
+                          if (selectedCategory == "Stocks") {
+                            categoryParam = "stocks";
+                          } else if (selectedCategory == "Cryptocurrency") {
+                            categoryParam = "crypto";
+                          } else if (selectedCategory == "Forex") {
+                            categoryParam = "forex";
+                          } else if (selectedCategory == "Popular") {
+                            categoryParam = "most_popular";
+                          }
+                          context.read<NewsCubit>().fetchNewsFeed(
+                            limit: 5,
+                            category: categoryParam,
+                            country: selectedCountry,
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: const Text("Retry"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.unlockBlue,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           } else if (state is NewsLoaded) {

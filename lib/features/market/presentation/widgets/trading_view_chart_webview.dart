@@ -10,10 +10,22 @@ import 'dart:convert';
 
 class TradingViewChartWebView extends StatefulWidget {
   final String symbol;
+  final String? name;
+  final double? price;
+  final double? change;
+  final double? changePercent;
+  final String? sector;
+  final String? marketCap;
 
   const TradingViewChartWebView({
     super.key,
     required this.symbol,
+    this.name,
+    this.price,
+    this.change,
+    this.changePercent,
+    this.sector,
+    this.marketCap,
   });
 
   @override
@@ -173,10 +185,18 @@ class _TradingViewChartWebViewState extends State<TradingViewChartWebView> with 
           bottom: 44,
           child: GestureDetector(
             onTap: () {
+              final price = widget.price?.toStringAsFixed(2) ?? 'N/A';
+              final change = widget.change?.toStringAsFixed(2) ?? '0.00';
+              final pct = widget.changePercent?.toStringAsFixed(2) ?? '0.00';
+              final sector = widget.sector ?? 'N/A';
+              final mktCap = widget.marketCap ?? 'N/A';
+              
+              final prompt = 'Provide a detailed financial analysis and market outlook for ${widget.name ?? widget.symbol} (${widget.symbol}). Current market data: Price $price, Change $change ($pct%), Sector: $sector, Market Cap: $mktCap. Based on this and the latest market trends, what is your recommendation?';
+
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const ChatBotScreen(startEmpty: true),
+                  builder: (context) => ChatBotScreen(initialPrompt: prompt),
                 ),
               );
             },
