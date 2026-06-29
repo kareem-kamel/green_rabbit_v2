@@ -49,7 +49,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   String? _pendingSummaryType;
   String? _pendingSummaryUrl;
   // Selected image for attachment
-  XFile? _selectedImage;
 
   @override
   void initState() {
@@ -610,13 +609,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         alignment: Alignment.centerRight,
         child: Container(
           margin: const EdgeInsets.only(bottom: 12, left: 60),
-<<<<<<< HEAD
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                AppColors.primaryPurple,
-                AppColors.primaryPurple.withOpacity(0.8),
-=======
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -637,65 +629,33 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                   }).toList(),
                 ),
                 const SizedBox(height: 8),
->>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
-              ],
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.primaryPurple,
-                      AppColors.primaryPurple.withOpacity(0.8),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                    bottomLeft: Radius.circular(16),
-                    bottomRight: Radius.circular(4),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primaryPurple.withOpacity(0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: MarkdownBody(
-                  data: msg.content,
-                  selectable: true,
-                  styleSheet: MarkdownStyleSheet(
-                    p: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
-                    strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                ),
-              ),
-            ],
-          ),
-<<<<<<< HEAD
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (msg.imagePath != null) ...[
-                ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
-                  child: Image.file(
-                    File(msg.imagePath!),
-                    height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                ),
               ],
               if (msg.content.isNotEmpty)
-                Padding(
+                Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.primaryPurple,
+                        AppColors.primaryPurple.withOpacity(0.8),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                      bottomLeft: Radius.circular(16),
+                      bottomRight: Radius.circular(4),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryPurple.withOpacity(0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
                   child: MarkdownBody(
                     data: msg.content,
                     selectable: true,
@@ -707,8 +667,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 ),
             ],
           ),
-=======
->>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
         ),
       );
     }
@@ -1037,43 +995,51 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-<<<<<<< HEAD
-          if (_selectedImage != null) ...[
+          if (state.selectedImages.isNotEmpty) ...[
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Stack(
-                children: [
-                  Container(
-                    height: 100,
-                    width: 100,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      image: DecorationImage(
-                        image: FileImage(File(_selectedImage!.path)),
-                        fit: BoxFit.cover,
+              child: SizedBox(
+                height: 100,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: state.selectedImages.length,
+                  itemBuilder: (context, index) {
+                    final imagePath = state.selectedImages[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Stack(
+                        children: [
+                          Container(
+                            height: 100,
+                            width: 100,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              image: DecorationImage(
+                                image: FileImage(File(imagePath)),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: GestureDetector(
+                              onTap: () => cubit.removeSelectedImage(imagePath),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.close, color: Colors.white, size: 16),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedImage = null;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.close, color: Colors.white, size: 16),
-                      ),
-                    ),
-                  ),
-                ],
+                    );
+                  },
+                ),
               ),
             ),
           ],
@@ -1088,9 +1054,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                       imageQuality: 80,
                     );
                     if (image != null) {
-                      setState(() {
-                        _selectedImage = image;
-                      });
+                      cubit.addSelectedImage(image.path);
                     }
                   },
                   child: Padding(
@@ -1207,14 +1171,6 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                 ),
               ],
             ),
-=======
-          ChatInputField(
-            controller: _textController,
-            onSend: () => _handleSend(cubit),
-            selectedImages: state.selectedImages,
-            onAddImage: (path) => cubit.addSelectedImage(path),
-            onRemoveImage: (path) => cubit.removeSelectedImage(path),
->>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
           ),
           const Padding(
             padding: EdgeInsets.only(bottom: 8),
@@ -1230,11 +1186,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
 
   void _handleSend(ChatCubit cubit) {
     final text = _textController.text.trim();
-<<<<<<< HEAD
-    if (text.isNotEmpty || _selectedImage != null) {
-=======
     if (text.isNotEmpty || cubit.state.selectedImages.isNotEmpty) {
->>>>>>> c8c19ba8dc085107fc93ea0da4b7f63c8d18b405
       if (_pendingSummaryId != null && _pendingSummaryType != null) {
         // We have pending summary params, call summarize
         cubit.summarize(_pendingSummaryId!, _pendingSummaryType!, url: _pendingSummaryUrl);
@@ -1244,15 +1196,9 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
         _pendingSummaryUrl = null;
       } else {
         // Normal send message
-        cubit.sendMessage(
-          text,
-          imagePath: _selectedImage?.path,
-        );
+        cubit.sendMessage(text);
       }
       _textController.clear();
-      setState(() {
-        _selectedImage = null;
-      });
     }
   }
 }
