@@ -120,6 +120,7 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
   bool _hasInteracted = false;
   bool _isDragging = false;
   bool _isOnLeftSide = false; // Whether button is on left or right edge
+  bool _isLoaded = false; // Whether saved position has been loaded
   
   static const double _snapThreshold = 30.0;
   static const double _minimizedOffset = 20.0; // How much to tuck in when minimized
@@ -145,14 +146,18 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
       setState(() {
         // For backward compatibility, if we have old saved data, we'll initialize properly
         if (savedX != null && savedLeftSide != null) {
-          _buttonPositionX = savedLeftSide ? savedX : 0.0; // Will adjust in build
+          _buttonPositionX = savedX; // Always use absolute saved X
         }
         _buttonPositionY = prefs.getDouble(_prefsKeyY) ?? 60.0;
         _isMinimized = prefs.getBool(_prefsKeyMinimized) ?? true;
         _isOnLeftSide = savedLeftSide ?? false;
+        _isLoaded = true;
       });
     } catch (e) {
       debugPrint('Error loading button position: $e');
+      setState(() {
+        _isLoaded = true;
+      });
     }
   }
 
@@ -227,8 +232,8 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
     final maxX = size.width - 72; // 56 button + 16 padding
     final maxY = size.height - safePadding.top - safePadding.bottom - 72;
     
-    // Initialize position if not set (first run)
-    if (!_isDragging && _buttonPositionX == 0.0) {
+    // Initialize position if not set (first run) - only after saved data is loaded
+    if (_isLoaded && !_isDragging && _buttonPositionX == 0.0) {
       _buttonPositionX = _isOnLeftSide ? 0.0 : maxX;
     }
 
@@ -2049,7 +2054,7 @@ class CalculatorSearchNotifier extends StateNotifier<AsyncValue<List<MarketInstr
 
       // First, set visible instruments so SSE stream starts updating prices!
       if (_instruments.isNotEmpty) {
-        _ref.read(visibleInstrumentsProvider.notifier).state = _instruments.map((inst) => inst.id).toList();
+        _ref.read(visibleInstrumentsProvider.notifier).state = _instruments.take(5).map((inst) => inst.id).toList();
       }
 
       // Check globalLivePricesProvider for cached prices first, then fetch details!

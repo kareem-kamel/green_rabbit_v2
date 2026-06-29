@@ -7,6 +7,7 @@ import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:permission_handler/permission_handler.dart';
 import '../../data/repository/chatbot_repository.dart';
 import 'package:green_rabbit/features/chatbot/data/models/chat_message_model.dart';
+import 'package:green_rabbit/core/errors/failures.dart';
 import 'chat_state.dart';
 
 class ChatCubit extends Cubit<ChatState> {
@@ -225,7 +226,19 @@ class ChatCubit extends Cubit<ChatState> {
     var streamDisplayed = '';
 
     try {
-      // Temporarily disable typewriter effect in summarize as well
+      // Start typewriter timer
+      _revealTimer = Timer.periodic(const Duration(milliseconds: _revealTickMs), (timer) {
+        if (isClosed || cancelToken.isCancelled) {
+          timer.cancel();
+          return;
+        }
+        final newDisplayed = _advanceTypewriter(streamDisplayed, streamTarget);
+        if (newDisplayed != streamDisplayed) {
+          streamDisplayed = newDisplayed;
+          _emitStreamingAssistantMessage('summary', streamDisplayed);
+        }
+      });
+
       await for (final chunk in repository.summarizeContentStream(
         entityId,
         entityType,
@@ -234,10 +247,23 @@ class ChatCubit extends Cubit<ChatState> {
       )) {
         if (cancelToken.isCancelled) break;
         streamTarget = _mergeStreamChunk(streamTarget, chunk);
-        _emitStreamingAssistantMessage('summary', streamTarget);
+        // Update immediately if there's a lot of backlog
+        if (streamTarget.length - streamDisplayed.length > 200) {
+          streamDisplayed = _advanceTypewriter(streamDisplayed, streamTarget);
+          _emitStreamingAssistantMessage('summary', streamDisplayed);
+        }
       }
       
-      print('[DEBUG] Summarize post-stream: emitting full target len=${streamTarget.length}');
+      // Wait for typewriter to catch up
+      await _waitForRevealCatchUp(
+        conversationId: 'summary',
+        target: streamTarget,
+        displayed: streamDisplayed,
+        isCancelled: () => cancelToken.isCancelled || isClosed,
+      );
+      _cancelRevealTimer();
+      
+      // print('[DEBUG] Summarize post-stream: emitting full target len=${streamTarget.length}');
       emit(state.copyWith(isGenerating: false));
     } catch (e) {
       _cancelRevealTimer();
@@ -280,14 +306,83 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   String _formatError(Object e) {
-    if (e is AIException) return e.message;
-    return e.toString().replaceAll('Exception: ', '');
+    // Handle specific failure types
+    if (e is NoInternetFailure) {
+      return e.message;
+    }
+    
+    if (e is ServerFailure) {
+      return 'Our server encountered a problem. Please try again later.';
+    }
+    
+    if (e is CacheFailure) {
+      return 'There was an issue loading your data. Please try again.';
+    }
+    
+    // Handle AI exceptions - show message from API but sanitize if needed
+    if (e is AIException) {
+      // Always show AIException messages (they're meant for users)
+      final msg = e.message;
+      if (msg.toLowerCase().contains('aborted')) {
+        return 'The request was stopped. This could be due to poor internet connection or a server issue. Please try again.';
+      }
+      return msg;
+    }
+    
+    // Handle Dio exceptions
+    if (e is DioException) {
+      switch (e.type) {
+        case DioExceptionType.connectionError:
+        case DioExceptionType.connectionTimeout:
+        case DioExceptionType.sendTimeout:
+        case DioExceptionType.receiveTimeout:
+          return 'Connection issue. Please check your internet and try again.';
+        case DioExceptionType.badResponse:
+          if (e.response?.statusCode == 401) {
+            return 'Authentication issue. Please log in again.';
+          } else if (e.response?.statusCode == 429) {
+            return 'Too many requests. Please wait a moment and try again.';
+          } else if (e.response?.statusCode != null && e.response!.statusCode! >= 500) {
+            return 'Our server is having issues. Please try again later.';
+          }
+          return 'Something went wrong. Please try again.';
+        case DioExceptionType.cancel:
+          return 'The request was stopped. Please try again if you want to continue.';
+        case DioExceptionType.unknown:
+        default:
+          if (e.message?.toLowerCase().contains('aborted') ?? false) {
+            return 'The request was stopped. This could be due to poor internet connection or a server issue. Please try again.';
+          }
+          return 'Something went wrong. Please try again.';
+      }
+    }
+    
+    // Default generic error message (safe and user-friendly)
+    final msg = e.toString().replaceAll('Exception: ', '');
+    if (msg.toLowerCase().contains('aborted')) {
+      return 'The request was stopped. This could be due to poor internet connection or a server issue. Please try again.';
+    }
+    return 'Something went wrong. Please try again.';
   }
 
   bool _isReplyInFlightError(Object e) {
-    final msg = _formatError(e).toLowerCase();
-    return msg.contains('already in flight') ||
-        msg.contains('reply_in_flight');
+    // Check raw exception instead of formatted error
+    String getRawMessage(Object err) {
+      if (err is AIException) return err.message.toLowerCase();
+      if (err is DioException) {
+        if (err.response != null && err.response?.data is Map) {
+          final data = err.response?.data as Map;
+          final errMsg = data['error']?['message']?.toString().toLowerCase() ?? '';
+          if (errMsg.isNotEmpty) return errMsg;
+        }
+        return err.message?.toLowerCase() ?? '';
+      }
+      return err.toString().toLowerCase();
+    }
+    
+    final rawMsg = getRawMessage(e);
+    return rawMsg.contains('already in flight') ||
+         rawMsg.contains('reply_in_flight');
   }
 
   String _replyInFlightUserMessage() {
@@ -326,10 +421,10 @@ class ChatCubit extends Cubit<ChatState> {
   }
 
   int _revealCharsPerTick(int backlog) {
-    if (backlog > 200) return 50;
-    if (backlog > 100) return 30;
-    if (backlog > 40) return 15;
-    if (backlog > 12) return 5;
+    if (backlog > 500) return 30;
+    if (backlog > 200) return 15;
+    if (backlog > 100) return 8;
+    if (backlog > 40) return 4;
     return 2;
   }
 
@@ -370,14 +465,14 @@ class ChatCubit extends Cubit<ChatState> {
     required bool Function() isCancelled,
   }) async {
     var shown = displayed;
-    print('[DEBUG] _waitForRevealCatchUp start: shown len = ${shown.length}, target len = ${target.length}');
+    // print('[DEBUG] _waitForRevealCatchUp start: shown len = ${shown.length}, target len = ${target.length}');
     while (shown.length < target.length && !isCancelled()) {
       shown = _advanceTypewriter(shown, target);
-      print('[DEBUG] _waitForRevealCatchUp: updating to shown len = ${shown.length}');
+      // print('[DEBUG] _waitForRevealCatchUp: updating to shown len = ${shown.length}');
       _emitStreamingAssistantMessage(conversationId, shown);
       await Future.delayed(const Duration(milliseconds: _revealTickMs ~/ 2));
     }
-    print('[DEBUG] _waitForRevealCatchUp end: shown len = ${shown.length}');
+    // print('[DEBUG] _waitForRevealCatchUp end: shown len = ${shown.length}');
   }
 
   void _emitStreamingAssistantMessage(
@@ -483,26 +578,48 @@ class ChatCubit extends Cubit<ChatState> {
           streamDisplayed = '';
           _cancelRevealTimer();
 
-          // Temporarily disable typewriter effect to fix display issues
-          // Just show all text immediately
+          // Start typewriter timer
+          _revealTimer = Timer.periodic(const Duration(milliseconds: _revealTickMs), (timer) {
+            if (isClosed || cancelToken.isCancelled) {
+              timer.cancel();
+              return;
+            }
+            final newDisplayed = _advanceTypewriter(streamDisplayed, streamTarget);
+            if (newDisplayed != streamDisplayed) {
+              streamDisplayed = newDisplayed;
+              _emitStreamingAssistantMessage(conversationId, streamDisplayed);
+            }
+          });
+
           await for (final chunk in repository.sendMessageStream(
-            conversationId,
-            text,
-            history: history,
-            cancelToken: cancelToken,
-          )) {
-            print('[DEBUG] sendMessageStream received chunk: len=${chunk.length}, chunk="${chunk.substring(0, chunk.length > 100 ? 100 : chunk.length)}"');
-            if (isClosed || cancelToken.isCancelled) return;
-            if (state.activeConversationId != conversationId) return;
-            streamTarget = _mergeStreamChunk(streamTarget, chunk);
-            _emitStreamingAssistantMessage(conversationId, streamTarget);
-          }
+                conversationId,
+                text,
+                history: history,
+                cancelToken: cancelToken,
+              )) {
+                print('[DEBUG] sendMessageStream received chunk: len=${chunk.length}, chunk="${chunk.substring(0, chunk.length > 100 ? 100 : chunk.length)}"');
+                if (isClosed || cancelToken.isCancelled) return;
+                if (state.activeConversationId != conversationId) return;
+                streamTarget = _mergeStreamChunk(streamTarget, chunk);
+                // Update immediately if there's a lot of backlog
+                if (streamTarget.length - streamDisplayed.length > 200) {
+                  streamDisplayed = _advanceTypewriter(streamDisplayed, streamTarget);
+                  _emitStreamingAssistantMessage(conversationId, streamDisplayed);
+                }
+              }
           
-          print('[DEBUG] Post-stream: emitting full target len=${streamTarget.length}');
+          // Wait for typewriter to catch up
+          await _waitForRevealCatchUp(
+            conversationId: conversationId,
+            target: streamTarget,
+            displayed: streamDisplayed,
+            isCancelled: () => cancelToken.isCancelled || isClosed,
+          );
+          _cancelRevealTimer();
+
+          // print('[DEBUG] Post-stream: emitting full target len=${streamTarget.length}');
           if (kDebugMode) {
-            print(
-              '[CHAT_STREAM] UI final len=${streamTarget.length} chars',
-            );
+            // print('[CHAT_STREAM] UI final len=${streamTarget.length} chars');
           }
           lastError = null;
           break;
