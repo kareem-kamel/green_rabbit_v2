@@ -113,7 +113,7 @@ class GlobalCalculatorOverlay extends ConsumerStatefulWidget {
 }
 
 class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverlay> {
-  double _buttonPositionX = 0.0; // X position from right
+  double _buttonPositionX = 0.0; // X position from left (always absolute)
   double _buttonPositionY = 60.0; // Y position from bottom
   bool _isMinimized = true;
   bool _isPageOpen = false;
@@ -139,11 +139,17 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
   Future<void> _loadSavedPosition() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      final savedX = prefs.getDouble(_prefsKeyX);
+      final savedLeftSide = prefs.getBool(_prefsKeyLeftSide);
+      
       setState(() {
-        _buttonPositionX = prefs.getDouble(_prefsKeyX) ?? 0.0;
+        // For backward compatibility, if we have old saved data, we'll initialize properly
+        if (savedX != null && savedLeftSide != null) {
+          _buttonPositionX = savedLeftSide ? savedX : 0.0; // Will adjust in build
+        }
         _buttonPositionY = prefs.getDouble(_prefsKeyY) ?? 60.0;
         _isMinimized = prefs.getBool(_prefsKeyMinimized) ?? true;
-        _isOnLeftSide = prefs.getBool(_prefsKeyLeftSide) ?? false;
+        _isOnLeftSide = savedLeftSide ?? false;
       });
     } catch (e) {
       debugPrint('Error loading button position: $e');
@@ -153,6 +159,7 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
   Future<void> _savePosition() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      // Always save absolute left position
       await prefs.setDouble(_prefsKeyX, _buttonPositionX);
       await prefs.setDouble(_prefsKeyY, _buttonPositionY);
       await prefs.setBool(_prefsKeyMinimized, _isMinimized);
@@ -219,6 +226,11 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
     final safePadding = MediaQuery.of(context).padding;
     final maxX = size.width - 72; // 56 button + 16 padding
     final maxY = size.height - safePadding.top - safePadding.bottom - 72;
+    
+    // Initialize position if not set (first run)
+    if (!_isDragging && _buttonPositionX == 0.0) {
+      _buttonPositionX = _isOnLeftSide ? 0.0 : maxX;
+    }
 
     // Calculate effective position with left/right side support
     Widget positionedChild = SafeArea(
@@ -241,14 +253,8 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
             },
             onPanUpdate: (details) {
               setState(() {
-                // Update positions from current delta
-                if (_isOnLeftSide) {
-                  // On left side, X is distance from left
-                  _buttonPositionX += details.delta.dx;
-                } else {
-                  // On right side, X is distance from right
-                  _buttonPositionX -= details.delta.dx;
-                }
+                // Always update with absolute coordinates from left
+                _buttonPositionX += details.delta.dx;
                 _buttonPositionY -= details.delta.dy;
                 
                 // Constrain to screen bounds (with gesture safe margins)
@@ -263,32 +269,23 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
               });
             },
             onPanEnd: (details) async {
-              // Determine which side is closer
-              bool newIsOnLeftSide = _isOnLeftSide;
+              // Determine which side is closer based on absolute position
+              bool newIsOnLeftSide = _buttonPositionX < maxX / 2;
               double newX = _buttonPositionX;
               bool shouldMinimize = false;
               
-              if (_isOnLeftSide) {
+              // Check if should minimize to edge
+              if (newIsOnLeftSide) {
                 // Check distance to left edge
                 if (_buttonPositionX < _snapThreshold + _gestureSafeMargin) {
                   shouldMinimize = true;
                   newX = _gestureSafeMargin;
                 }
-                // Check if should move to right side
-                if (_buttonPositionX > maxX / 2) {
-                  newIsOnLeftSide = false;
-                  newX = _buttonPositionX; // Keep current position
-                }
               } else {
                 // Check distance to right edge
-                if (_buttonPositionX < _snapThreshold + _gestureSafeMargin) {
+                if ((maxX - _buttonPositionX) < _snapThreshold + _gestureSafeMargin) {
                   shouldMinimize = true;
-                  newX = _gestureSafeMargin;
-                }
-                // Check if should move to left side
-                if (_buttonPositionX > maxX / 2) {
-                  newIsOnLeftSide = true;
-                  newX = maxX - _buttonPositionX; // Convert to left distance
+                  newX = maxX;
                 }
               }
               
@@ -391,7 +388,10 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
         child: positionedChild,
       );
     } else {
-      final effectiveRight = _isMinimized ? -_minimizedOffset : _buttonPositionX;
+      // Calculate effective right position from absolute left coordinate
+      final effectiveRight = _isMinimized 
+          ? -_minimizedOffset 
+          : maxX - _buttonPositionX;
       return AnimatedPositioned(
         duration: _isDragging ? Duration.zero : const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
