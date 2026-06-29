@@ -6,6 +6,19 @@ import 'auth_state.dart';
 class AuthCubit extends Cubit<AuthState> {
   final AuthRepository repository;
 
+<<<<<<< Updated upstream
+=======
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    // iOS OAuth 2.0 client ID (client_type 2, ios_info bundle: com.greenrabbit.app)
+    clientId:
+        '963276687646-g6htuquf3okdg29auu9qe0cj2uhefpt7.apps.googleusercontent.com',
+    // Web/server OAuth 2.0 client ID (client_type 3) — needed to get an idToken
+    serverClientId:
+        '963276687646-9ijmelnsmq6752a0fr64lk6q05l9sgoa.apps.googleusercontent.com',
+  );
+
+>>>>>>> Stashed changes
   AuthCubit({required this.repository}) : super(AuthInitial());
   Future<void> register({
     required String email,
