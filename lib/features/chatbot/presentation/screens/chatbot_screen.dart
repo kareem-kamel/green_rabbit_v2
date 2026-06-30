@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:markdown/markdown.dart' as md;
+import 'package:url_launcher/url_launcher.dart';
 import '../widgets/typing_indicator.dart';
 import '../widgets/chat_input_field.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -601,6 +603,26 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     );
   }
 
+  String _formatMessageContent(String content) {
+    String processed = content;
+    
+    // 1. Fix headers without spaces: "##1." -> "## 1."
+    // Matches 1 to 6 '#' followed immediately by a non-space/non-# character.
+    processed = processed.replaceAllMapped(
+      RegExp(r'(#{1,6})(?=[^\s#])'), 
+      (match) => '${match.group(1)} '
+    );
+
+    // 2. Format standalone citations [1][2] -> **[1]** **[2]**
+    // Matches [...] digits not followed by '(' to avoid breaking markdown links.
+    processed = processed.replaceAllMapped(
+      RegExp(r'(\[\d+\])(?!\()'), 
+      (match) => ' **${match.group(1)}** '
+    );
+
+    return processed;
+  }
+
   bool _isErrorMessage(ChatMessage msg) => msg.id.startsWith('err_');
 
   Widget _buildMessageBubble(BuildContext context, ChatMessage msg, bool isLastGenerating) {
@@ -657,11 +679,19 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     ],
                   ),
                   child: MarkdownBody(
-                    data: msg.content,
+                    data: _formatMessageContent(msg.content),
+                    extensionSet: md.ExtensionSet.gitHubFlavored,
+                    onTapLink: (text, href, title) {
+                      if (href != null) launchUrl(Uri.parse(href));
+                    },
                     selectable: true,
                     styleSheet: MarkdownStyleSheet(
                       p: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
-                      strong: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      strong: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold, fontSize: 14),
+                      em: const TextStyle(color: Colors.white70, fontStyle: FontStyle.italic, fontSize: 14),
+                      a: const TextStyle(color: AppColors.secondaryBlue, decoration: TextDecoration.underline),
+                      code: const TextStyle(color: AppColors.premiumGold, backgroundColor: Colors.transparent, fontFamily: 'monospace'),
+                      codeblockDecoration: BoxDecoration(color: Colors.black26, borderRadius: BorderRadius.circular(8)),
                     ),
                   ),
                 ),
@@ -717,18 +747,49 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                       Expanded(
                         child: MarkdownBody(
                           key: ValueKey('${msg.id}_${msg.content.length}'),
-                          data: msg.content,
+                          data: _formatMessageContent(msg.content),
+                          extensionSet: md.ExtensionSet.gitHubFlavored,
+                          onTapLink: (text, href, title) {
+                            if (href != null) launchUrl(Uri.parse(href));
+                          },
                           selectable: true,
                           styleSheet: MarkdownStyleSheet(
                             p: TextStyle(
-                              color: isPlanError ? Colors.white : (isError ? Colors.redAccent[100] : Colors.white),
-                              fontSize: 14,
-                              height: 1.5,
+                              color: isPlanError ? Colors.white : (isError ? Colors.redAccent[100] : const Color(0xFFE2E8F0)),
+                              fontSize: 15,
+                              height: 1.6,
                             ),
                             strong: TextStyle(
-                              color: isPlanError ? Colors.white : (isError ? Colors.redAccent[100] : Colors.white),
+                              color: isPlanError ? Colors.white : (isError ? Colors.redAccent[100] : AppColors.accent),
                               fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                            em: TextStyle(
+                              color: isPlanError ? Colors.white70 : (isError ? Colors.redAccent[100] : Colors.white70),
+                              fontStyle: FontStyle.italic,
+                              fontSize: 15,
+                            ),
+                            a: const TextStyle(color: AppColors.secondaryBlue, decoration: TextDecoration.underline, fontWeight: FontWeight.w600),
+                            code: const TextStyle(
+                              color: AppColors.premiumGold, 
+                              backgroundColor: Colors.transparent, 
+                              fontFamily: 'monospace',
                               fontSize: 14,
+                            ),
+                            codeblockDecoration: BoxDecoration(
+                              color: Colors.black26, 
+                              borderRadius: BorderRadius.circular(8)
+                            ),
+                            listBullet: TextStyle(color: isPlanError ? Colors.white : const Color(0xFFE2E8F0)),
+                            h1: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                            h2: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                            h3: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                            h4: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                            h5: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                            h6: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                            blockquoteDecoration: BoxDecoration(
+                              color: AppColors.primaryPurple.withOpacity(0.1),
+                              border: const Border(left: BorderSide(color: AppColors.primaryPurple, width: 4)),
                             ),
                           ),
                         ),

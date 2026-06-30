@@ -938,23 +938,44 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                         );
                       },
                       loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (e, stack) => Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('Error loading instruments: $e'),
-                            TextButton(
-                              onPressed: () {
-                                final category = ref.read(_instrumentSearchCategoryProvider);
-                                final query = ref.read(_instrumentSearchQueryProvider);
-                                final sort = ref.read(_instrumentSortProvider);
-                                ref.read(calculatorSearchProvider.notifier).refresh(category, query, sort);
-                              },
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      ),
+                      error: (e, stack) {
+                        final query = ref.read(_instrumentSearchQueryProvider);
+                        String errorMsg = "Could not load instruments. Please try again.";
+                        if (query.trim().isNotEmpty && query.trim().length < 2) {
+                          errorMsg = "Please enter at least 2 characters to search.";
+                        }
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                child: Text(
+                                  errorMsg,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white70 : Colors.black87,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextButton.icon(
+                                icon: const Icon(Icons.refresh, size: 16),
+                                onPressed: () {
+                                  final category = ref.read(_instrumentSearchCategoryProvider);
+                                  final sort = ref.read(_instrumentSortProvider);
+                                  ref.read(calculatorSearchProvider.notifier).refresh(category, query, sort);
+                                },
+                                label: const Text('Retry'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.primaryPurple,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -1565,20 +1586,53 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
         Autocomplete<MarketInstrument>(
           displayStringForOption: (option) => "${option.name} (${option.symbol})",
           optionsBuilder: (TextEditingValue textEditingValue) async {
-            if (textEditingValue.text.isEmpty) {
+            if (textEditingValue.text.trim().length < 2) {
               return const Iterable<MarketInstrument>.empty();
             }
             try {
-              return await ref.read(marketRepositoryProvider).searchInstruments(textEditingValue.text);
+              final repo = ref.read(marketRepositoryProvider);
+              final results = await repo.searchInstruments(textEditingValue.text);
+              final limited = results.take(8).toList();
+              
+              final withPrices = <MarketInstrument>[];
+              for (final inst in limited) {
+                if (inst.price != null && inst.price! > 0) {
+                  withPrices.add(inst);
+                  continue;
+                }
+                try {
+                  final detail = await repo.getInstrumentDetails(inst.id);
+                  if (detail.price.current != null && detail.price.current! > 0) {
+                    withPrices.add(inst.copyWith(price: detail.price.current));
+                  } else {
+                    withPrices.add(inst);
+                  }
+                } catch (_) {
+                  withPrices.add(inst);
+                }
+                await Future.delayed(const Duration(milliseconds: 100));
+              }
+              return withPrices;
             } catch (e) {
               return const Iterable<MarketInstrument>.empty();
             }
           },
-          onSelected: (MarketInstrument selection) {
+          onSelected: (MarketInstrument selection) async {
             setState(() {
               _globalSelectedStock = selection;
             });
             FocusScope.of(context).unfocus(); // Close keyboard
+            
+            if (selection.price == null || selection.price! <= 0) {
+              try {
+                final detail = await ref.read(marketRepositoryProvider).getInstrumentDetails(selection.id);
+                if (detail.price.current != null && detail.price.current! > 0) {
+                  setState(() {
+                    _globalSelectedStock = selection.copyWith(price: detail.price.current);
+                  });
+                }
+              } catch (_) {}
+            }
           },
           fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
             if (_globalSelectedStock != null && textEditingController.text.isEmpty) {
@@ -1609,7 +1663,12 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                       final option = options.elementAt(index);
                       return ListTile(
                         title: Text("${option.name} (${option.symbol})", style: TextStyle(color: isDark ? Colors.white : Colors.black)),
-                        subtitle: Text("\$${option.price?.toStringAsFixed(2)}", style: const TextStyle(color: AppColors.primaryPurple)),
+                        subtitle: Text(
+                          option.price != null && option.price! > 0 
+                              ? "\$${option.price!.toStringAsFixed(2)}" 
+                              : "Price not available", 
+                          style: const TextStyle(color: AppColors.primaryPurple)
+                        ),
                         onTap: () => onSelected(option),
                       );
                     },
@@ -1634,8 +1693,12 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text("Current Price", style: TextStyle(color: isDark ? Colors.white70 : Colors.black87)),
-                Text("\$${_globalSelectedStock!.price?.toStringAsFixed(2)}", 
-                    style: const TextStyle(color: AppColors.primaryPurple, fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(
+                  _globalSelectedStock!.price != null && _globalSelectedStock!.price! > 0 
+                      ? "\$${_globalSelectedStock!.price!.toStringAsFixed(2)}" 
+                      : "--", 
+                  style: const TextStyle(color: AppColors.primaryPurple, fontWeight: FontWeight.bold, fontSize: 16)
+                ),
               ],
             ),
           ),
@@ -2064,7 +2127,11 @@ class CalculatorSearchNotifier extends StateNotifier<AsyncValue<List<MarketInstr
           }
         } else {
           // If there's a search query, use search endpoint
-          _instruments = await _repository.searchInstruments(query);
+          if (query.trim().length < 2) {
+            _instruments = [];
+          } else {
+            _instruments = await _repository.searchInstruments(query);
+          }
           
           // Apply category filter if needed
           if (category != "All") {
@@ -2090,40 +2157,55 @@ class CalculatorSearchNotifier extends StateNotifier<AsyncValue<List<MarketInstr
         _ref.read(visibleInstrumentsProvider.notifier).state = _instruments.take(5).map((inst) => inst.id).toList();
       }
 
-      // Check globalLivePricesProvider for cached prices first, then fetch details!
+      // Check globalLivePricesProvider for cached prices first, then fetch details sequentially to prevent rate limits!
       final cachedPrices = _ref.read(globalLivePricesProvider);
-      _instruments = await Future.wait(_instruments.map((inst) async {
+      final fetchedInstruments = <MarketInstrument>[];
+      
+      // Limit to 25 items so we don't spam the API on large search results
+      final limitCount = query.isNotEmpty ? 25 : _instruments.length;
+      final targetInstruments = _instruments.take(limitCount).toList();
+      
+      for (final inst in targetInstruments) {
         final cleanId = inst.id.contains(':') ? inst.id.split(':')[1] : inst.id;
         
         // Check if we have a cached price!
         if (cachedPrices[cleanId] != null) {
           final cached = cachedPrices[cleanId]!;
-          return inst.copyWith(
+          fetchedInstruments.add(inst.copyWith(
             price: cached.price,
             change: cached.change,
             changePercent: cached.changePercent,
-          );
+          ));
+          continue;
         }
         
         // If we have a price from the API, keep it!
-        if (inst.price != null && inst.price! > 0.0) return inst;
+        if (inst.price != null && inst.price! > 0.0) {
+          fetchedInstruments.add(inst);
+          continue;
+        }
         
-        // Otherwise, fetch details!
+        // Otherwise, fetch details sequentially with a small delay!
         try {
           final detail = await _repository.getInstrumentDetails(inst.id);
           if (detail.price.current != null && detail.price.current! > 0.0) {
-            return inst.copyWith(
+            fetchedInstruments.add(inst.copyWith(
               price: detail.price.current,
               change: detail.price.change,
               changePercent: detail.price.changePercent,
-            );
+            ));
+          } else {
+            fetchedInstruments.add(inst);
           }
-          return inst;
         } catch (e) {
           debugPrint('Error fetching price for ${inst.symbol} during initial load: $e');
-          return inst;
+          fetchedInstruments.add(inst);
         }
-      }));
+        
+        // Small delay to prevent 429 Rate Limit burst
+        await Future.delayed(const Duration(milliseconds: 150));
+      }
+      _instruments = fetchedInstruments;
 
       // Update _allInstruments with price data
       _addToAllInstruments(_instruments);
