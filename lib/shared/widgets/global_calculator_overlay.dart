@@ -938,23 +938,44 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                         );
                       },
                       loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (e, stack) => Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text('Error loading instruments: $e'),
-                            TextButton(
-                              onPressed: () {
-                                final category = ref.read(_instrumentSearchCategoryProvider);
-                                final query = ref.read(_instrumentSearchQueryProvider);
-                                final sort = ref.read(_instrumentSortProvider);
-                                ref.read(calculatorSearchProvider.notifier).refresh(category, query, sort);
-                              },
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      ),
+                      error: (e, stack) {
+                        final query = ref.read(_instrumentSearchQueryProvider);
+                        String errorMsg = "Could not load instruments. Please try again.";
+                        if (query.trim().isNotEmpty && query.trim().length < 2) {
+                          errorMsg = "Please enter at least 2 characters to search.";
+                        }
+                        return Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                child: Text(
+                                  errorMsg,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white70 : Colors.black87,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              TextButton.icon(
+                                icon: const Icon(Icons.refresh, size: 16),
+                                onPressed: () {
+                                  final category = ref.read(_instrumentSearchCategoryProvider);
+                                  final sort = ref.read(_instrumentSortProvider);
+                                  ref.read(calculatorSearchProvider.notifier).refresh(category, query, sort);
+                                },
+                                label: const Text('Retry'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.primaryPurple,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
@@ -1565,7 +1586,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
         Autocomplete<MarketInstrument>(
           displayStringForOption: (option) => "${option.name} (${option.symbol})",
           optionsBuilder: (TextEditingValue textEditingValue) async {
-            if (textEditingValue.text.isEmpty) {
+            if (textEditingValue.text.trim().length < 2) {
               return const Iterable<MarketInstrument>.empty();
             }
             try {
@@ -2064,7 +2085,11 @@ class CalculatorSearchNotifier extends StateNotifier<AsyncValue<List<MarketInstr
           }
         } else {
           // If there's a search query, use search endpoint
-          _instruments = await _repository.searchInstruments(query);
+          if (query.trim().length < 2) {
+            _instruments = [];
+          } else {
+            _instruments = await _repository.searchInstruments(query);
+          }
           
           // Apply category filter if needed
           if (category != "All") {
