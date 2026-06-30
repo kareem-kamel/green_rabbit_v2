@@ -1,6 +1,5 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../features/auth/presentation/cubit/auth_cubit.dart';
 
 /// A globally reusable dialog that blocks user interaction when there is no internet.
 ///
@@ -11,7 +10,13 @@ import '../../features/auth/presentation/cubit/auth_cubit.dart';
 ///
 /// It is shown with `barrierDismissible: false` and wrapped in a `PopScope`
 /// to prevent Android back‑button dismissal.
-class NoInternetDialog extends StatelessWidget {
+///
+/// Retry behaviour:
+///   • Tapping "Try Again" shows a loading indicator on the button.
+///   • The dialog only closes after a successful connectivity check.
+///   • If the check fails the button resets to "Try Again" and the dialog
+///     stays visible.
+class NoInternetDialog extends StatefulWidget {
   const NoInternetDialog({super.key});
 
   static bool _isShowing = false;
@@ -24,6 +29,43 @@ class NoInternetDialog extends StatelessWidget {
       barrierDismissible: false,
       builder: (_) => const NoInternetDialog(),
     ).then((_) => _isShowing = false);
+  }
+
+  @override
+  State<NoInternetDialog> createState() => _NoInternetDialogState();
+}
+
+class _NoInternetDialogState extends State<NoInternetDialog> {
+  bool _isLoading = false;
+
+  /// Performs a lightweight DNS lookup to confirm that the device has internet
+  /// access without going through Dio / the app's interceptor stack.
+  Future<bool> _checkConnectivity() async {
+    try {
+      final result = await InternetAddress.lookup('google.com')
+          .timeout(const Duration(seconds: 5));
+      return result.isNotEmpty && result.first.rawAddress.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _onRetry() async {
+    if (_isLoading) return;
+
+    setState(() => _isLoading = true);
+
+    final hasInternet = await _checkConnectivity();
+
+    if (!mounted) return;
+
+    if (hasInternet) {
+      // Connectivity is restored — dismiss the dialog.
+      Navigator.of(context).pop();
+    } else {
+      // Still offline — reset the button so the user can try again.
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -76,16 +118,19 @@ class NoInternetDialog extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                onPressed: () async {
-                  // Attempt a lightweight connectivity check by calling a silent endpoint.
-                  // The AuthCubit will emit a new state; on success the dialog will be dismissed.
-                  final authCubit = BlocProvider.of<AuthCubit>(context);
-                  await authCubit.checkAuth();
-                  if (Navigator.canPop(context)) {
-                    Navigator.pop(context);
-                  }
-                },
-                child: const Text('Try Again'),
+                // Disable the button while a retry is in progress.
+                onPressed: _isLoading ? null : _onRetry,
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text('Try Again'),
               ),
             ],
           ),
