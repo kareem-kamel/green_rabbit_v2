@@ -148,7 +148,7 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
           _buttonPositionX = savedX; // Always use absolute saved X
         }
         _buttonPositionY = prefs.getDouble(_prefsKeyY) ?? 60.0;
-        _isMinimized = prefs.getBool(_prefsKeyMinimized) ?? true;
+        _isMinimized = true; // Always start minimized
         _isOnLeftSide = savedLeftSide ?? false;
         _isLoaded = true;
       });
@@ -227,13 +227,25 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
     if (_isPageOpen) return const SizedBox.shrink();
 
     final size = MediaQuery.of(context).size;
+    if (size.width == 0 || size.height == 0) return const SizedBox.shrink();
+
     final safePadding = MediaQuery.of(context).padding;
     final maxX = size.width - 72; // 56 button + 16 padding
     final maxY = size.height - safePadding.top - safePadding.bottom - 72;
     
     // Initialize position if not set (first run) - only after saved data is loaded
-    if (_isLoaded && !_isDragging && _buttonPositionX == 0.0) {
-      _buttonPositionX = _isOnLeftSide ? 0.0 : maxX;
+    if (_isLoaded && !_isDragging) {
+      if (_buttonPositionX == 0.0 && !_isOnLeftSide) {
+        _buttonPositionX = maxX;
+      } else {
+        // Clamp to current screen bounds (in case screen size changed)
+        if (_buttonPositionX < 0) _buttonPositionX = 0;
+        if (_buttonPositionX > maxX) _buttonPositionX = maxX;
+      }
+      
+      // Clamp Y position too
+      if (_buttonPositionY < 0) _buttonPositionY = 0;
+      if (_buttonPositionY > maxY) _buttonPositionY = maxY;
     }
 
     // Calculate effective position with left/right side support
@@ -241,10 +253,12 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Swap the swipe hint direction if on left side
-          if (_isMinimized && !_hasInteracted)
-            const _AnimatedSwipeHint(),
-          const SizedBox(width: 8),
+          // Swap the swipe hint direction if on right side
+          if (_isMinimized && !_hasInteracted && !_isOnLeftSide)
+            const _AnimatedSwipeHint(isLeftEdge: false),
+          if (_isMinimized && !_hasInteracted && !_isOnLeftSide)
+            const SizedBox(width: 8),
+          
           GestureDetector(
             onPanStart: (_) {
               setState(() {
@@ -377,6 +391,11 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
               ),
             ),
           ),
+          
+          if (_isMinimized && !_hasInteracted && _isOnLeftSide)
+            const SizedBox(width: 8),
+          if (_isMinimized && !_hasInteracted && _isOnLeftSide)
+            const _AnimatedSwipeHint(isLeftEdge: true),
         ],
       ),
     );
@@ -418,7 +437,8 @@ class _GlobalCalculatorOverlayState extends ConsumerState<GlobalCalculatorOverla
 }
 
 class _AnimatedSwipeHint extends StatefulWidget {
-  const _AnimatedSwipeHint();
+  final bool isLeftEdge;
+  const _AnimatedSwipeHint({this.isLeftEdge = false});
 
   @override
   State<_AnimatedSwipeHint> createState() => _AnimatedSwipeHintState();
@@ -458,15 +478,17 @@ class _AnimatedSwipeHintState extends State<_AnimatedSwipeHint> with SingleTicke
       animation: _controller,
       builder: (context, child) {
         return Transform.translate(
-          offset: Offset(-_positionAnimation.value, 0),
+          offset: Offset(widget.isLeftEdge ? _positionAnimation.value : -_positionAnimation.value, 0),
           child: Opacity(
             opacity: _opacityAnimation.value,
-            child: const Material(
+            child: Material(
               color: Colors.transparent,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
+                  if (widget.isLeftEdge)
+                    const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.primaryPurple, size: 20),
+                  const Text(
                     "SWIPE", 
                     style: TextStyle(
                       color: AppColors.primaryPurple, 
@@ -476,7 +498,8 @@ class _AnimatedSwipeHintState extends State<_AnimatedSwipeHint> with SingleTicke
                       decoration: TextDecoration.none,
                     ),
                   ),
-                  Icon(Icons.arrow_back_ios_rounded, color: AppColors.primaryPurple, size: 20),
+                  if (!widget.isLeftEdge)
+                    const Icon(Icons.arrow_back_ios_rounded, color: AppColors.primaryPurple, size: 20),
                 ],
               ),
             ),
