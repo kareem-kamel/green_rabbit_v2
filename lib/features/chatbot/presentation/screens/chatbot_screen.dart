@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -102,14 +104,16 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
     
     final pos = _scrollController.position;
     
-    // Use a slightly larger buffer (50px) to detect if the user is NOT at the bottom.
-    // Also check if the user is currently touching the screen.
-    final atBottom = pos.pixels >= (pos.maxScrollExtent - 50);
+    // Check if the user is actively scrolling
+    if (pos.userScrollDirection != ScrollDirection.idle) {
+      _autoScroll = false;
+      return;
+    }
     
-    if (_autoScroll != atBottom) {
-      setState(() {
-        _autoScroll = atBottom;
-      });
+    // If not actively scrolling, see if we reached the bottom to re-enable auto-scroll
+    final atBottom = pos.pixels >= (pos.maxScrollExtent - 50);
+    if (atBottom && !_autoScroll) {
+      _autoScroll = true;
     }
   }
 
@@ -211,7 +215,25 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                       : (state.isGenerating && state.messages.isEmpty
                           ? const Center(child: CircularProgressIndicator())
                           : (state.messages.isNotEmpty
-                              ? _buildChatHistory(state)
+                              ? Stack(
+                                  children: [
+                                    _buildChatHistory(state),
+                                    if (!_autoScroll)
+                                      Positioned(
+                                        bottom: 16,
+                                        right: 16,
+                                        child: FloatingActionButton(
+                                          mini: true,
+                                          backgroundColor: AppColors.primaryPurple,
+                                          onPressed: () {
+                                            setState(() { _autoScroll = true; });
+                                            _scrollToBottom();
+                                          },
+                                          child: const Icon(Icons.arrow_downward, color: Colors.white, size: 20),
+                                        ),
+                                      ),
+                                  ],
+                                )
                               : _buildEmptyState(cubit))),
                 ),
                 if (!state.isVoiceMode) _buildInputArea(context, cubit, state),
@@ -556,26 +578,42 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
       return true;
     }).toList();
 
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      itemCount: visibleMessages.length + (state.isGenerating ? 2 : 1),
-      itemBuilder: (context, index) {
-        if (index == visibleMessages.length + (state.isGenerating ? 1 : 0)) {
-          return _buildCreditsRow(state);
-        }
-        if (state.isGenerating && index == visibleMessages.length) {
-          // Only show a separate typing bubble if the last message is from the user
-          // (meaning the assistant placeholder hasn't been added or is still being prepared)
-          if (visibleMessages.isEmpty || visibleMessages.last.isUser) {
-            return _buildTypingIndicatorBubble();
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification is ScrollStartNotification && notification.dragDetails != null) {
+          // User started dragging!
+          if (_autoScroll) {
+            setState(() { _autoScroll = false; });
           }
-          return const SizedBox.shrink();
+        } else if (notification is ScrollUpdateNotification) {
+          final atBottom = notification.metrics.pixels >= notification.metrics.maxScrollExtent - 50;
+          if (atBottom && !_autoScroll && notification.dragDetails != null) {
+            // User dragged to the bottom
+            setState(() { _autoScroll = true; });
+          }
         }
-        
-        final msg = visibleMessages[index];
-        return _buildMessageBubble(context, msg, state.isGenerating && index == visibleMessages.length - 1);
+        return false;
       },
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        itemCount: visibleMessages.length + (state.isGenerating ? 2 : 1),
+        itemBuilder: (context, index) {
+          if (index == visibleMessages.length + (state.isGenerating ? 1 : 0)) {
+            return _buildCreditsRow(state);
+          }
+          if (state.isGenerating && index == visibleMessages.length) {
+            // Only show a separate typing bubble if the last message is from the user
+            if (visibleMessages.isEmpty || visibleMessages.last.isUser) {
+              return _buildTypingIndicatorBubble();
+            }
+            return const SizedBox.shrink();
+          }
+          
+          final msg = visibleMessages[index];
+          return _buildMessageBubble(context, msg, state.isGenerating && index == visibleMessages.length - 1);
+        },
+      ),
     );
   }
 
@@ -606,14 +644,20 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   String _formatMessageContent(String content) {
     String processed = content;
     
-    // 1. Fix headers without spaces: "##1." -> "## 1."
-    // Matches 1 to 6 '#' followed immediately by a non-space/non-# character.
+    // 1. Fix AI mistakenly adding hashes to numbered lists (e.g. "##1." or "### 2." -> "**1.** ")
     processed = processed.replaceAllMapped(
-      RegExp(r'(#{1,6})(?=[^\s#])'), 
+      RegExp(r'^#{1,6}\s*(\d+\.)', multiLine: true),
+      (match) => '**${match.group(1)}** '
+    );
+    
+    // 2. Fix headers without spaces (e.g. "##Overview" -> "## Overview")
+    // Only apply if followed by a letter, to prevent breaking other things.
+    processed = processed.replaceAllMapped(
+      RegExp(r'(#{1,6})(?=[a-zA-Z])'), 
       (match) => '${match.group(1)} '
     );
 
-    // 2. Format standalone citations [1][2] -> **[1]** **[2]**
+    // 3. Format standalone citations [1][2] -> **[1]** **[2]**
     // Matches [...] digits not followed by '(' to avoid breaking markdown links.
     processed = processed.replaceAllMapped(
       RegExp(r'(\[\d+\])(?!\()'), 
@@ -687,7 +731,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                     selectable: true,
                     styleSheet: MarkdownStyleSheet(
                       p: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
-                      strong: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.bold, fontSize: 14),
+                      strong: const TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600, fontSize: 14),
                       em: const TextStyle(color: Colors.white70, fontStyle: FontStyle.italic, fontSize: 14),
                       a: const TextStyle(color: AppColors.secondaryBlue, decoration: TextDecoration.underline),
                       code: const TextStyle(color: AppColors.premiumGold, backgroundColor: Colors.transparent, fontFamily: 'monospace'),
@@ -761,7 +805,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                             ),
                             strong: TextStyle(
                               color: isPlanError ? Colors.white : (isError ? Colors.redAccent[100] : AppColors.accent),
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w600,
                               fontSize: 15,
                             ),
                             em: TextStyle(
@@ -875,7 +919,21 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
           if (!msg.hasChart && !isError)
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 8),
-              child: Icon(Icons.copy_outlined, color: Colors.white.withOpacity(0.3), size: 16),
+              child: GestureDetector(
+                onTap: () async {
+                  await Clipboard.setData(ClipboardData(text: msg.content));
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Text copied to clipboard"),
+                      backgroundColor: AppColors.primaryPurple,
+                      duration: Duration(seconds: 2),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                child: Icon(Icons.copy_outlined, color: Colors.white.withOpacity(0.3), size: 16),
+              ),
             ),
         ],
       ),

@@ -38,6 +38,14 @@ class ChatCubit extends Cubit<ChatState> {
   Future<void> loadHistory() async {
     try {
       final history = await repository.getConversations();
+      
+      // Sort conversations so the newest are at the top
+      history.sort((a, b) {
+        final dateA = a.updatedAt ?? a.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final dateB = b.updatedAt ?? b.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return dateB.compareTo(dateA); // Descending order
+      });
+      
       emit(state.copyWith(history: history));
     } catch (e) {
       print('Error loading history: $e');
