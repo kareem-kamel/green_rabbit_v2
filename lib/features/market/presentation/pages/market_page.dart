@@ -806,17 +806,24 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      instrument.name,
-                      style: TextStyle(
+                    child:Text(
+                                '${instrument.symbol} | ${instrument.exchange ?? 'Global'}${instrument.lastUpdatedAt != null ? ' | ${(() {
+                                  try {
+                                    final dt = DateTime.parse(instrument.lastUpdatedAt!).toLocal();
+                                    return DateFormat('HH:mm').format(dt);
+                                  } catch (_) {
+                                    return instrument.lastUpdatedAt;
+                                  }
+                                })()}' : ''}',
+                                style: TextStyle(
                         color: theme.textTheme.bodyLarge?.color,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.5,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                   ),
                 ],
               ),
@@ -834,23 +841,16 @@ class _MarketPageState extends ConsumerState<MarketPage> {
                             Icon(Icons.access_time, size: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
                             const SizedBox(width: 4),
                             Expanded(
-                              child: Text(
-                                '${instrument.symbol} | ${instrument.exchange ?? 'Global'}${instrument.lastUpdatedAt != null ? ' | ${(() {
-                                  try {
-                                    final dt = DateTime.parse(instrument.lastUpdatedAt!).toLocal();
-                                    return DateFormat('HH:mm').format(dt);
-                                  } catch (_) {
-                                    return instrument.lastUpdatedAt;
-                                  }
-                                })()}' : ''}',
-                                style: TextStyle(
+                              child:Text(
+                      instrument.name,
+                      style: TextStyle(
                                   color: isDark ? Colors.grey[400] : Colors.grey[600],
                                   fontSize: 12,
                                   fontWeight: FontWeight.w400,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                             ),
                           ],
                         ),

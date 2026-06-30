@@ -454,17 +454,6 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${detail.name} (${detail.symbol})',
-                          style: TextStyle(
-                            color: _textPrimary, 
-                            fontSize: 18, 
-                            fontWeight: FontWeight.bold,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
                           _getExchangeAndSectorText(detail),
                           style: TextStyle(
                             color: _textSecondary, 
@@ -472,6 +461,17 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                             fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${detail.name} (${detail.symbol})',
+                          style: TextStyle(
+                            color: _textPrimary, 
+                            fontSize: 18, 
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ],
@@ -511,7 +511,7 @@ class _InstrumentDetailPageState extends ConsumerState<InstrumentDetailPage> wit
                                 detail.price.current?.toStringAsFixed(2) ?? '--',
                                 style: TextStyle(
                                   color: Theme.of(context).textTheme.displayMedium?.color, 
-                                  fontSize: isSmall ? 28 : 36, 
+                                  fontSize: isSmall ? 15 : 18,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
