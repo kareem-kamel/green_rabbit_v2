@@ -488,26 +488,46 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
   }
 
   Widget _buildSuggestionBox(ChatCubit cubit) {
-    final List<Map<String, String>> suggestions = [
+    final List<Map<String, dynamic>> suggestions = [
       {
-        "label": "Top stocks performers",
-        "query": "Provide a detailed report on today's top performing stocks and trending market instruments."
+        "icon": Icons.trending_up_rounded,
+        "label": "Top Gainers",
+        "query": "Act as a financial analyst. Provide a detailed report on today's top-performing stocks and trending market instruments. Include key metrics such as percentage change, trading volume, and the primary catalysts driving their momentum."
       },
       {
-        "label": "Commodity Outlook",
-        "query": "What is the current outlook for major commodities like Gold, Silver, and Oil in the global market?"
+        "icon": Icons.inventory_2_rounded,
+        "label": "Commodities",
+        "query": "Act as a commodities expert. Analyze the current market outlook for major commodities like Gold, Silver, and Crude Oil. Discuss the macroeconomic factors, such as inflation and interest rates, that are currently influencing their price action."
       },
       {
+        "icon": Icons.arrow_upward_rounded,
         "label": "Bullish Trends",
-        "query": "What are the current bullish trends in the stock market that I should be aware of?"
+        "query": "Act as an investment strategist. Identify the current bullish trends and sectors in the stock market. Explain the fundamental drivers behind these trends and highlight key levels to watch."
       },
       {
-        "label": "Market Analysis",
-        "query": "Provide a comprehensive market analysis for today's trading session."
+        "icon": Icons.analytics_rounded,
+        "label": "Market Brief",
+        "query": "Act as a market research analyst. Provide a comprehensive macro-level market analysis for today's trading session. Summarize the performance of major indices, significant economic data releases, and shifts in market sentiment."
       },
       {
-        "label": "Trading Strategy",
-        "query": "Suggest a high-probability trading strategy for the current market conditions."
+        "icon": Icons.compare_arrows_rounded,
+        "label": "Compare Assets",
+        "query": "Act as a financial advisor. Compare and contrast two major assets (e.g., Gold vs. Bitcoin, or Apple vs. Microsoft) based on current market conditions. Analyze their historical performance, volatility, and future outlook."
+      },
+      {
+        "icon": Icons.track_changes_rounded,
+        "label": "Trading Strat",
+        "query": "Act as a seasoned trader. Suggest a high-probability trading strategy tailored for the current market conditions. Outline the setup, entry criteria, risk management parameters (stop-loss), and potential profit targets."
+      },
+      {
+        "icon": Icons.shield_rounded,
+        "label": "Risk Control",
+        "query": "Act as a risk manager. Provide a detailed guide on risk management strategies for trading in volatile markets. Explain concepts like position sizing, stop-loss placement, and risk-to-reward ratios."
+      },
+      {
+        "icon": Icons.newspaper_rounded,
+        "label": "News Impact",
+        "query": "Act as a market commentator. Analyze how recent major global news events are impacting the financial markets today. Highlight specific sectors or stocks that are most affected by the news."
       },
     ];
     return Container(
@@ -539,7 +559,7 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
             alignment: WrapAlignment.center,
             children: suggestions.map((s) => GestureDetector(
               onTap: () {
-                _textController.text = s["query"]!;
+                _textController.text = s["query"] as String;
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -548,7 +568,18 @@ class _ChatBotScreenState extends State<ChatBotScreen> {
                   borderRadius: BorderRadius.circular(8),
                   color: AppColors.primaryPurple.withOpacity(0.1),
                 ),
-                child: Text(s["label"]!, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      s["icon"] as IconData,
+                      size: 14,
+                      color: AppColors.primaryPurple,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(s["label"] as String, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                  ],
+                ),
               ),
             )).toList(),
           ),

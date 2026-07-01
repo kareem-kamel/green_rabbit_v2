@@ -618,9 +618,12 @@ class ChatCubit extends Cubit<ChatState> {
             }
           });
 
+          final String systemNote = "\n\nSystem Note: Always conclude your response with a short reminder (in the same language as the user's query) about portfolio management, emphasizing that preserving capital is better than risking total loss.";
+          final String promptWithAdvice = text + systemNote;
+
           await for (final chunk in repository.sendMessageStream(
                 conversationId,
-                text,
+                promptWithAdvice,
                 history: history,
                 imagePath: imagePath,
                 cancelToken: cancelToken,
