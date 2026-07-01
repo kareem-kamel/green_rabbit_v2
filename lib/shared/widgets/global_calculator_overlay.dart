@@ -572,7 +572,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
             const Icon(Icons.calculate, color: AppColors.primaryPurple),
             const SizedBox(width: 8),
             Text(
-              "Forex Profit Calculator",
+              "Profit Calculator",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -637,7 +637,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
               */
 
               Text(
-                "Forex Profit Calculator",
+                "Profit Calculator",
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -1145,9 +1145,10 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        if (_globalForexInstrument != null) ...[
+          const SizedBox(height: 16),
 
-        // Balance
+          // Balance
         _buildInputField(
           label: "Balance",
           controller: _forexBalanceController,
@@ -1329,6 +1330,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
             return _buildForexResultCard(profit, isDark, contractData.label);
           },
         ),
+        ],
       ],
     );
   }
