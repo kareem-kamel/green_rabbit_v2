@@ -1102,6 +1102,24 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
     });
   }
 
+  String _getTradeUnitPlural() {
+    if (_globalForexInstrument == null) return "Lots";
+    final type = _globalForexInstrument!.type.toLowerCase();
+    if (type == 'stock' || type == 'stocks' || type == 'etf' || type == 'equity') return "Shares";
+    if (type == 'crypto' || type == 'cryptocurrency') return "Units";
+    if (type == 'commodity' || type == 'commodities') return "Units";
+    return "Lots";
+  }
+  
+  String _getTradeUnitSingular() {
+    if (_globalForexInstrument == null) return "lot";
+    final type = _globalForexInstrument!.type.toLowerCase();
+    if (type == 'stock' || type == 'stocks' || type == 'etf' || type == 'equity') return "share";
+    if (type == 'crypto' || type == 'cryptocurrency') return "unit";
+    if (type == 'commodity' || type == 'commodities') return "unit";
+    return "lot";
+  }
+
   Widget _buildForexTab(bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1250,7 +1268,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
           children: [
             Expanded(
               child: _buildInputField(
-                label: "Trade Size (Lots)",
+                label: "Trade Size (${_getTradeUnitPlural()})",
                 controller: _forexLotsController,
                 onChanged: (val) => setState(() => _globalForexLots = double.tryParse(val) ?? 0.0),
                 isDark: isDark,
@@ -1582,7 +1600,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              "Contract size: $contractSize per lot",
+              "Contract size: $contractSize per ${_getTradeUnitSingular()}",
               style: TextStyle(
                 color: isDark ? Colors.white38 : Colors.black38,
                 fontSize: 10,
