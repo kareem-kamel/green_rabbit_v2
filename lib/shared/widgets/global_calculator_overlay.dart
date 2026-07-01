@@ -840,8 +840,8 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                           return popularAsync.when(
                             data: (popular) {
                               final popList = popular.take(5).toList();
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              return ListView(
+                                padding: EdgeInsets.zero,
                                 children: [
                                   Padding(
                                     padding: const EdgeInsets.only(left: 20, top: 10, bottom: 10, right: 20),
@@ -881,15 +881,8 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                                     padding: const EdgeInsets.only(left: 20, top: 16, bottom: 8),
                                     child: Text('Popular', style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 14)),
                                   ),
-                                  Expanded(
-                                    child: ListView.builder(
-                                      padding: const EdgeInsets.symmetric(vertical: 8),
-                                      itemCount: popList.length,
-                                      itemBuilder: (context, index) {
-                                        return _buildInstrumentTile(popList[index], isDark, context);
-                                      },
-                                    ),
-                                  ),
+                                  
+                                  ...popList.map((instrument) => _buildInstrumentTile(instrument, isDark, context)),
                                 ],
                               );
                             },
