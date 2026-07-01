@@ -1470,21 +1470,29 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
     Color riskColor;
     String riskMessage;
     
-    if (riskPercentage < 20) {
-      riskColor = const Color(0xFF2E7D32); // Dark green (Material)
-      riskMessage = "Very Low Risk";
-    } else if (riskPercentage < 40) {
-      riskColor = const Color(0xFF66BB6A); // Light green (Material)
-      riskMessage = "Low Risk";
-    } else if (riskPercentage < 60) {
-      riskColor = const Color(0xFFFFEB3B); // Yellow (Material)
-      riskMessage = "Medium Risk";
-    } else if (riskPercentage < 80) {
-      riskColor = const Color(0xFFFF9800); // Orange (Material)
-      riskMessage = "High Risk";
+    final term = profit >= 0 ? "Gain" : "Risk";
+    
+    if (riskPercentage >= 1 && riskPercentage <= 5) {
+      riskColor = const Color(0xFF2E7D32); // Dark green
+      riskMessage = "Very Low $term";
+    } else if (riskPercentage > 5 && riskPercentage <= 15) {
+      riskColor = const Color(0xFF66BB6A); // Light green
+      riskMessage = "Low $term";
+    } else if (riskPercentage > 15 && riskPercentage <= 25) {
+      riskColor = const Color(0xFFFFEB3B); // Yellow
+      riskMessage = "Medium $term";
+    } else if (riskPercentage > 25 && riskPercentage <= 30) {
+      riskColor = const Color(0xFFFF9800); // Orange
+      riskMessage = "High $term";
+    } else if (riskPercentage > 30 && riskPercentage <= 40) {
+      riskColor = const Color(0xFFF44336); // Red
+      riskMessage = "Very High $term";
+    } else if (riskPercentage > 40) {
+      riskColor = const Color(0xFFB71C1C); // Dark red for extreme
+      riskMessage = "Extreme $term";
     } else {
-      riskColor = const Color(0xFFF44336); // Red (Material)
-      riskMessage = "Very High Risk";
+      riskColor = const Color(0xFF9E9E9E); // Gray fallback
+      riskMessage = "No $term";
     }
     
     return Container(
@@ -1553,12 +1561,38 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
             child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    riskMessage,
-                    style: TextStyle(
-                      color: riskColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                  Expanded(
+                    child: Builder(
+                      builder: (context) {
+                        // Split the riskMessage on hyphen or en‑dash to separate title and subtitle
+                        final parts = riskMessage.split(RegExp(r'\s*[-–]\s*'));
+                        final title = parts.isNotEmpty ? parts[0] : riskMessage;
+                        final subtitle = parts.length > 1 ? parts.sublist(1).join(' - ') : null;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              title,
+                              style: TextStyle(
+                                color: riskColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                            if (subtitle != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                subtitle,
+                                style: TextStyle(
+                                  color: riskColor,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ],
+                        );
+                      },
                     ),
                   ),
                   Row(
@@ -1585,6 +1619,18 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                 ],
               ),
           ),
+          if (riskPercentage > 40) ...[
+            const SizedBox(height: 8),
+            Text(
+              "This is how an investor would think",
+              style: TextStyle(
+                color: riskColor,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
