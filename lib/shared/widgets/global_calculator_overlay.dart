@@ -572,7 +572,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
             const Icon(Icons.calculate, color: AppColors.primaryPurple),
             const SizedBox(width: 8),
             Text(
-              "Forex Profit Calculator",
+              "Profit Calculator",
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -637,7 +637,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
               */
 
               Text(
-                "Forex Profit Calculator",
+                "Profit Calculator",
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -654,6 +654,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
   }
 
   void _showInstrumentPicker(bool isDark) {
+    final searchController = TextEditingController(text: ref.read(_instrumentSearchQueryProvider));
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -765,6 +766,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: TextField(
+                    controller: searchController,
                     style: TextStyle(color: isDark ? Colors.white : Colors.black),
                     decoration: const InputDecoration(
                       hintText: "Search instruments...",
@@ -793,7 +795,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                 child: ListView(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
-                  children: ["All", "Favorites", "Forex", "Crypto", "Stock", "ETF", "Commodities"].map((cat) {
+                  children: ["History", "Favorites", "Forex", "Crypto", "Stock", "ETF", "Commodities"].map((cat) {
                     return Consumer(builder: (context, ref, _) {
                       final selectedCategory = ref.watch(_instrumentSearchCategoryProvider);
                       final isSelected = selectedCategory == cat;
@@ -827,6 +829,79 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
               Expanded(
                 child: Consumer(
                   builder: (context, ref, child) {
+                    final query = ref.watch(_instrumentSearchQueryProvider);
+                    final category = ref.watch(_instrumentSearchCategoryProvider);
+                    if (query.trim().length < 2 && category == "History") {
+                      final historyAsync = ref.watch(searchHistoryProvider);
+                      final popularAsync = ref.watch(marketOverviewProvider('stocks'));
+                      
+                      return historyAsync.when(
+                        data: (history) {
+                          return popularAsync.when(
+                            data: (popular) {
+                              final popList = popular.take(5).toList();
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 20, top: 10, bottom: 10, right: 20),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text('Recent search', style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 14)),
+                                        if (history.isNotEmpty)
+                                          TextButton(
+                                            onPressed: () => ref.read(searchHistoryProvider.notifier).clearHistory(),
+                                            child: const Text('Clear all', style: TextStyle(color: AppColors.primaryPurple, fontSize: 12)),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (history.isEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                      child: Text("No search history yet", style: TextStyle(color: isDark ? Colors.white54 : Colors.black54)),
+                                    )
+                                  else
+                                    ...history.map((search) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 16.0, left: 20, right: 20),
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          searchController.text = search;
+                                          ref.read(_instrumentSearchQueryProvider.notifier).state = search;
+                                          final cat = ref.read(_instrumentSearchCategoryProvider);
+                                          final sort = ref.read(_instrumentSortProvider);
+                                          ref.read(calculatorSearchProvider.notifier).refresh(cat, search, sort);
+                                        },
+                                        child: Text(search, style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 16)),
+                                      ),
+                                    )),
+                                    
+                                  Padding(
+                                    padding: const EdgeInsets.only(left: 20, top: 16, bottom: 8),
+                                    child: Text('Popular', style: TextStyle(color: isDark ? Colors.white70 : Colors.black87, fontSize: 14)),
+                                  ),
+                                  Expanded(
+                                    child: ListView.builder(
+                                      padding: const EdgeInsets.symmetric(vertical: 8),
+                                      itemCount: popList.length,
+                                      itemBuilder: (context, index) {
+                                        return _buildInstrumentTile(popList[index], isDark, context);
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                            loading: () => const Center(child: CircularProgressIndicator()),
+                            error: (_, __) => const SizedBox(),
+                          );
+                        },
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (_, __) => const SizedBox(),
+                      );
+                    }
+                    
                     final resultsAsync = ref.watch(calculatorSearchProvider);
                     final notifier = ref.read(calculatorSearchProvider.notifier);
                     
@@ -859,104 +934,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
                             
                             final instrument = instruments[index];
                             
-                            return Consumer(
-                              builder: (context, favoritesRef, _) {
-                                final isFavorite = favoritesRef.watch(
-                                  isCalculatorFavoriteProvider(instrument.id)
-                                );
-                                
-                                return ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                                  leading: Container(
-                                    width: 40,
-                                    height: 40,
-                                    decoration: BoxDecoration(
-                                      color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Center(
-                                      child: instrument.logoUrl != null
-                                          ? Image.network(
-                                              instrument.logoUrl!,
-                                              width: 24,
-                                              height: 24,
-                                              errorBuilder: (_, __, ___) => Icon(Icons.show_chart, color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24)),
-                                            )
-                                          : Icon(Icons.show_chart, color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24)),
-                                    ),
-                                  ),
-                                  title: Text(
-                                    instrument.symbol,
-                                    style: TextStyle(
-                                      color: isDark ? Colors.white : Colors.black,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  subtitle: Text(
-                                    instrument.name,
-                                    style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 12),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      // Favorite icon (calculator-specific!)
-                                      GestureDetector(
-                                        onTap: () {
-                                          // Toggle calculator favorite without selecting the instrument
-                                          favoritesRef.read(calculatorFavoritesProvider.notifier).toggleFavorite(instrument.id);
-                                        },
-                                        child: Padding(
-                                          padding: const EdgeInsets.only(right: 12.0),
-                                          child: Icon(
-                                            isFavorite ? Icons.star : Icons.star_border,
-                                            color: isFavorite ? Colors.amber : (isDark ? Colors.white38 : Colors.black38),
-                                            size: 20,
-                                          ),
-                                        ),
-                                      ),
-                                      // Price
-                                      Text(
-                                        instrument.price != null && instrument.price! > 0
-                                            ? '\$${instrument.price!.toStringAsFixed(instrument.type.toLowerCase() == 'forex' ? 5 : 2)}'
-                                            : '--',
-                                        style: const TextStyle(
-                                          color: AppColors.primaryPurple,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  onTap: () async {
-                                    setState(() {
-                                      _globalForexInstrument = instrument;
-                                      _globalForexOpenPrice = instrument.price ?? 0.0;
-                                      _forexOpenPriceController.text = _globalForexOpenPrice.toString();
-                                      
-                                      // Reset close price when instrument changes
-                                      _globalForexClosePrice = 0.0;
-                                      _forexClosePriceController.text = '';
-                                    });
-                                    
-                                    // Fetch full details to ensure we have the most accurate price
-                                    try {
-                                      final detail = await ref.read(marketRepositoryProvider).getInstrumentDetails(instrument.id);
-                                      if (detail.price.current != null) {
-                                        setState(() {
-                                          _globalForexOpenPrice = detail.price.current!;
-                                          _forexOpenPriceController.text = _globalForexOpenPrice.toString();
-                                        });
-                                      }
-                                    } catch (e) {
-                                      debugPrint('Error fetching accurate price: $e');
-                                    }
-                                    
-                                    if (mounted) Navigator.pop(context);
-                                  },
-                                );
-                              },
-                            );
+                            return _buildInstrumentTile(instrument, isDark, context);
                           },
                         );
                       },
@@ -1010,12 +988,136 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
     );
   }
 
+  Widget _buildInstrumentTile(MarketInstrument instrument, bool isDark, BuildContext sheetContext) {
+    return Consumer(
+      builder: (context, favoritesRef, _) {
+        final isFavorite = favoritesRef.watch(
+          isCalculatorFavoriteProvider(instrument.id)
+        );
+        
+        return ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Center(
+              child: instrument.logoUrl != null
+                  ? Image.network(
+                      instrument.logoUrl!,
+                      width: 24,
+                      height: 24,
+                      errorBuilder: (_, __, ___) => Icon(Icons.show_chart, color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24)),
+                    )
+                  : Icon(Icons.show_chart, color: isDark ? Colors.white.withOpacity(0.24) : Colors.black.withOpacity(0.24)),
+            ),
+          ),
+          title: Text(
+            instrument.symbol,
+            style: TextStyle(
+              color: isDark ? Colors.white : Colors.black,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          subtitle: Text(
+            instrument.name,
+            style: TextStyle(color: isDark ? Colors.white54 : Colors.black54, fontSize: 12),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Favorite icon (calculator-specific!)
+              GestureDetector(
+                onTap: () {
+                  // Toggle calculator favorite without selecting the instrument
+                  favoritesRef.read(calculatorFavoritesProvider.notifier).toggleFavorite(instrument.id);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 12.0),
+                  child: Icon(
+                    isFavorite ? Icons.star : Icons.star_border,
+                    color: isFavorite ? Colors.amber : (isDark ? Colors.white38 : Colors.black38),
+                    size: 20,
+                  ),
+                ),
+              ),
+              // Price
+              Text(
+                instrument.price != null && instrument.price! > 0
+                    ? '\$${instrument.price!.toStringAsFixed(instrument.type.toLowerCase() == 'forex' ? 5 : 2)}'
+                    : '--',
+                style: const TextStyle(
+                  color: AppColors.primaryPurple,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          onTap: () async {
+            final currentQuery = ref.read(_instrumentSearchQueryProvider);
+            if (currentQuery.trim().length >= 2) {
+              ref.read(searchHistoryProvider.notifier).saveQuery(currentQuery.trim());
+            }
+            
+            setState(() {
+              _globalForexInstrument = instrument;
+              _globalForexOpenPrice = instrument.price ?? 0.0;
+              _forexOpenPriceController.text = _globalForexOpenPrice.toString();
+              
+              // Reset close price when instrument changes
+              _globalForexClosePrice = 0.0;
+              _forexClosePriceController.text = '';
+            });
+            
+            // Fetch full details to ensure we have the most accurate price
+            try {
+              final detail = await ref.read(marketRepositoryProvider).getInstrumentDetails(instrument.id);
+              if (detail.price.current != null) {
+                setState(() {
+                  _globalForexOpenPrice = detail.price.current!;
+                  _forexOpenPriceController.text = _globalForexOpenPrice.toString();
+                });
+              }
+            } catch (e) {
+              debugPrint('Error fetching accurate price: $e');
+            }
+            
+            if (mounted) Navigator.pop(sheetContext);
+          },
+        );
+      },
+    );
+  }
+
   Timer? _searchDebounce;
   void _debouncedSearch(String query) {
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 500), () {
       ref.read(_instrumentSearchQueryProvider.notifier).state = query;
     });
+  }
+
+  String _getTradeUnitPlural() {
+    if (_globalForexInstrument == null) return "Lots";
+    final type = _globalForexInstrument!.type.toLowerCase();
+    if (type == 'stock' || type == 'stocks' || type == 'etf' || type == 'equity') return "Shares";
+    if (type == 'crypto' || type == 'cryptocurrency') return "Units";
+    if (type == 'commodity' || type == 'commodities') return "Units";
+    return "Lots";
+  }
+  
+  String _getTradeUnitSingular() {
+    if (_globalForexInstrument == null) return "lot";
+    final type = _globalForexInstrument!.type.toLowerCase();
+    if (type == 'stock' || type == 'stocks' || type == 'etf' || type == 'equity') return "share";
+    if (type == 'crypto' || type == 'cryptocurrency') return "unit";
+    if (type == 'commodity' || type == 'commodities') return "unit";
+    return "lot";
   }
 
   Widget _buildForexTab(bool isDark) {
@@ -1061,9 +1163,10 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        if (_globalForexInstrument != null) ...[
+          const SizedBox(height: 16),
 
-        // Balance
+          // Balance
         _buildInputField(
           label: "Balance",
           controller: _forexBalanceController,
@@ -1165,7 +1268,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
           children: [
             Expanded(
               child: _buildInputField(
-                label: "Trade Size (Lots)",
+                label: "Trade Size (${_getTradeUnitPlural()})",
                 controller: _forexLotsController,
                 onChanged: (val) => setState(() => _globalForexLots = double.tryParse(val) ?? 0.0),
                 isDark: isDark,
@@ -1245,6 +1348,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
             return _buildForexResultCard(profit, isDark, contractData.label);
           },
         ),
+        ],
       ],
     );
   }
@@ -1496,7 +1600,7 @@ class _InvestmentCalculatorPageState extends ConsumerState<InvestmentCalculatorP
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              "Contract size: $contractSize per lot",
+              "Contract size: $contractSize per ${_getTradeUnitSingular()}",
               style: TextStyle(
                 color: isDark ? Colors.white38 : Colors.black38,
                 fontSize: 10,
@@ -2109,11 +2213,14 @@ class CalculatorSearchNotifier extends StateNotifier<AsyncValue<List<MarketInstr
         }
       } else {
         // Load from trending or search
-        String? apiType = category == "All" ? null : category.toLowerCase();
+        String? apiType = (category == "All" || category == "History") ? null : category.toLowerCase();
         if (apiType == 'stock') apiType = 'stocks';
 
         if (query.isEmpty) {
-          if (apiType != null) {
+          if (category == "History") {
+            _instruments = [];
+            _hasNext = false;
+          } else if (apiType != null) {
             try {
               _instruments = await _repository.getTrendingInstruments(type: apiType);
               _hasNext = false; // No pagination for trending
@@ -2157,7 +2264,7 @@ class CalculatorSearchNotifier extends StateNotifier<AsyncValue<List<MarketInstr
           }
           
           // Apply category filter if needed
-          if (category != "All") {
+          if (category != "All" && category != "History") {
             _instruments = _instruments.where((inst) {
               final type = inst.type.toLowerCase();
               final cat = category.toLowerCase();
@@ -2282,11 +2389,11 @@ class CalculatorSearchNotifier extends StateNotifier<AsyncValue<List<MarketInstr
 
   Future<void> loadMore() async {
     // Load more only for market overview endpoints, not for trending or search
-    if (_isLoadingMore || !_hasNext || _lastCategory == "Favorites" || _lastQuery.isNotEmpty || _lastCategory == "All") return;
+    if (_isLoadingMore || !_hasNext || _lastCategory == "Favorites" || _lastQuery.isNotEmpty || _lastCategory == "All" || _lastCategory == "History") return;
     
     _isLoadingMore = true;
     try {
-      String? apiType = _lastCategory == "All" ? null : _lastCategory.toLowerCase();
+      String? apiType = (_lastCategory == "All" || _lastCategory == "History") ? null : _lastCategory.toLowerCase();
       if (apiType == 'stock') apiType = 'stocks';
       
       // Only try to load more if we actually have pageable data
@@ -2455,5 +2562,5 @@ final isCalculatorFavoriteProvider = Provider.family<bool, String>((ref, instrum
 
 // Searchable List for the Picker
 final _instrumentSearchQueryProvider = StateProvider.autoDispose<String>((ref) => "");
-final _instrumentSearchCategoryProvider = StateProvider.autoDispose<String>((ref) => "All");
+final _instrumentSearchCategoryProvider = StateProvider.autoDispose<String>((ref) => "History");
 final _instrumentSortProvider = StateProvider.autoDispose<String>((ref) => "alphabetical"); // options: alphabetical, price_high, price_low
